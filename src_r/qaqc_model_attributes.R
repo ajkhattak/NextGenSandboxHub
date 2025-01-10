@@ -73,7 +73,7 @@ check_nwm_attrs <- function(){
   }
   
   # Check if any of the nwm_attrs are NA or NaN
-  failed_nwm_attrs <- list()
+  failed_nwm_attrs <<- list()
   for (attr in nwm_attrs) {
     if (any(is.na(model_attributes[[attr]])) | any(is.nan(model_attributes[[attr]]))) {
       # Add the name of this attr to the failed_nwm_attrs list
