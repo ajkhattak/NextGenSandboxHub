@@ -35,6 +35,8 @@ setup <-function() {
 
   workflow_dir      <<- inputs$workflow_dir
   output_dir        <<- inputs$output_dir
+  reinstall_hydrofabric <<- inputs$gpkg_model_params$reinstall_hydrofabric
+  reinstall_arrow   <<- inputs$gpkg_model_params$reinstall_arrow
 
   source(paste0(workflow_dir, "/src_r/install_load_libs.R"))
   
@@ -62,29 +64,43 @@ check_nwm_attrs <- function(){
   
   # If any are missing, print an error
   if (length(missing_vars) > 0) {
-    failed_attrs[[length(failed_attrs) + 1]] <<- paste(missing_vars, collapse = ", ")
+    for (var in missing_vars) {
+      failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
+      failed_attrs[[length(failed_attrs) + 1]] <<- var
+      failed_reason[[length(failed_reason) + 1]] <<- "Missing"
+    }
     stop(paste0("Missing NWM attributes in geopackage: ", infile, " - ", missing_vars))
   }
   
   # Check if any of the nwm_attrs are NA or NaN
+  failed_nwm_attrs <- list()
   for (attr in nwm_attrs) {
     if (any(is.na(model_attributes[[attr]])) | any(is.nan(model_attributes[[attr]]))) {
-      stop(paste0("NA or NaN found in ", attr, " in geopackage: ", infile))
+      # Add the name of this attr to the failed_nwm_attrs list
+      failed_nwm_attrs[[length(failed_nwm_attrs) + 1]] <<- attr
+      # Add the names of the attributes with any NA or NaN's to the failed_attrs list
+      failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
+      failed_attrs[[length(failed_attrs) + 1]] <<- attr
+      failed_reason[[length(failed_reason) + 1]] <<- "NA value(s)"
+      cat ("NA or NaN found in ", attr, " in geopackage: ", infile, "\n")
     }
   }
-  
 }
 check_giuh <- function(){
   # Does it exist?
   if ("giuh" %in% colnames(model_attributes)) {
     giuh <- model_attributes$giuh
   } else {
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "GIUH"
+    failed_reason[[length(failed_reason) + 1]] <<- "Missing"
     stop(paste0("GIUH not found in geopackage: ", infile))
   }
   # Is it NA or NaN?
   if (any(is.na(giuh)) | any(is.nan(giuh))) {
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "GIUH"
+    failed_reason[[length(failed_reason) + 1]] <<- "NA value(s)"
     stop(paste0("NA or NaN found in GIUH in geopackage: ", infile))
   }
   # Extract the actual values
@@ -96,9 +112,16 @@ check_giuh <- function(){
   # Sum up each set of values 
   sums <- lapply(frequencies, function(x) sum(as.numeric(x)))
   
-  # Print an error if the sums are not equal to 1 plus or minus 0.01
-  if (any(sums < 0.99) | any(sums > 1.01)) {
+  # Print an error if the sums are NA or not equal to 1 +/- 0.01
+  if (any(is.na(sums))){
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "GIUH"
+    failed_reason[[length(failed_reason) + 1]] <<- "Missing frequency(ies)"
+    stop(paste0("GIUH sums contain NA: ", infile))
+  } else if (any(sums < 0.99) | any(sums > 1.01)) {
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
+    failed_attrs[[length(failed_attrs) + 1]] <<- "GIUH"
+    failed_reason[[length(failed_reason) + 1]] <<- "Unreasonable value(s)"
     stop(paste0("GIUH sums are not equal to 1 in geopackage: ", infile))
   }
   
@@ -110,13 +133,17 @@ check_twi <- function(){
   if ("twi" %in% colnames(model_attributes)) {
     twi <- model_attributes$twi
   } else {
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "TWI"
+    failed_reason[[length(failed_reason) + 1]] <<- "Missing"
     stop(paste0("TWI not found in geopackage: ", infile))
   }
   
   # Is it NA or NaN?
   if (any(is.na(twi)) | any(is.nan(twi))) {
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "TWI"
+    failed_reason[[length(failed_reason) + 1]] <<- "NA value(s)"
     stop(paste0("NA or NaN found in TWI in geopackage: ", infile))
   }
   
@@ -124,7 +151,6 @@ check_twi <- function(){
   # Use str_extract_all to extract each ordinate within curly brackets
   twi_ords <- str_extract_all(twi, "\\{[^\\}]+\\}")
   
-  # TODO: Figure out which one of these is the correct one to be QC-ing (v or frequency?)
   # Use str_extract to extract the number after "v\": and before ,\"frequency"
   v <- lapply(twi_ords, function(x) str_extract(x, "(?<=\"v\":)[0-9.]+"))
   
@@ -132,12 +158,18 @@ check_twi <- function(){
   frequencies <- lapply(twi_ords, function(x) str_extract(x, '(?<=\\"frequency\\":)[^}]+'))
   
   # Sum up each set of values
-  sums <- lapply(v, function(x) sum(as.numeric(x)))
-  sums <- lapply(frequencies, function(x) sum(as.numeric(x))) # I'm assuming I'm supposed to look at these?
+  sums <- lapply(frequencies, function(x) sum(as.numeric(x)))
   
-  # Print an error if the sums are not equal to 1 plus or minus 0.01
-  if (any(sums < 0.99) | any(sums > 1.01)) {
+  # Print an error if the sums are NA or not equal to 1 +/- 0.01
+  if (any(is.na(sums))){
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "TWI"
+    failed_reason[[length(failed_reason) + 1]] <<- "Missing frequency(ies)"
+    stop(paste0("TWI sums contain NA: ", infile))
+  } else if (any(sums < 0.99) | any(sums > 1.01)) {
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
+    failed_attrs[[length(failed_attrs) + 1]] <<- "TWI"
+    failed_reason[[length(failed_reason) + 1]] <<- "Unreasonable value(s)"
     stop(paste0("TWI sums are not equal to 1 in geopackage: ", infile))
   }
   
@@ -149,13 +181,17 @@ check_width <- function(){
   if ("width_dist" %in% colnames(model_attributes)) {
     width <- model_attributes$width_dist
   } else {
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "width"
+    failed_reason[[length(failed_reason) + 1]] <<- "Missing"
     stop(paste0("Width not found in geopackage: ", infile))
   }
   
   # Is it NA or NaN?
   if (any(is.na(width)) | any(is.nan(width))) {
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "width"
+    failed_reason[[length(failed_reason) + 1]] <<- "NA value(s)"
     stop(paste0("NA or NaN found in Width in geopackage: ", infile))
   }
   
@@ -168,19 +204,19 @@ check_width <- function(){
   # Use str_extract to extract the number after "frequency": and before the closing }
   frequencies <- lapply(width_ords, function(x) str_extract(x, '(?<=\\"frequency\\":)[^}]+'))
   
-  # Check if any frequencies are missing
-  if (any(is.na(frequencies))) {
-    failed_attrs[[length(failed_attrs) + 1]] <<- "width"
-    stop(paste0("Frequency missing in Width in geopackage: ", infile))
-  }
-  
   # Sum up each set of values
-  sums <- lapply(v, function(x) sum(as.numeric(x)))
-  sums <- lapply(frequencies, function(x) sum(as.numeric(x))) # I'm assuming I'm supposed to look at these?
+  sums <- lapply(frequencies, function(x) sum(as.numeric(x))) 
   
-  # Print an error if the sums are not equal to 1 plus or minus 0.01
-  if (any(sums < 0.99) | any(sums > 1.01)) {
+  # Print an error if the sums are NA or not equal to 1 +/- 0.01
+  if (any(is.na(sums))){
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "width"
+    failed_reason[[length(failed_reason) + 1]] <<- "Missing frequency(ies)"
+    stop(paste0("Width sums contain NA: ", infile))
+  } else if (any(sums < 0.99) | any(sums > 1.01)) {
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
+    failed_attrs[[length(failed_attrs) + 1]] <<- "width"
+    failed_reason[[length(failed_reason) + 1]] <<- "Unreasonable value(s)"
     stop(paste0("Width sums are not equal to 1 in geopackage: ", infile))
   }
   
@@ -192,13 +228,17 @@ check_n_nash <- function(){
   if ("N_nash_surface" %in% colnames(model_attributes)) {
     n_nash <- model_attributes$N_nash_surface
   } else {
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "N_nash"
+    failed_reason[[length(failed_reason) + 1]] <<- "Missing"
     stop(paste0("N_nash_surface not found in geopackage: ", infile))
   }
   
   # Is it NA or NaN?
   if (any(is.na(n_nash)) | any(is.nan(n_nash))) {
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "N_nash"
+    failed_reason[[length(failed_reason) + 1]] <<- "NA value(s)"
     stop(paste0("NA or NaN found in N_nash_surface in geopackage: ", infile))
   }
   
@@ -207,7 +247,9 @@ check_n_nash <- function(){
   
   # Print the result
   if (!valid_n_nash) {
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "N_nash"
+    failed_reason[[length(failed_reason) + 1]] <<- "Unreasonable value(s)"
     stop(paste0("N_nash_surface values are neither 2 or 5 in geopackage: ", infile))
   }
   
@@ -219,42 +261,44 @@ check_k_nash <- function(){
   if ("K_nash_surface" %in% colnames(model_attributes)) {
     k_nash <- model_attributes$K_nash_surface
   } else {
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "K_nash"
+    failed_reason[[length(failed_reason) + 1]] <<- "Missing"
     stop(paste0("K_nash_surface not found in geopackage: ", infile))
   }
   
   # Is it NA or NaN?
   if (any(is.na(k_nash)) | any(is.nan(k_nash))) {
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "K_nash"
+    failed_reason[[length(failed_reason) + 1]] <<- "NA value(s)"
     stop(paste0("NA or NaN found in K_nash_surface in geopackage: ", infile))
   }
 }
 
 ################################ OPTIONS #######################################
 
-start_time <- Sys.time()
-
+# Run QA/QC Functions ---------------------------------------------------------
 # Extract the list of basins we have gpkgs for
 basins <- list.files(output_dir)
 
 # Remove anything that's not numeric
 basins <- basins[str_detect(basins, "^[0-9]+$")]
 
-# Run QA/QC Functions ---------------------------------------------------------
-# basin <- "11147500" # for testing a specific basin
-
+# basin <- "15294005" # for testing a specific basin
 # Create an empty list to append basins with QA/QC issues to 
 failed_cats <- list()
 failed_attrs <- list()
+failed_reason <- list()
+failed_cats_list <- list()
 
 # Loop through each basin and apply QA/QC checks
 for (basin in basins) {
   tryCatch({
     # Read the geopackage -------------------
-    # infile <- glue('{output_dir}/new_dem/{basin}/data/gage_{basin}.gpkg')
     infile <- glue('{output_dir}/{basin}/data/gage_{basin}.gpkg')
-    print (paste0("Reading geopackage: ", basename(infile)))
-    model_attributes <- st_read(infile, layer = "divide-attributes")
+    # print (paste0("Reading geopackage: ", basename(infile)))
+    model_attributes <- suppressWarnings(st_read(infile, layer = "divide-attributes", quiet = TRUE))
     
     check_nwm_attrs()
     check_giuh()
@@ -266,7 +310,9 @@ for (basin in basins) {
   }, error = function(e) {
     # Handle error: print message and skip to the next iteration
     cat("Error with catchment:", basin, "\n")
-    failed_cats[[length(failed_cats) + 1]] <<- basin
+    # Print which of the above functions had an error: 
+    cat(e$message, "\n")
+    failed_cats_list[[length(failed_cats_list) + 1]] <<- basin
     return(NULL)
   })
   
@@ -275,7 +321,8 @@ for (basin in basins) {
 # Extract just the basin ids from failed_cats
 failed_cats <- sapply(failed_cats, function(x) str_extract(x, "[0-9]+"))
 # Make a dataframe with failed_cats in one column and failed_attrs in another
-failed_df <- data.frame(basin = failed_cats, failed_attrs = unlist(failed_attrs))
+failed_df <- data.frame(basin = failed_cats, failed_attrs = unlist(failed_attrs),
+                        failed_reason = unlist(failed_reason))
 
 # Write the dataframe to a csv file only if it is not empty
 if (nrow(failed_df) == 0) {
