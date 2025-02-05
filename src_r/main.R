@@ -52,7 +52,7 @@ setup <-function() {
     stop("Please provide only one argument (input.yaml).")
   } else {
     infile_config <- "/Users/laurenbolotin/Lauren/basin_workflow/configs/config_workflow.yaml"
-  }
+  } 
 
   if (!file.exists(infile_config)) {
     print(paste0("input config file does not exist, provided: ", infile_config))
@@ -62,7 +62,7 @@ setup <-function() {
   inputs = yaml.load_file(infile_config)
   
   workflow_dir      <<- inputs$workflow_dir
-  output_dir        <<- inputs$output_dir
+  output_dir        <<- inputs$input_dir
   hf_source         <<- inputs$gpkg_model_params$hf_source
   hf_version        <<- inputs$gpkg_model_params$hf_version
   hf_gpkg_path     <<- inputs$gpkg_model_params$hf_gpkg_path
