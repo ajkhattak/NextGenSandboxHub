@@ -316,6 +316,14 @@ run_driver <- function(gage_id = NULL,
                                      "divide-attributes"),
                             type = 'nextgen',
                             overwrite = TRUE)
+      # check if the divide-attributes layer has the same number of rows as the divides layer
+      check_divs <- st_read(outfile, layer = 'divides')
+      check_attrs <- st_read(outfile, layer = 'divide-attributes')
+      if (!nrow(check_divs) == nrow(check_attrs)) {
+        print(glue("DIVIDES HAS {nrow(check_divs)} ROWS BUT DIVIDE-ATTRIBUTES HAS {nrow(check_attrs)}!!"))
+        stop()
+      }
+
     } else { # If the gpkg does not exist, get from lynker-spatial hydrofabric bucket
       print('USING REMOTE GPKG FILE FOR SUBSETTING')
       hfsubsetR::get_subset(hl_uri = glue("gages-{gage_id}"),
@@ -448,7 +456,6 @@ run_driver <- function(gage_id = NULL,
   ####################### WRITE MODEL ATTRIBUTE FILE ###########################
   # STEP #8: Append GIUH, TWI, width function, and Nash cascade N and K parameters
   # to model attributes layers
-
   d_attr$giuh <- giuh_dat_values$giuh             # append GIUH column to the model attributes layer
   d_attr$twi  <- twi_dat_values$twi               # append TWI column to the model attributes layer
   d_attr$width_dist <- twi_dat_values$width_dist  # append width distribution column to the model attributes layer
