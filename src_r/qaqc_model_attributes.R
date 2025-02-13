@@ -34,7 +34,7 @@ setup <-function() {
   inputs = yaml.load_file(infile_config)
 
   workflow_dir      <<- inputs$workflow_dir
-  output_dir        <<- inputs$output_dir
+  output_dir        <<- inputs$input_dir
   reinstall_hydrofabric <<- inputs$gpkg_model_params$reinstall_hydrofabric
   reinstall_arrow   <<- inputs$gpkg_model_params$reinstall_arrow
 
