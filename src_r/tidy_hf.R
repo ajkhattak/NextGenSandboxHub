@@ -1,6 +1,9 @@
 #!/usr/bin/env Rscript
 
-# Example: Rscript tidy_hf.R /path/to/input_dir
+# Tidy hydrofabric gpkg files by removing disconnected divides
+# Author: Lauren Bolotin (GitHub: bolotinl) (email: lauren.bolotin@noaa.gov)
+# Date: 2025-07-10
+# Usage: Rscript tidy_hf.R /path/to/input_dir
 
 library(sf)
 library(dplyr)
