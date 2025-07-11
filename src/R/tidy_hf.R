@@ -1,10 +1,20 @@
+#!/usr/bin/env Rscript
+
+# Example: Rscript tidy_hf.R /path/to/input_dir
+
 library(sf)
 library(dplyr)
 library(stringr)
 library(fs)
 
-# Dir where the gpkgs are that you want to check/clean. This is also where new gpkgs will be saved.
-input_dir <- "/Users/laurenbolotin/Lauren/probable-winner/ngen_delve/examples/percent_contribution"
+# Get command-line argument
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) < 1) {
+  stop("Usage: Rscript script_name.R /path/to/input_dir")
+}
+input_dir <- args[1]
+
+# List all GPKGs in the input directory
 gpkgs <- dir_ls(input_dir, glob = "*.gpkg")
 
 # Function to process a single gpkg
@@ -101,3 +111,9 @@ process_gpkg <- function(gpkg_path) {
 for (gpkg in gpkgs) {
   process_gpkg(gpkg)
 }
+
+# Print completion message
+cat('------------------------ \n')
+cat("All gpkgs processed.\n")
+cat('------------------------ \n')
+
