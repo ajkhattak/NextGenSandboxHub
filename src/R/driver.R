@@ -477,9 +477,9 @@ RunDriver <- function(gage_id = NULL,
   } else if (hf_version == "2.1.1") {
     sf::st_write(d_attr, outfile,layer = "model-attributes", append = FALSE)  
   }
-
+  # Reproject to ensure all .gpkgs end up in Albers projection (EPSG:5070)
+  reproject_epsg5070()
 }
-
 
 clean_move_dem_dir <- function(id = id,
                                output_dir = output_dir,
@@ -497,4 +497,39 @@ clean_move_dem_dir <- function(id = id,
   }  
 }
 
-
+reproject_epsg5070 <- function(){
+  # File paths
+  gpkg_path <- outfile
+  gpkg_temp <- tempfile(fileext = ".gpkg")
+  
+  # Get all layer names
+  sf_layers <- st_layers(gpkg_path)
+  
+  # Track first write
+  first <- TRUE
+  
+  for (layer in sf_layers$name) {
+    # Read layer
+    layer_data <- st_read(gpkg_path, layer = layer, quiet = TRUE)
+    
+    # Reproject only if it's an sf object
+    if (inherits(layer_data, "sf")) {
+      layer_data <- st_transform(layer_data, crs = 5070)
+    }
+    
+    # Write to new GPKG
+    st_write(
+      layer_data,
+      gpkg_temp,
+      layer = layer,
+      delete_dsn = first,
+      append = !first
+    )
+    
+    first <- FALSE
+  }
+  
+  # Replace original GPKG
+  file_delete(gpkg_path)
+  file_copy(gpkg_temp, gpkg_path)
+}
