@@ -7,6 +7,7 @@ source(glue("{workflow_dir}/src_r/helper.R"))
 source(glue("{workflow_dir}/src_r/giuh.R"))
 source(glue("{workflow_dir}/src_r/nash_cascade.R"))
 source(glue("{workflow_dir}/src_r/driver.R"))
+source(glue("{workflow_dir}/src_r/slope.R"))
 
 # List all functions - give access to these function to each worker
 functions_lst = c("run_driver", "add_model_attributes", "dem_function", "twi_function", 
