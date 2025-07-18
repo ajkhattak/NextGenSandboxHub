@@ -125,6 +125,9 @@ check_giuh <- function(){
     stop(paste0("GIUH sums are not equal to 1 in geopackage: ", infile))
   }
   
+  # Subset the sums that are < 0.99
+  fix_giuh <- sums[sums < 0.99]
+
   rm(giuh, giuh_ords, frequencies, sums)
 }
 
@@ -273,6 +276,34 @@ check_k_nash <- function(){
     failed_attrs[[length(failed_attrs) + 1]] <<- "K_nash"
     failed_reason[[length(failed_reason) + 1]] <<- "NA value(s)"
     stop(paste0("NA or NaN found in K_nash_surface in geopackage: ", infile))
+  }
+}
+
+check_slope <- function(){
+  # Does it exist?
+  if ("terrain_slope" %in% colnames(model_attributes)) {
+    slope <- model_attributes$terrain_slope
+  } else {
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
+    failed_attrs[[length(failed_attrs) + 1]] <<- "terrain_slope"
+    failed_reason[[length(failed_reason) + 1]] <<- "Missing"
+    stop(paste0("terrain_slope not found in geopackage: ", infile))
+  }
+  
+  # Is it NA or NaN?
+  if (any(is.na(slope)) | any(is.nan(slope))) {
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
+    failed_attrs[[length(failed_attrs) + 1]] <<- "terrain_slope"
+    failed_reason[[length(failed_reason) + 1]] <<- "NA value(s)"
+    stop(paste0("NA or NaN found in terrain_slope in geopackage: ", infile))
+  }
+  
+  # Check if any values are > 90
+  if (any(slope > 90)) {
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
+    failed_attrs[[length(failed_attrs) + 1]] <<- "terrain_slope"
+    failed_reason[[length(failed_reason) + 1]] <<- "Unreasonable value(s)"
+    stop(paste0("terrain_slope values are greater than 90 in geopackage: ", infile))
   }
 }
 
