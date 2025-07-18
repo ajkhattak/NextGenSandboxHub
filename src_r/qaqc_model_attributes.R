@@ -337,6 +337,7 @@ for (basin in basins) {
     check_width()
     check_n_nash()
     check_k_nash()
+    check_slope()
     
   }, error = function(e) {
     # Handle error: print message and skip to the next iteration
