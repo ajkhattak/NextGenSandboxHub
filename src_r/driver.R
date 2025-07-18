@@ -96,7 +96,6 @@ process_catchment_id <- function(id, failed_dir) {
                hf_source = hf_source,
                write_attr_parquet = write_attr_parquet
     )
-    
     failed <- FALSE
   }, error = function(e) {
     failed <- TRUE
@@ -453,14 +452,20 @@ run_driver <- function(gage_id = NULL,
   time.taken <- as.numeric(Sys.time() - start.time, units = "secs") #end.time - start.time
   print (paste0("Time (nash func) = ", time.taken))
   
+  #######################. COMPUTE TERRAIN SLOPE ###########################
+  # STEP #8: Take slope from the slope grid calculated in the TWI function
+
+  slope <-  slope_function(div_infile = outfile, dem_output_dir = dem_output_dir)
+  
   ####################### WRITE MODEL ATTRIBUTE FILE ###########################
-  # STEP #8: Append GIUH, TWI, width function, and Nash cascade N and K parameters
+  # STEP #9: Append GIUH, TWI, width function, slope, and Nash cascade N and K parameters
   # to model attributes layers
   d_attr$giuh <- giuh_dat_values$giuh             # append GIUH column to the model attributes layer
   d_attr$twi  <- twi_dat_values$twi               # append TWI column to the model attributes layer
   d_attr$width_dist <- twi_dat_values$width_dist  # append width distribution column to the model attributes layer
   d_attr$N_nash_surface <- nash_params_surface$N_nash
   d_attr$K_nash_surface <- nash_params_surface$K_nash
+  d_attr$terrain_slope <- slope$mean.slope
   
   if (!write_attr_parquet) {
     # print('PRINTING MODEL ATTR NAMES')
@@ -484,7 +489,7 @@ run_driver <- function(gage_id = NULL,
     arrow::write_parquet(d_attr,attr_par_dir)
   }
   # Reproject to ensure all .gpkgs end up in Albers projection (EPSG:5070)
-  reproject_epsg5070()
+  reprojection_function(outfile)
 }
 
 clean_move_dem_dir <- function(id = id,
@@ -503,39 +508,3 @@ clean_move_dem_dir <- function(id = id,
   }  
 }
 
-reproject_epsg5070 <- function(){
-  # File paths
-  gpkg_path <- outfile
-  gpkg_temp <- tempfile(fileext = ".gpkg")
-  
-  # Get all layer names
-  sf_layers <- st_layers(gpkg_path)
-  
-  # Track first write
-  first <- TRUE
-  
-  for (layer in sf_layers$name) {
-    # Read layer
-    layer_data <- st_read(gpkg_path, layer = layer, quiet = TRUE)
-    
-    # Reproject only if it's an sf object
-    if (inherits(layer_data, "sf")) {
-      layer_data <- st_transform(layer_data, crs = 5070)
-    }
-    
-    # Write to new GPKG
-    st_write(
-      layer_data,
-      gpkg_temp,
-      layer = layer,
-      delete_dsn = first,
-      append = !first
-    )
-    
-    first <- FALSE
-  }
-  
-  # Replace original GPKG
-  file_delete(gpkg_path)
-  file_copy(gpkg_temp, gpkg_path)
-}
