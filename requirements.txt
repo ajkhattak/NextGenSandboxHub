@@ -1,0 +1,73 @@
+# Requirements file for basin_workflow
+
+# Core Python packages
+pandas>=1.5.0
+numpy>=1.20.0
+pyyaml>=6.0
+
+# Geospatial packages
+geopandas>=0.10.0
+fiona>=1.8.0
+shapely>=1.7.0
+
+# Scientific computing and data analysis
+xarray>=2022.6.0
+netcdf4>=1.6.0
+h5netcdf>=1.0.0
+dask[complete]>=2022.6.0
+scipy>=1.7.0
+
+# Cartographic projections
+cartopy>=0.20.0
+pyproj>=3.0.0
+
+# Cloud and remote data access
+s3fs>=2022.5.0
+fsspec>=2022.5.0
+boto3>=1.24.0
+
+# Exact extract for raster-vector operations
+exactextract>=0.1.0
+
+# Zarr for cloud-optimized data
+zarr>=2.12.0
+
+# Parallel computing
+dask[distributed]>=2022.6.0
+
+# Data retrieval and web services
+requests>=2.28.0
+dataretrieval>=0.7.0  # for USGS data access
+
+# Visualization (for any plotting functionality)
+matplotlib>=3.5.0
+
+# Progress bars
+tqdm>=4.64.0
+
+# NGEN-cal specific dependencies
+hydrotools-events>=1.0.0
+
+# Metrics and performance evaluation
+hydrotools.metrics>=1.0.0
+
+# Time series and datetime handling
+python-dateutil>=2.8.0
+
+# For handling different data formats
+openpyxl>=3.0.0  # for Excel file handling if needed
+pyarrow>=8.0.0  # for parquet file handling
+
+# Notebook support (if using Jupyter notebooks)
+jupyter>=1.0.0
+ipykernel>=6.0.0
+
+# Additional scientific packages that might be needed
+scikit-learn>=1.1.0  # for any machine learning functionality
+seaborn>=0.11.0  # for statistical visualization if needed
+
+# Plugin dependencies
+pluggy>=1.0.0
+
+# R integration (if using R scripts)
+rpy2>=3.4.0  # uncomment if you need R integration

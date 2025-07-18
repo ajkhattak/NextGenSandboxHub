@@ -12,6 +12,8 @@ driver_given_gage_IDs <- function(gage_ids,
                                   write_attr_parquet = FALSE,
                                   dem_input_file = NULL,
                                   dem_output_dir = "",
+                                  nlcd_data_path = "",
+                                  calculate_vegetation = FALSE,
                                   nproc = 1) {
   print ("DRIVER GIVEN GAGE ID")
   # create directory to stored catchment geopackage in case of errors or missing data
@@ -457,6 +459,22 @@ run_driver <- function(gage_id = NULL,
 
   slope <-  slope_function(div_infile = outfile, dem_output_dir = dem_output_dir)
   
+  ####################### CALCULATE VEGETATION TYPE ############################
+  # STEP #8a: Calculate vegetation type from NLCD data if enabled
+  divides_with_veg <- NULL
+  if (calculate_vegetation && nlcd_data_path != "" && file.exists(nlcd_data_path)) {
+    print("STEP: Computing vegetation type from NLCD data .................")
+    start.time <- Sys.time()
+    
+    # Calculate vegetation type
+    divides_with_veg <- calc_maj_vegtyp_nlcd(outfile, nlcd_data_path)
+    
+    time.taken <- as.numeric(Sys.time() - start.time, units = "secs")
+    print (paste0("Time (vegetation calc) = ", time.taken))
+  } else if (calculate_vegetation) {
+    print("WARNING: Vegetation calculation requested but NLCD data path not provided or file does not exist")
+  }
+  
   ####################### WRITE MODEL ATTRIBUTE FILE ###########################
   # STEP #9: Append GIUH, TWI, width function, slope, and Nash cascade N and K parameters
   # to model attributes layers
@@ -466,6 +484,11 @@ run_driver <- function(gage_id = NULL,
   d_attr$N_nash_surface <- nash_params_surface$N_nash
   d_attr$K_nash_surface <- nash_params_surface$K_nash
   d_attr$terrain_slope <- slope$mean.slope
+
+  # Add vegetation type if calculated
+  if (!is.null(divides_with_veg)) {
+    d_attr$IVGTYP_nlcd <- divides_with_veg$IVGTYP_nlcd
+  }
   
   if (!write_attr_parquet) {
     # print('PRINTING MODEL ATTR NAMES')
@@ -489,7 +512,7 @@ run_driver <- function(gage_id = NULL,
     arrow::write_parquet(d_attr,attr_par_dir)
   }
   # Reproject to ensure all .gpkgs end up in Albers projection (EPSG:5070)
-  reprojection_function(outfile)
+  reproject_epsg5070(outfile)
 }
 
 clean_move_dem_dir <- function(id = id,
@@ -506,5 +529,41 @@ clean_move_dem_dir <- function(id = id,
   else {
     unlink(glue("{output_dir}/{id}/dem"), recursive = TRUE)
   }  
+}
+
+reproject_epsg5070 <- function(gpkg_path){
+  # File paths
+  gpkg_temp <- tempfile(fileext = ".gpkg")
+  
+  # Get all layer names
+  sf_layers <- st_layers(gpkg_path)
+  
+  # Track first write
+  first <- TRUE
+  
+  for (layer in sf_layers$name) {
+    # Read layer
+    layer_data <- st_read(gpkg_path, layer = layer, quiet = TRUE)
+    
+    # Reproject only if it's an sf object
+    if (inherits(layer_data, "sf")) {
+      layer_data <- st_transform(layer_data, crs = 5070)
+    }
+    
+    # Write to new GPKG
+    st_write(
+      layer_data,
+      gpkg_temp,
+      layer = layer,
+      delete_dsn = first,
+      append = !first
+    )
+    
+    first <- FALSE
+  }
+  
+  # Replace original GPKG
+  file.remove(gpkg_path)
+  file.copy(gpkg_temp, gpkg_path)
 }
 

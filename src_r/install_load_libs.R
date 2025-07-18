@@ -43,6 +43,9 @@ if(!requireNamespace("sf", quietly=TRUE))
 if(!requireNamespace("terra", quietly=TRUE)) 
   install.packages("terra")
 
+if(!requireNamespace("exactextractr", quietly=TRUE)) 
+  install.packages("exactextractr")
+
 if(!requireNamespace("whitebox", quietly=TRUE)) {
   install.packages("whitebox")
   whitebox::install_whitebox()
@@ -100,6 +103,7 @@ library(zonal)
 library(whitebox)
 library(sf)
 library(terra)
+library(exactextractr)
 library(dplyr)
 suppressPackageStartupMessages(library(glue))
 #library(raster)
@@ -120,6 +124,7 @@ libraries_lst <- c(suppressPackageStartupMessages(library(hydrofabric)),
                    library(whitebox),
                    library(sf),
                    library(terra),
+                   library(exactextractr),
                    library(dplyr),
                    suppressPackageStartupMessages(library(glue)),
                    suppressPackageStartupMessages(library(raster)),
