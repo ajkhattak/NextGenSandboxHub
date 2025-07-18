@@ -21,7 +21,8 @@
 #   STEP #5: Compute TWI and width function (inside driver.R)
 #   STEP #6: Compute GIUH (inside driver.R)
 #   STEP #7: Compute Nash cascade parameters (N and K) for surface runoff (inside driver.R)
-#   STEP #8: Append GIUH, TWI, width function, and Nash cascade parameters to model_attributes layer (inside driver.R)
+#   STEP #8: Compute terrain slope from the DEM (inside driver.R)
+#   STEP #9: Append GIUH, TWI, width function, Nash cascade parameters, and slope to model_attributes layer (inside driver.R)
 
 
 ################################ SETUP #########################################
@@ -143,6 +144,7 @@ if (use_gage_id == TRUE) {
   
   d = read.csv(gage_file,colClasses = c("character")) 
   gage_ids <- d[[column_name]]
+  gage_ids <- zeroPad(gage_ids, 8)
   
   cats_failed <- driver_given_gage_IDs(gage_id = gage_ids, 
                                        output_dir = output_dir, 
