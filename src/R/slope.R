@@ -17,10 +17,6 @@ slope_function <- function(div_infile, dem_output_dir) {
                                     geom = div,
                                     ID = "divide_id",
                                     fun = "mean")
-  print('SLOPE_CAT !!!!!!!!!!')
-  print(slope_cat)
-  # NOTE: I think this is where you could do the conversion from meters/meter to percent
-
   return(slope_cat)
 
   }
