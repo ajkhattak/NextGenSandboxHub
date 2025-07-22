@@ -308,8 +308,10 @@ RunDriver <- function(gage_id = NULL,
       if (compute_divide_attributes) {
           layers = c("divides", "flowpaths", "network", "nexus")
       }
-
-      hfsubsetR::get_subset(hl_uri = glue("gages-{gage_id}"),
+      flowpath_id <- sf::read_sf(hf_gpkg, query = glue::glue(
+        "SELECT hf_id FROM hydrolocations WHERE hl_reference || '-' || hl_link = 'Gages-{gage_id}'"
+      ))$hf_id
+      hfsubsetR::get_subset(comid = flowpath_id,
                             outfile = outfile,
                             gpkg = hf_gpkg,
                             hf_version = hf_version,
@@ -439,9 +441,7 @@ RunDriver <- function(gage_id = NULL,
   
   # write GIUH layer to the geopackage
   giuh_dat_values = data.frame(ID = giuh_compute$divide_id, giuh = giuh_compute$fun.giuh_minute)
-  names(giuh_dat_values)
   colnames(giuh_dat_values) <- c('divide_id', 'giuh')
-  names(giuh_dat_values)
 
   #giuh_dat_values$giuh[1]
   time.taken <- as.numeric(Sys.time() - start.time, units = "secs")
@@ -477,8 +477,17 @@ RunDriver <- function(gage_id = NULL,
   d_attr$K_nash_surface <- nash_params_surface$K_nash
   d_attr$terrain_slope <- slope$mean.slope
   
+  # Fix attribute naming issues (specific to PR hydrofabric)
+  if ("mode.bexp_Time=_soil_layers_stag=1" %in% names(d_attr)) {
+    d_attr <- dplyr::rename(d_attr, `mode.bexp_soil_layers_stag.1` = `mode.bexp_Time=_soil_layers_stag=1`)
+  }
+
+  if ("mean.refkdt_Time=" %in% names(d_attr)) {
+    d_attr <- dplyr::rename(d_attr, `mean.refkdt` = `mean.refkdt_Time=`)
+  }
+  
   if (hf_version == "2.2") {
-    sf::st_write(d_attr, outfile,layer = "divide-attributes", append = FALSE)
+    sf::st_write(d_attr, outfile,layer = "divide-attributes", append = FALSE, overwrite = TRUE)
   } else if (hf_version == "2.1.1") {
     sf::st_write(d_attr, outfile,layer = "model-attributes", append = FALSE)  
   }
