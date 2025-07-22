@@ -34,18 +34,18 @@ setup <-function() {
   inputs = yaml.load_file(infile_config)
 
   sandbox_dir      <<- inputs$sandbox_dir
-  output_dir        <<- inputs$output_dir
+  input_dir        <<- inputs$input_dir
   reinstall_hydrofabric <<- inputs$gpkg_model_params$reinstall_hydrofabric
   reinstall_arrow   <<- inputs$gpkg_model_params$reinstall_arrow
 
   source(paste0(sandbox_dir, "/src_r/install_load_libs.R"))
   
-  if (!file.exists(output_dir)) {
-    print(glue("Output directory does not exist, provided: {output_dir}"))
+  if (!file.exists(input_dir)) {
+    print(glue("Input directory does not exist, provided: {input_dir}"))
     return(1)
   }
   
-  setwd(output_dir)
+  setwd(input_dir)
   wbt_wd(getwd())
   
   return(0)
@@ -311,7 +311,7 @@ check_slope <- function(){
 
 # Run QA/QC Functions ---------------------------------------------------------
 # Extract the list of basins we have gpkgs for
-basins <- list.files(output_dir)
+basins <- list.files(input_dir)
 
 # Remove anything that's not numeric
 basins <- basins[str_detect(basins, "^[0-9]+$")]
@@ -327,7 +327,7 @@ failed_cats_list <- list()
 for (basin in basins) {
   tryCatch({
     # Read the geopackage -------------------
-    infile <- glue('{output_dir}/{basin}/data/gage_{basin}.gpkg')
+    infile <- glue('{input_dir}/{basin}/data/gage_{basin}.gpkg')
     # print (paste0("Reading geopackage: ", basename(infile)))
     model_attributes <- suppressWarnings(st_read(infile, layer = "divide-attributes", quiet = TRUE))
     
@@ -361,5 +361,5 @@ if (nrow(failed_df) == 0) {
   print("No basins failed QA/QC")
 } else {
   print(glue("Basins failed QA/QC: {failed_df$basin}"))
-  write.csv(failed_df, glue("{output_dir}/failed_basin_attrs.csv"), row.names = FALSE)
+  write.csv(failed_df, glue("{input_dir}/failed_basin_attrs.csv"), row.names = FALSE)
 }
