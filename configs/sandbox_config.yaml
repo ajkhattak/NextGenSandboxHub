@@ -13,6 +13,9 @@ subsetting :
   hf_gpkg_path             : "<path_to>/conus_nextgen.gpkg"  #for example, "<paht_to>/conus_nextgen.gpkg" # input
   dem_output_dir           : "<path_to>/dem" # create `dem` directory yourself # output
   number_processors        : 1
+  # Path to NLCD data for vegetation type (IVGTYP) calculation
+  nlcd_data_path           : "<path_to>/Annual_NLCD_LndCov_2021_CU_C1V1.tif"
+  calculate_vegetation     : FALSE  # Set to FALSE to skip vegetation calculation
 
   # Note: only gage_ids that fall within the domain of the hydrofabric listed above will be subsetted
   options :

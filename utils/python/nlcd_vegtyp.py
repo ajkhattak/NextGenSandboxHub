@@ -200,8 +200,8 @@ def convert_nlcd_to_custom_codes(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         12: 24,  # Perennial ice / Snow
         
         # Developed/Urban land
-        21: 81,  # Developed, open space -> Urban and Built-Up Land
-        22: 81,  # Developed, low intensity -> Urban and Built-Up Land
+        21: 6,  # Developed, open space -> Urban and Built-Up Land
+        22: 6,  # Developed, low intensity -> Urban and Built-Up Land
         23: 1,   # Developed, med intensity -> Urban and Built-Up Land
         24: 1,   # Developed, high intensity -> Urban and Built-Up Land
         

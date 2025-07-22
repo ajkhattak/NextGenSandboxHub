@@ -6,6 +6,7 @@ source(glue("{sandbox_dir}/src/R/twi_width.R"))
 source(glue("{sandbox_dir}/src/R/helper.R"))
 source(glue("{sandbox_dir}/src/R/giuh.R"))
 source(glue("{sandbox_dir}/src/R/nash_cascade.R"))
+source(glue("{sandbox_dir}/src/R/veg_type.R"))
 source(glue("{sandbox_dir}/src/R/driver.R"))
 
 # List all functions - give access to these function to each worker

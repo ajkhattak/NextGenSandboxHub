@@ -22,6 +22,7 @@
 #   STEP #6: Compute GIUH (inside driver.R)
 #   STEP #7: Compute Nash cascade parameters (N and K) for surface runoff (inside driver.R)
 #   STEP #8: Append GIUH, TWI, width function, and Nash cascade parameters to model_attributes layer (inside driver.R)
+#   STEP #8a: Compute NLCD landcover
 
 
 ################################ SETUP #########################################
@@ -78,6 +79,10 @@ Setup <-function() {
   dem_input_file  <<- get_param(inputs, "subsetting$dem_input_file", "s3://lynker-spatial/gridded-resources/USGS_seamless_13.vrt")
 
   dem_output_dir  <<- get_param(inputs, "subsetting$dem_output_dir", "")
+
+  # NLCD vegetation data parameters
+  nlcd_data_path        <<- get_param(inputs, "subsetting$nlcd_data_path", FALSE)
+  calculate_vegetation  <<- get_param(inputs, "subsetting$calculate_vegetation", FALSE)
   
   use_gage_id   <<- get_param(inputs, "subsetting$options$use_gage_id$use_gage_id", FALSE)
   gage_ids      <<- get_param(inputs, "subsetting$options$use_gage_id$gage_ids", NULL)
@@ -140,6 +145,8 @@ if (use_gage_id == TRUE || use_gage_file == TRUE) {
                     nproc = nproc,
                     dem_output_dir = dem_output_dir,
                     dem_input_file = dem_input_file,
+                    nlcd_data_path = nlcd_data_path,
+                    calculate_vegetation = calculate_vegetation,
                     compute_divide_attributes = compute_divide_attributes
                     )
   
@@ -154,6 +161,8 @@ if (use_gage_id == TRUE || use_gage_file == TRUE) {
                   nproc = nproc,
                   dem_output_dir = dem_output_dir,
                   dem_input_file = dem_input_file,
+                  nlcd_data_path = nlcd_data_path,
+                  calculate_vegetation = calculate_vegetation,
                   compute_divide_attributes = compute_divide_attributes
                   )
 }

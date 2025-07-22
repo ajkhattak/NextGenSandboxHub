@@ -13,42 +13,40 @@ divides <- read_sf(div_infile, 'divides')
   # Create mapping from NLCD codes to NWM vegetation types
   nlcd_to_nwm_lookup <- c(
     # Water bodies
-    "11" = "16",  # Open water -> Water Bodies
-    "12" = "24",  # Perennial ice / Snow
+    "11" = "16",  # Open Water -> Water Bodies
+    "12" = "24",  # Perennial Ice/Snow -> Snow or Ice
     
     # Developed/Urban land
-    "21" = "81",   # Developed, open space -> Grassland or Herbaceous
-    "22" = "81",   # Developed, low intensity -> Grassland or Herbaceous
-    "23" = "1",   # Developed, med intensity -> Urban and Built-Up Land
-    "24" = "1",   # Developed, high intensity -> Urban and Built-Up Land
+    "21" = "6",   # Developed, Open Space -> Urban and Built-Up Land
+    "22" = "6",   # Developed, Low Intensity -> Urban and Built-Up Land
+    "23" = "1",   # Developed, Medium Intensity -> Urban and Built-Up Land
+    "24" = "1",   # Developed, High Intensity -> Urban and Built-Up Land
     
     # Barren land
-    "31" = "19",  # Barren land -> Barren or Sparsely Vegetated
+    "31" = "19",  # Barren Land (Rock/Sand/Clay) -> Barren or Sparsely Vegetated
     
     # Forest types
-    "41" = "11",  # Deciduous forest -> Deciduous Broadleaf Forest
-    "42" = "14",  # Evergreen forest -> Evergreen Needleleaf Forest
-    "43" = "15",  # Mixed forest -> Mixed Forest
-    # probably should have evergreen deciduous forests for PR?
-    # 13: Evergreen Broadleaf Forest
+    "41" = "11",  # Deciduous Forest -> Deciduous Broadleaf Forest
+    "42" = "14",  # Evergreen Forest -> Evergreen Needleleaf Forest
+    "43" = "15",  # Mixed Forest -> Mixed Forest
     
     # Shrubland
-    "51" = "8",   # Dwarf shrub (no direct NWM equivalent)
-    "52" = "8",   # Shrub/scrub -> Shrubland
+    "51" = "8",   # Dwarf Scrub (Alaska) -> Shrubland
+    "52" = "8",   # Shrub/Scrub -> Shrubland
     
-    # Grassland
-    "71" = "9",   # Grassland/Herbaceous -> Mixed Shrubland/Grassland
-    "72" = "20",  # Sedge -> Herbaceous Tundra
-    "73" = "20",  # Lichens -> Herbaceous Tundra
-    "74" = "20",  # Moss -> Herbaceous Tundra
+    # Herbaceous/Grassland
+    "71" = "7",   # Grassland/Herbaceous -> Grassland
+    "72" = "20",  # Sedge/Herbaceous (Alaska) -> Herbaceous Tundra
+    "73" = "20",  # Lichens (Alaska) -> Herbaceous Tundra
+    "74" = "20",  # Moss (Alaska) -> Herbaceous Tundra
     
-    # Agricultural/Pasture
-    "81" = "5",   # Pasture/Hay -> Dryland Cropland and Pasture
-    "82" = "4",   # Cultivated crops -> Dryland Cropland and Pasture
+    # Planted/Cultivated
+    "81" = "5",   # Pasture/Hay -> Cropland/Grassland Mosaic
+    "82" = "2",   # Cultivated Crops -> Dryland Cropland and Pasture
     
     # Wetlands
-    "90" = "18",  # Woody wetlands -> Wooded Wetland
-    "95" = "17"   # Herbaceous wetlands -> Herbaceous Wetland
+    "90" = "18",  # Woody Wetlands -> Wooded Wetland
+    "95" = "17"   # Emergent Herbaceous Wetlands -> Herbaceous Wetland
   )
   
   # Calculate majority landcover type for each divide
