@@ -198,3 +198,39 @@ get_param <- function(input, param, default_value) {
       default_value
     })
 }
+
+reprojection_function <- function(outfile, epsg = 5070){
+  # File paths
+  gpkg_path <- outfile
+  gpkg_temp <- tempfile(fileext = ".gpkg")
+  # Get all layer names
+  sf_layers <- st_layers(gpkg_path)
+  
+  # Track first write
+  first <- TRUE
+  
+  for (layer in sf_layers$name) {
+    # Read layer
+    layer_data <- st_read(gpkg_path, layer = layer, quiet = TRUE)
+    # Reproject only if it's an sf object
+    if (inherits(layer_data, "sf")) {
+      layer_data <- st_transform(layer_data, crs = 5070)
+    }
+    # Write to new GPKG
+    st_write(
+      layer_data,
+      gpkg_temp,
+      layer = layer,
+      delete_dsn = first,
+      append = !first,
+      quiet = TRUE
+    )
+    first <- FALSE
+  }
+  
+  # Replace original GPKG
+  # file_delete(gpkg_path)
+  # file_copy(gpkg_temp, gpkg_path)
+  file.remove(gpkg_path)
+  file.copy(gpkg_temp, gpkg_path, overwrite = TRUE)
+}

@@ -34,18 +34,18 @@ setup <-function() {
   inputs = yaml.load_file(infile_config)
 
   sandbox_dir      <<- inputs$sandbox_dir
-  output_dir        <<- inputs$output_dir
+  input_dir        <<- inputs$input_dir
   reinstall_hydrofabric <<- inputs$gpkg_model_params$reinstall_hydrofabric
   reinstall_arrow   <<- inputs$gpkg_model_params$reinstall_arrow
 
   source(paste0(sandbox_dir, "/src_r/install_load_libs.R"))
   
-  if (!file.exists(output_dir)) {
-    print(glue("Output directory does not exist, provided: {output_dir}"))
+  if (!file.exists(input_dir)) {
+    print(glue("Input directory does not exist, provided: {input_dir}"))
     return(1)
   }
   
-  setwd(output_dir)
+  setwd(input_dir)
   wbt_wd(getwd())
   
   return(0)
@@ -125,6 +125,9 @@ check_giuh <- function(){
     stop(paste0("GIUH sums are not equal to 1 in geopackage: ", infile))
   }
   
+  # Subset the sums that are < 0.99
+  fix_giuh <- sums[sums < 0.99]
+
   rm(giuh, giuh_ords, frequencies, sums)
 }
 
@@ -276,11 +279,39 @@ check_k_nash <- function(){
   }
 }
 
+check_slope <- function(){
+  # Does it exist?
+  if ("terrain_slope" %in% colnames(model_attributes)) {
+    slope <- model_attributes$terrain_slope
+  } else {
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
+    failed_attrs[[length(failed_attrs) + 1]] <<- "terrain_slope"
+    failed_reason[[length(failed_reason) + 1]] <<- "Missing"
+    stop(paste0("terrain_slope not found in geopackage: ", infile))
+  }
+  
+  # Is it NA or NaN?
+  if (any(is.na(slope)) | any(is.nan(slope))) {
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
+    failed_attrs[[length(failed_attrs) + 1]] <<- "terrain_slope"
+    failed_reason[[length(failed_reason) + 1]] <<- "NA value(s)"
+    stop(paste0("NA or NaN found in terrain_slope in geopackage: ", infile))
+  }
+  
+  # Check if any values are > 90
+  if (any(slope > 90)) {
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
+    failed_attrs[[length(failed_attrs) + 1]] <<- "terrain_slope"
+    failed_reason[[length(failed_reason) + 1]] <<- "Unreasonable value(s)"
+    stop(paste0("terrain_slope values are greater than 90 in geopackage: ", infile))
+  }
+}
+
 ################################ OPTIONS #######################################
 
 # Run QA/QC Functions ---------------------------------------------------------
 # Extract the list of basins we have gpkgs for
-basins <- list.files(output_dir)
+basins <- list.files(input_dir)
 
 # Remove anything that's not numeric
 basins <- basins[str_detect(basins, "^[0-9]+$")]
@@ -296,7 +327,7 @@ failed_cats_list <- list()
 for (basin in basins) {
   tryCatch({
     # Read the geopackage -------------------
-    infile <- glue('{output_dir}/{basin}/data/gage_{basin}.gpkg')
+    infile <- glue('{input_dir}/{basin}/data/gage_{basin}.gpkg')
     # print (paste0("Reading geopackage: ", basename(infile)))
     model_attributes <- suppressWarnings(st_read(infile, layer = "divide-attributes", quiet = TRUE))
     
@@ -306,6 +337,7 @@ for (basin in basins) {
     check_width()
     check_n_nash()
     check_k_nash()
+    check_slope()
     
   }, error = function(e) {
     # Handle error: print message and skip to the next iteration
@@ -329,5 +361,5 @@ if (nrow(failed_df) == 0) {
   print("No basins failed QA/QC")
 } else {
   print(glue("Basins failed QA/QC: {failed_df$basin}"))
-  write.csv(failed_df, glue("{output_dir}/failed_basin_attrs.csv"), row.names = FALSE)
+  write.csv(failed_df, glue("{input_dir}/failed_basin_attrs.csv"), row.names = FALSE)
 }

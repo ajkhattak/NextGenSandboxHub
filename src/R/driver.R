@@ -283,54 +283,66 @@ RunDriver <- function(gage_id = NULL,
       dplyr::select(state_cd)
     state_code <- gage_metadata$state_cd
     state <- stateCd$STUSAB[which(stateCd$STATE == state_code)]
-    if (state %in% c("HI", "AK")) {
-      domain <- tolower(state)
-    } else if (state %in% c("PR", "VI")) {
-      domain <- "prvi"
-    } else {
-      domain <- "conus"
-    }
-    
-    # If the gpkg exists, use that for subsetting
-    if (hf_version == "2.2") {
-      
-      if (file.exists(hf_gpkg_path)) {
-        print('USING LOCAL GPKG FILE FOR SUBSETTING')
-        hf_gpkg <- hf_gpkg_path
+      if (state %in% c("HI", "AK")) {
+        domain <- tolower(state)
+      } else if (state %in% c("PR", "VI")) {
+        domain <- "prvi"
       } else {
-        print('USING REMOTE GPKG FILE FOR SUBSETTING')
-        hf_gpkg = NULL
+        domain <- "conus"
       }
-
-      layers = c("divides", "flowpaths", "network", "nexus",
-                 "flowpath-attributes","divide-attributes")
-
-      if (compute_divide_attributes) {
-          layers = c("divides", "flowpaths", "network", "nexus")
+    
+      # If the gpkg exists, use that for subsetting
+      if (hf_version == "2.2") {
+        
+        if (file.exists(hf_gpkg_path)) {
+          print('USING LOCAL GPKG FILE FOR SUBSETTING')
+          hf_gpkg <- hf_gpkg_path
+        } else {
+          print('USING REMOTE GPKG FILE FOR SUBSETTING')
+          hf_gpkg = NULL
+        }
+  
+        layers = c("divides", "flowpaths", "network", "nexus",
+                   "flowpath-attributes","divide-attributes")
+  
+        if (compute_divide_attributes) {
+            layers = c("divides", "flowpaths", "network", "nexus")
+        }
+        if (domain != "conus"){ # If the gage is in oCONUS, query using flowpath id
+          flowpath_id <- sf::read_sf(hf_gpkg, query = glue::glue(
+            "SELECT hf_id FROM hydrolocations WHERE hl_reference || '-' || hl_link = 'Gages-{gage_id}'"
+          ))$hf_id
+          hfsubsetR::get_subset(comid = flowpath_id,
+                                outfile = outfile,
+                                gpkg = hf_gpkg,
+                                hf_version = hf_version,
+                                lyrs = layers,
+                                type = 'nextgen',
+                                overwrite = TRUE)
+        } else{ # If the gage is in CONUS, query using hl_uri
+          hfsubsetR::get_subset(hl_uri = glue("gages-{gage_id}"),
+                                outfile = outfile,
+                                gpkg = hf_gpkg,
+                                hf_version = hf_version,
+                                lyrs = layers,
+                                type = 'nextgen',
+                                overwrite = TRUE)
+        }
+      } else if (hf_version == "2.1.1") {
+        layers = c("divides", "flowlines", "network", "nexus",
+                   "flowpath-attributes","model-attributes")
+        
+        if (compute_divide_attributes) {
+          layers = c("divides", "flowlines", "network", "nexus")
+        }
+  
+        hfsubsetR::get_subset(nldi_feature = list(featureSource="nwissite", featureID=glue("USGS-{gage_id}")),
+                              outfile = outfile, 
+                              hf_version = hf_version, 
+                              domain = "conus",
+                              lyrs = layers,
+                              overwrite = TRUE)
       }
-
-      hfsubsetR::get_subset(hl_uri = glue("gages-{gage_id}"),
-                            outfile = outfile,
-                            gpkg = hf_gpkg,
-                            hf_version = hf_version,
-                            lyrs = layers,
-                            type = 'nextgen',
-                            overwrite = TRUE)
-    } else if (hf_version == "2.1.1") {
-      layers = c("divides", "flowlines", "network", "nexus",
-                 "flowpath-attributes","model-attributes")
-      
-      if (compute_divide_attributes) {
-        layers = c("divides", "flowlines", "network", "nexus")
-      }
-
-      hfsubsetR::get_subset(nldi_feature = list(featureSource="nwissite", featureID=glue("USGS-{gage_id}")),
-                            outfile = outfile, 
-                            hf_version = hf_version, 
-                            domain = "conus",
-                            lyrs = layers,
-                            overwrite = TRUE)
-    }
     time.taken <- as.numeric(Sys.time() - start.time, units = "secs") #end.time - start.time
     print (paste0("Time (geopackage) = ", time.taken))
     
@@ -439,9 +451,7 @@ RunDriver <- function(gage_id = NULL,
   
   # write GIUH layer to the geopackage
   giuh_dat_values = data.frame(ID = giuh_compute$divide_id, giuh = giuh_compute$fun.giuh_minute)
-  names(giuh_dat_values)
   colnames(giuh_dat_values) <- c('divide_id', 'giuh')
-  names(giuh_dat_values)
 
   #giuh_dat_values$giuh[1]
   time.taken <- as.numeric(Sys.time() - start.time, units = "secs")
@@ -457,8 +467,13 @@ RunDriver <- function(gage_id = NULL,
   time.taken <- as.numeric(Sys.time() - start.time, units = "secs") #end.time - start.time
   print (paste0("Time (nash func) = ", time.taken))
   
+  #######################. COMPUTE TERRAIN SLOPE ###########################
+  # STEP #8: Take slope from the slope grid calculated in the TWI function
+
+  slope <-  slope_function(div_infile = outfile, dem_output_dir = dem_output_dir)
+  
   ####################### WRITE MODEL ATTRIBUTE FILE ###########################
-  # STEP #8: Append GIUH, TWI, width function, and Nash cascade N and K parameters
+  # STEP #9: Append GIUH, TWI, width function, slope, and Nash cascade N and K parameters
   # to model attributes layers
 
   d_attr$giuh <- giuh_dat_values$giuh             # append GIUH column to the model attributes layer
@@ -470,16 +485,25 @@ RunDriver <- function(gage_id = NULL,
   d_attr$N_nash_surface <- nash_params_surface$N_nash
 
   d_attr$K_nash_surface <- nash_params_surface$K_nash
+  d_attr$terrain_slope <- slope$mean.slope
+  
+  # Fix attribute naming issues (specific to PR hydrofabric)
+  if ("mode.bexp_Time=_soil_layers_stag=1" %in% names(d_attr)) {
+    d_attr <- dplyr::rename(d_attr, `mode.bexp_soil_layers_stag.1` = `mode.bexp_Time=_soil_layers_stag=1`)
+  }
 
+  if ("mean.refkdt_Time=" %in% names(d_attr)) {
+    d_attr <- dplyr::rename(d_attr, `mean.refkdt` = `mean.refkdt_Time=`)
+  }
   
   if (hf_version == "2.2") {
-    sf::st_write(d_attr, outfile,layer = "divide-attributes", append = FALSE)
+    sf::st_write(d_attr, outfile,layer = "divide-attributes", append = FALSE, overwrite = TRUE)
   } else if (hf_version == "2.1.1") {
     sf::st_write(d_attr, outfile,layer = "model-attributes", append = FALSE)  
   }
-
+  # Reproject to ensure all .gpkgs end up in Albers projection (EPSG:5070)
+  reprojection_function(outfile)
 }
-
 
 clean_move_dem_dir <- function(id = id,
                                output_dir = output_dir,
@@ -496,5 +520,4 @@ clean_move_dem_dir <- function(id = id,
     unlink(glue("{output_dir}/{id}/dem"), recursive = TRUE)
   }  
 }
-
 
