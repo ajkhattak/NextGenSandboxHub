@@ -283,56 +283,66 @@ RunDriver <- function(gage_id = NULL,
       dplyr::select(state_cd)
     state_code <- gage_metadata$state_cd
     state <- stateCd$STUSAB[which(stateCd$STATE == state_code)]
-    if (state %in% c("HI", "AK")) {
-      domain <- tolower(state)
-    } else if (state %in% c("PR", "VI")) {
-      domain <- "prvi"
-    } else {
-      domain <- "conus"
-    }
-    
-    # If the gpkg exists, use that for subsetting
-    if (hf_version == "2.2") {
-      
-      if (file.exists(hf_gpkg_path)) {
-        print('USING LOCAL GPKG FILE FOR SUBSETTING')
-        hf_gpkg <- hf_gpkg_path
+      if (state %in% c("HI", "AK")) {
+        domain <- tolower(state)
+      } else if (state %in% c("PR", "VI")) {
+        domain <- "prvi"
       } else {
-        print('USING REMOTE GPKG FILE FOR SUBSETTING')
-        hf_gpkg = NULL
+        domain <- "conus"
       }
-
-      layers = c("divides", "flowpaths", "network", "nexus",
-                 "flowpath-attributes","divide-attributes")
-
-      if (compute_divide_attributes) {
-          layers = c("divides", "flowpaths", "network", "nexus")
+    
+      # If the gpkg exists, use that for subsetting
+      if (hf_version == "2.2") {
+        
+        if (file.exists(hf_gpkg_path)) {
+          print('USING LOCAL GPKG FILE FOR SUBSETTING')
+          hf_gpkg <- hf_gpkg_path
+        } else {
+          print('USING REMOTE GPKG FILE FOR SUBSETTING')
+          hf_gpkg = NULL
+        }
+  
+        layers = c("divides", "flowpaths", "network", "nexus",
+                   "flowpath-attributes","divide-attributes")
+  
+        if (compute_divide_attributes) {
+            layers = c("divides", "flowpaths", "network", "nexus")
+        }
+        if (domain != "conus"){ # If the gage is in oCONUS, query using flowpath id
+          flowpath_id <- sf::read_sf(hf_gpkg, query = glue::glue(
+            "SELECT hf_id FROM hydrolocations WHERE hl_reference || '-' || hl_link = 'Gages-{gage_id}'"
+          ))$hf_id
+          hfsubsetR::get_subset(comid = flowpath_id,
+                                outfile = outfile,
+                                gpkg = hf_gpkg,
+                                hf_version = hf_version,
+                                lyrs = layers,
+                                type = 'nextgen',
+                                overwrite = TRUE)
+        } else{ # If the gage is in CONUS, query using hl_uri
+          hfsubsetR::get_subset(hl_uri = glue("gages-{gage_id}"),
+                                outfile = outfile,
+                                gpkg = hf_gpkg,
+                                hf_version = hf_version,
+                                lyrs = layers,
+                                type = 'nextgen',
+                                overwrite = TRUE)
+        }
+      } else if (hf_version == "2.1.1") {
+        layers = c("divides", "flowlines", "network", "nexus",
+                   "flowpath-attributes","model-attributes")
+        
+        if (compute_divide_attributes) {
+          layers = c("divides", "flowlines", "network", "nexus")
+        }
+  
+        hfsubsetR::get_subset(nldi_feature = list(featureSource="nwissite", featureID=glue("USGS-{gage_id}")),
+                              outfile = outfile, 
+                              hf_version = hf_version, 
+                              domain = "conus",
+                              lyrs = layers,
+                              overwrite = TRUE)
       }
-      flowpath_id <- sf::read_sf(hf_gpkg, query = glue::glue(
-        "SELECT hf_id FROM hydrolocations WHERE hl_reference || '-' || hl_link = 'Gages-{gage_id}'"
-      ))$hf_id
-      hfsubsetR::get_subset(comid = flowpath_id,
-                            outfile = outfile,
-                            gpkg = hf_gpkg,
-                            hf_version = hf_version,
-                            lyrs = layers,
-                            type = 'nextgen',
-                            overwrite = TRUE)
-    } else if (hf_version == "2.1.1") {
-      layers = c("divides", "flowlines", "network", "nexus",
-                 "flowpath-attributes","model-attributes")
-      
-      if (compute_divide_attributes) {
-        layers = c("divides", "flowlines", "network", "nexus")
-      }
-
-      hfsubsetR::get_subset(nldi_feature = list(featureSource="nwissite", featureID=glue("USGS-{gage_id}")),
-                            outfile = outfile, 
-                            hf_version = hf_version, 
-                            domain = "conus",
-                            lyrs = layers,
-                            overwrite = TRUE)
-    }
     time.taken <- as.numeric(Sys.time() - start.time, units = "secs") #end.time - start.time
     print (paste0("Time (geopackage) = ", time.taken))
     
