@@ -21,8 +21,9 @@
 #   STEP #5: Compute TWI and width function (inside driver.R)
 #   STEP #6: Compute GIUH (inside driver.R)
 #   STEP #7: Compute Nash cascade parameters (N and K) for surface runoff (inside driver.R)
-#   STEP #8: Append GIUH, TWI, width function, and Nash cascade parameters to model_attributes layer (inside driver.R)
-#   STEP #8a: Compute NLCD landcover
+#   STEP #8: Compute terrain slope from the DEM (inside driver.R)
+#   STEP #8a: Compute NLCD landcover (inside driver.R)
+#   STEP #9: Append GIUH, TWI, width function, Nash cascade parameters, slope, and vegetation type to model_attributes layer (inside driver.R)
 
 
 ################################ SETUP #########################################
@@ -76,7 +77,7 @@ Setup <-function() {
   
   # dem_input_file        <<- get_param(inputs, "subsettings$dem_input_file", "s3://lynker-spatial/gridded-resources/dem.vrt")
   # Newer DEM, better for oCONUS and other previously problematic basins
-  dem_input_file  <<- get_param(inputs, "subsetting$dem_input_file", "s3://lynker-spatial/gridded-resources/USGS_seamless_13.vrt")
+  dem_input_file  <<- get_param(inputs, "subsetting$dem_input_file", "s3://lynker-spatial/gridded-resources/dem.vrt")
 
   dem_output_dir  <<- get_param(inputs, "subsetting$dem_output_dir", "")
 
@@ -136,6 +137,8 @@ if (use_gage_id == TRUE || use_gage_file == TRUE) {
   if (use_gage_file == TRUE) {
     d = read.csv(gage_file,colClasses = c("character")) 
     gage_ids <- d[[column_name]]
+      gage_ids <- zeroPad(gage_ids, 8)
+
   }
   
   stopifnot( length(gage_ids) > 0)
