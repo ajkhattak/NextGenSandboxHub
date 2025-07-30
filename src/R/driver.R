@@ -10,6 +10,8 @@ DriverGivenGageIDs <- function(gage_ids,
                                dem_input_file = NULL,
                                dem_output_dir = "",
                                compute_divide_attributes = FALSE,
+                               nlcd_data_path = "",
+                               calculate_vegetation = FALSE,
                                nproc = 1) {
   
   print ("DRIVER GIVEN GAGE ID")
@@ -467,11 +469,26 @@ RunDriver <- function(gage_id = NULL,
   time.taken <- as.numeric(Sys.time() - start.time, units = "secs") #end.time - start.time
   print (paste0("Time (nash func) = ", time.taken))
   
+  ####################### CALCULATE VEGETATION TYPE ############################
+  # STEP #8a: Calculate vegetation type from NLCD data if enabled
+  divides_with_veg <- NULL
+  if (calculate_vegetation && nlcd_data_path != "" && file.exists(nlcd_data_path)) {
+    print("STEP: Computing vegetation type from NLCD data .................")
+    start.time <- Sys.time()
+    
+    # Calculate vegetation type
+    divides_with_veg <- calc_maj_vegtyp_nlcd(outfile, nlcd_data_path)
+    
+    time.taken <- as.numeric(Sys.time() - start.time, units = "secs")
+    print (paste0("Time (vegetation calc) = ", time.taken))
+  } else if (calculate_vegetation) {
+    print("WARNING: Vegetation calculation requested but NLCD data path not provided or file does not exist")
+  }
+
   #######################. COMPUTE TERRAIN SLOPE ###########################
   # STEP #8: Take slope from the slope grid calculated in the TWI function
 
   slope <-  slope_function(div_infile = outfile, dem_output_dir = dem_output_dir)
-  
   ####################### WRITE MODEL ATTRIBUTE FILE ###########################
   # STEP #9: Append GIUH, TWI, width function, slope, and Nash cascade N and K parameters
   # to model attributes layers
@@ -494,6 +511,11 @@ RunDriver <- function(gage_id = NULL,
 
   if ("mean.refkdt_Time=" %in% names(d_attr)) {
     d_attr <- dplyr::rename(d_attr, `mean.refkdt` = `mean.refkdt_Time=`)
+  }
+
+  # Add vegetation type if calculated
+  if (!is.null(divides_with_veg)) {
+    d_attr$IVGTYP_nlcd <- divides_with_veg$IVGTYP_nlcd
   }
   
   if (hf_version == "2.2") {

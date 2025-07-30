@@ -13,3 +13,4 @@ deprecated
 pyarrow<12.0
 geopandas
 fiona
+pygeohydro
