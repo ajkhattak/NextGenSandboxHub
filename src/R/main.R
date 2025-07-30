@@ -40,6 +40,13 @@
                              # (see install_load_libs.R for more instructions)
 # - dem_infile = "/vsicurl/https://lynker-spatial.s3.amazonaws.com/gridded-resources/dem.vrt"
 
+# STEP 8a REQUIRED - download NLCD data for the domain of interest and set the path to the NLCD data
+# Links to recent NLCD data for each domain:
+# - CONUS (2021): https://www.mrlc.gov/downloads/sciweb1/shared/mrlc/data-bundles/Annual_NLCD_LndCov_2021_CU_C1V1.zip
+# - Puerto Rico (2001): https://www.mrlc.gov/downloads/sciweb1/shared/mrlc/data-bundles/PR_landcover_wimperv_10-28-08_se5.zip
+# - Hawaii (2001): https://www.mrlc.gov/downloads/sciweb1/shared/mrlc/data-bundles/HI_landcover_wimperv_9-30-08_se5.zip
+# - Alaska (2011): https://www.mrlc.gov/downloads/sciweb1/shared/mrlc/data-bundles/NLCD_2016_Land_Cover_AK_20200724.zip
+
 
 library(yaml)
 args <- commandArgs(trailingOnly = TRUE)
