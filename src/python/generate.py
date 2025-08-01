@@ -18,19 +18,24 @@ from src.python import configuration
 from src.python import realization
 
 class Generate:
-    def __init__(self, sandbox_dir, gpkg_file, forcing_dir, ngen_dir, sim_time, formulation,
-                 formulation_supported, output_dir, forcing_format, ngen_cal_type, schema):
+    def __init__(self, sandbox_dir, gpkg_file, forcing_dir, ngen_dir,
+                 sim_time, formulation, formulation_supported, output_dir,
+                 forcing_format, ngen_cal_type, schema, domain):
+        
         self.sandbox_dir = sandbox_dir
-        self.gpkg_file = gpkg_file
+        self.gpkg_file   = gpkg_file
         self.forcing_dir = forcing_dir
-        self.ngen_dir = ngen_dir
+        self.ngen_dir    = ngen_dir
+        self.output_dir  = output_dir
+        self.schema      = schema
+        self.verbosity   = 1
+        self.domain      = domain
+
         self.simulation_time = sim_time
-        self.formulation_in = formulation.replace(" ", "") # remove space if any
-        self.output_dir = output_dir
-        self.schema = schema
-        self.verbosity = 1
+        self.formulation_in  = formulation.replace(" ", "") # remove space if any
         self.forcing_format = forcing_format
-        self.ngen_cal_type = ngen_cal_type
+        self.ngen_cal_type  = ngen_cal_type
+
         
         if not os.path.exists(self.gpkg_file):
             sys.exit(f'The gpkg file does not exist: ', self.gpkg_file)
@@ -96,14 +101,16 @@ class Generate:
             print(self.colors.GREEN)
             print("Generating realization file ...")
             
-        RealGen = realization.RealizationGenerator(forcing_dir = self.forcing_dir,
+        RealGen = realization.RealizationGenerator(ngen_dir = self.ngen_dir,
+                                                   forcing_dir = self.forcing_dir,
                                                    output_dir = self.output_dir,
-                                                   ngen_dir = self.ngen_dir,
                                                    formulation = self.formulation,
                                                    simulation_time = self.simulation_time,
+                                                   forcing_format = self.forcing_format,
                                                    verbosity = 1,
                                                    ngen_cal_type = self.ngen_cal_type,
-                                                   forcing_format = self.forcing_format)
+                                                   domain = self.domain)
+
         RealGen.write_realization_file()
 
         #if result:

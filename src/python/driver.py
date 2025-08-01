@@ -37,7 +37,7 @@ class Driver:
         with open(self.sandbox_config, 'r') as file:
             d = yaml.safe_load(file)
 
-        self.sandbox_dir = d["sandbox_dir"]
+        self.sandbox_dir  = d["sandbox_dir"]
         self.input_dir    = d["input_dir"]
         self.output_dir   = Path(d["output_dir"])
         
@@ -62,6 +62,8 @@ class Driver:
         forcing_dir         = os.path.join(self.input_dir, "{*}", f'data/forcing/{forcing_start_yr}_to_{forcing_end_yr}')
         self.forcing_dir    = dforcing.get("forcing_dir", forcing_dir)
         self.forcing_format = dforcing.get('forcing_format', '.nc')
+        self.domain         = dforcing.get('domain', 'conus')
+        self.is_corrected_forcing = dforcing.get('is_corrected_forcing', True)
 
         self.is_netcdf_forcing = True
         if self.forcing_format == '.csv':
@@ -69,23 +71,23 @@ class Driver:
 
         # Simulation block
         dsim = d['simulation']
-        self.ngen_cal_type = (dsim.get('task_type', 'control')).lower()
+        self.task_type = (dsim.get('task_type', 'control')).lower()
 
-        if self.ngen_cal_type == 'calibration' or self.ngen_cal_type == 'calibvalid':
+        if self.task_type == 'calibration' or self.task_type == 'calibvalid' or self.task_type == 'restart':
             if "calibration_time" not in dsim or not isinstance(dsim["calibration_time"], dict):
                 raise ValueError("calibration_time is not provided or is not a valid dictionary.")
             
             self.simulation_time = dsim["calibration_time"]
             #self.calib_eval_time = dsim["calib_eval_time"]
-        elif self.ngen_cal_type == 'validation':
+        elif self.task_type == 'validation':
             if "validation_time" not in dsim or not isinstance(dsim["validation_time"], dict):
                 raise ValueError("validation_time is not provided or is not a valid dictionary.")
 
             self.simulation_time = dsim["validation_time"]
             #self.valid_eval_time = dsim["valid_eval_time"]
-        elif self.ngen_cal_type == 'control':
+        elif self.task_type == 'control':
             if "simulation_time" not in dsim or not isinstance(dsim["simulation_time"], dict):
-                raise ValueError("simulation_time is not provided or is not a valid dictionary.")
+                raise ValueError("task_type is CONTROL, but simulation_time is not provided or is not a valid dictionary.")
             
             self.simulation_time = dsim["simulation_time"]
         else:
@@ -99,18 +101,19 @@ class Driver:
             clean_lst.extend(clean)
         return clean_lst
 
-    def get_forcing_files(self, gpkg_dirs, is_corrected=True):
+    def get_forcing_files(self, gpkg_dirs):
         forcing_files = []
 
         if self.forcing_format == ".nc":
+
             if "{*}" in self.forcing_dir:
                 for g in gpkg_dirs:
                     forcing_dir_local = self.forcing_dir
                     fdir = Path(forcing_dir_local.replace("{*}", Path(g).name))
 
                     if not fdir.exists() or not fdir.is_dir():
-                        raise ValueError("Forcing directory '{fdir}' does not exist.")
-                    if is_corrected:
+                        raise ValueError(f"Forcing directory '{fdir}' does not exist.")
+                    if self.is_corrected_forcing:
                         forcing_file = glob.glob(f"{fdir}/*_corrected.nc")[0]
                     else:
                         nc_file = glob.glob(f"{fdir}/*.nc")
@@ -124,7 +127,7 @@ class Driver:
                 if not Path(self.forcing_dir).is_dir():
                     forcing_file = self.forcing_dir
                 else:
-                    if is_corrected:
+                    if self.is_corrected_forcing:
                         forcing_file = glob.glob(f"{self.forcing_dir}/*_corrected.nc")[0]
                     else:
                         nc_file = glob.glob(f"{fdir}/*.nc")
@@ -193,8 +196,9 @@ class Driver:
                                     formulation_supported = self.formulations_supported,
                                     output_dir = o_dir,
                                     forcing_format = self.forcing_format,
-                                    ngen_cal_type = self.ngen_cal_type,
-                                    schema = self.schema_type)
+                                    ngen_cal_type = self.task_type,
+                                    schema = self.schema_type,
+                                    domain = self.domain)
 
         failed = False
         if not failed:
@@ -207,7 +211,7 @@ class Driver:
             print(self.colors.GREEN + "  %s " % result + self.colors.END)
 
         return basin_ids, num_cats
-        #quit()
+
         
     def main(self, nproc=4):
         basins_passed = os.path.join(self.output_dir, "basins_passed.csv")

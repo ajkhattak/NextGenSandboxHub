@@ -61,7 +61,7 @@ class Runner:
         self.calibration_time = pd.NaT
         self.validation_time = pd.NaT
 
-        if self.ngen_cal_type in ['calibration', 'calibvalid']:
+        if self.ngen_cal_type in ['calibration', 'calibvalid', 'restart']:
             if "calibration_time" not in dsim or not isinstance(dsim["calibration_time"], dict):
                 raise ValueError("calibration_time is not provided or is not a valid dictionary.")
 
@@ -145,20 +145,26 @@ class Runner:
 
         print(f"Running basin {id} on cores {np_per_basin_local} ********", flush=True)
 
-        if self.ngen_cal_type in ['calibration', 'calibvalid']:
+        if self.ngen_cal_type in ['calibration', 'calibvalid', 'restart']:
             start_time = pd.Timestamp(self.calibration_time['start_time']).strftime("%Y%m%d%H%M")
             troute_output_file = os.path.join("./troute_output_{}.nc".format(start_time))
+
+            ngen_cal_type_calib_restart = 'calibration'
+            if (self.ngen_cal_type == 'restart'):
+                ngen_cal_type_calib_restart = 'restart'
+
+            restart_dir = self.restart_dir.replace("{*}", id)
 
             ConfigGen = configuration.ConfigurationCalib(gpkg_file = gpkg_file,
                                                         output_dir = o_dir,
                                                         ngen_dir = self.ngen_dir,
                                                         realization_file_par = file_par,
                                                         troute_output_file = troute_output_file,
-                                                        ngen_cal_type='calibration',
+                                                        ngen_cal_type=ngen_cal_type_calib_restart,
                                                         simulation_time=self.calibration_time,
                                                         evaluation_time=self.calib_eval_time,
                                                         ngen_cal_basefile=self.config_calib,
-                                                        restart_dir=self.restart_dir,
+                                                        restart_dir=restart_dir,
                                                         num_proc=np_per_basin_local)
             
             ConfigGen.write_calib_input_files()

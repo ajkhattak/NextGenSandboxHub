@@ -45,16 +45,17 @@ class ConfigurationGenerator:
         self.ngen_cal_type = ngen_cal_type
         self.schema_type = schema_type
 
-        if "CFE" in self.formulation:
-            with open(os.path.join(self.sandbox_dir, "configs/basefiles", "custom.yaml"), 'r') as file:
-                dcfe = yaml.safe_load(file)['models']['CFE']
 
-            self.surface_runoff_scheme = dcfe['surface_runoff_scheme']
+        with open(os.path.join(self.sandbox_dir, "configs/basefiles", "custom.yaml"), 'r') as file:
+            df_custom = yaml.safe_load(file)['models']
+
+            self.surface_runoff_scheme = df_custom['CFE']['surface_runoff_scheme']
+            self.pet_method = df_custom['PET']["pet_method"]
 
         self.soil_params_NWM_dir = os.path.join(self.ngen_dir,"extern/noah-owp-modular/noah-owp-modular/parameters")
                 
         self.gdf, self.catids = self.read_gpkg_file()
-        
+
         self.soil_class_NWM = self.get_soil_class_NWM()
 
         
@@ -100,9 +101,11 @@ class ConfigurationGenerator:
         gdf_soil['IVGTYP'] = gdf_soil[params['IVGTYP']].fillna(1).astype(int)
         gdf_soil['gw_Zmax'] = gdf_soil['gw_Zmax'] / 1000.0
         gdf_soil['gw_Coeff'] = gdf_soil['gw_Coeff'] * 3600 / (7.337700 * 1000 * 1000)
-        gdf_soil['elevation_mean'] = gdf_soil[params['elevation_mean']].fillna(4)
+        gdf_soil['elevation_mean'] = gdf_soil[params['elevation_mean']].fillna(4) / 100. # convert cm to m
         gdf_soil['slope_mean'] = gdf_soil[params['slope_mean']].fillna(1.0)
         gdf_soil['aspect_mean'] = gdf_soil[params['aspect_mean']].fillna(1.0)
+
+        gdf_soil['terrain_slope'] = gdf_soil[params['terrain_slope']].fillna(1.0)
 
         if self.schema_type == 'dangermond':
             gdf_soil['elevation_mean'] = gdf_soil['elevation_mean'] / 100.0
@@ -145,7 +148,9 @@ class ConfigurationGenerator:
         gdf['giuh'] = gdf_soil[params['giuh']]
         gdf['N_nash_surface'] = gdf_soil[params['N_nash_surface']]
         gdf['K_nash_surface'] = gdf_soil[params['K_nash_surface']]
-        
+
+        gdf['terrain_slope'] = gdf_soil[params['terrain_slope']]
+
         df_cats = gpd.read_file(self.gpkg_file, layer='divides')
         catids = [int(re.findall('[0-9]+', s)[0]) for s in df_cats['divide_id']]
 
@@ -178,9 +183,13 @@ class ConfigurationGenerator:
             soil_type = str(self.gdf.loc[cat_name]['ISLTYP'])
             veg_type = str(self.gdf.loc[cat_name]['IVGTYP'])
             aspect = str(self.gdf.loc[cat_name]['aspect_mean'])
-            slope  = self.gdf.loc[cat_name]['slope_mean']/100. # convert percent to ratio
-            slope_deg = math.degrees(math.atan(slope)) # convert radian to degrees
 
+            # Lauren fixed computing slope in degrees, so the divide-attributes has correct slope now (July, 2025)
+            #slope  = self.gdf.loc[cat_name]['slope_mean']/100. # convert percent to ratio
+            #slope_deg = math.degrees(math.atan(slope)) # convert radian to degrees
+
+            terrain_slope = str(self.gdf.loc[cat_name]['terrain_slope'])
+            
             fname_nom = f'noahowp_config_{cat_name}.input'
             nom_file = os.path.join(nom_dir, fname_nom)
 
@@ -201,7 +210,7 @@ class ConfigurationGenerator:
                     elif line.strip().startswith('lon'):
                         file.write(f'  lon      = {centroid_x} \n')
                     elif line.strip().startswith('terrain_slope'):
-                        file.write(f'  terrain_slope      = {slope_deg} \n')
+                        file.write(f'  terrain_slope      = {terrain_slope} \n')
                     elif line.strip().startswith('azimuth'):
                         file.write(f'  azimuth       = {aspect} \n')
                     elif line.strip().startswith('isltyp'):
@@ -522,7 +531,6 @@ class ConfigurationGenerator:
         df_cats = gpd.read_file(self.gpkg_file, layer='divides')
         df_cats = df_cats.to_crs("EPSG:4326")
         df_cats.set_index("divide_id", inplace=True)
-        pet_method = 3
 
         for catID in self.catids:
             cat_name = 'cat-' + str(catID)
@@ -532,7 +540,7 @@ class ConfigurationGenerator:
 
             pet_params = [
                 'verbose=0',
-                f'pet_method={pet_method}',
+                f'pet_method={self.pet_method}',
                 'forcing_file=BMI',
                 'run_unit_tests=0',
                 'yes_aorc=1',
@@ -758,6 +766,7 @@ class ConfigurationCalib:
         with open(self.ngen_cal_basefile, 'r') as file:
             d = yaml.safe_load(file)
 
+        
         d['general']['workdir']   = self.output_dir.as_posix()
         d['model']['binary']      = os.path.join(self.ngen_dir, "cmake_build/ngen")
         d['model']['realization'] = realization[0]
@@ -789,7 +798,7 @@ class ConfigurationCalib:
         else:
             d['model']['binary'] = os.path.join(self.ngen_dir, "cmake_build/ngen")
 
-        if self.ngen_cal_type == 'calibration':
+        if self.ngen_cal_type == 'calibration' or self.ngen_cal_type == 'restart':
             val_params = {
                 'evaluation_start': self.evaluation_time['start_time'],
                 'evaluation_stop': self.evaluation_time['end_time']
@@ -818,7 +827,11 @@ class ConfigurationCalib:
 
         if (self.ngen_cal_type == 'restart' or self.ngen_cal_type == "validation"):
 
-            state_file = glob.glob(str(Path(self.output_dir) / "*_worker" / "*_parameter_df_state.parquet"))[0]
+            if (self.ngen_cal_type == 'validation'):
+                state_file = glob.glob(str(Path(self.output_dir) / "*_worker" / "*_parameter_df_state.parquet"))[0]
+            elif (self.ngen_cal_type == 'restart'):
+                state_file = glob.glob(str(Path(self.restart_dir) / "*_worker" / "*_parameter_df_state.parquet"))[0]
+
             df_parq = pd.read_parquet(state_file)
             df_params = pd.read_csv(Path(state_file).parent / "best_params.txt", header = None)
 
@@ -834,7 +847,7 @@ class ConfigurationCalib:
                             par['init'] = float(best_params_set[par['name']])
 
         config_fname = ""
-        if self.ngen_cal_type == 'calibration':
+        if self.ngen_cal_type == 'calibration' or self.ngen_cal_type == 'restart':
             config_fname = "ngen-cal_calib_config.yaml"
         elif self.ngen_cal_type == 'validation':
             config_fname = "ngen-cal_valid_config.yaml"

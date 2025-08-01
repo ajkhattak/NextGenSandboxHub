@@ -21,21 +21,24 @@ import json
 
 class RealizationGenerator:
     def __init__(self, ngen_dir, forcing_dir,  output_dir, formulation,
-                 simulation_time, forcing_format, verbosity, ngen_cal_type):
+                 simulation_time, forcing_format, verbosity, ngen_cal_type,
+                 domain):
         
-        self.ngen_dir = ngen_dir
+        self.ngen_dir    = ngen_dir
         self.forcing_dir = forcing_dir
-        self.output_dir = output_dir
+        self.output_dir  = output_dir
         self.formulation = formulation
         self.simulation_time = simulation_time
-        self.config_dir = os.path.join(output_dir,"configs")
-        self.forcing_format = forcing_format
-        self.verbosity = verbosity
-        self.ngen_cal_type = ngen_cal_type
-        self.lib_files = self.get_lib_files()
-
+        self.config_dir      = os.path.join(output_dir,"configs")
+        self.forcing_format  = forcing_format
+        self.verbosity       = verbosity
+        self.ngen_cal_type   = ngen_cal_type
+        self.lib_files       = self.get_lib_files()
+        self.domain          = domain.lower()
+        
         realization_name = self.formulation.replace(",","_").lower()
         self.realization_file = os.path.join(self.output_dir,"json",f"realization_{realization_name}.json")
+        
         if "CFE-S" in self.formulation:
             surface_water_partitioning_scheme = "Schaake"
         elif "CFE-X" in self.formulation:
@@ -100,7 +103,9 @@ class RealizationGenerator:
                 "uses_forcing_file": "false"
             }
         }
-        if var_names_map:
+        
+        # AORC forcing names
+        if (self.domain == "conus" and var_names_map):
             block['params']['variables_names_map'] = {
                 "PRCPNONC": "APCP_surface",
                 "Q2": "SPFH_2maboveground",
@@ -111,6 +116,18 @@ class RealizationGenerator:
                 "SOLDN": "DSWRF_surface",
                 "SFCPRS": "PRES_surface"
             }
+        elif (var_names_map):
+              block['params']['variables_names_map'] = {
+                  "PRCPNONC": "atmosphere_water__liquid_equivalent_precipitation_rate",
+                  "Q2": "atmosphere_air_water~vapor__relative_saturation",
+                  "SFCTMP": "land_surface_air__temperature",
+                  "LWDN": "land_surface_radiation~incoming~longwave__energy_flux",
+                  "SOLDN": "land_surface_radiation~incoming~shortwave__energy_flux",
+                  "UU": "land_surface_wind__x_component_of_velocity",
+                  "VV": "land_surface_wind__y_component_of_velocity",
+                  "SFCPRS": "land_surface_air__pressure"
+              }
+        
         return block
 
     def get_noah_owp_modular_block(self):
@@ -126,17 +143,31 @@ class RealizationGenerator:
                 "fixed_time_step": False,
                 "uses_forcing_file": False,
                 "variables_names_map": {
-                    "PRCPNONC": "APCP_surface",
-                    "Q2": "SPFH_2maboveground",
-                    "SFCTMP": "TMP_2maboveground",
-                    "UU": "UGRD_10maboveground",
-                    "VV": "VGRD_10maboveground",
-                    "LWDN": "DLWRF_surface",
-                    "SOLDN": "DSWRF_surface",
-                    "SFCPRS": "PRES_surface"
+                    "PRCPNONC": "atmosphere_water__liquid_equivalent_precipitation_rate",
+                    "Q2": "atmosphere_air_water~vapor__relative_saturation",
+                    "SFCTMP": "land_surface_air__temperature",
+                    "LWDN": "land_surface_radiation~incoming~longwave__energy_flux",
+                    "SOLDN": "land_surface_radiation~incoming~shortwave__energy_flux",
+                    "UU": "land_surface_wind__x_component_of_velocity",
+                    "VV": "land_surface_wind__y_component_of_velocity",
+                    "SFCPRS": "land_surface_air__pressure"
                 }
             }
         }
+
+        # AORC names (details at the end of file)
+        if (self.domain == "conus"):
+            block['params']['variables_names_map'] = {
+                "PRCPNONC": "APCP_surface",
+                "Q2": "SPFH_2maboveground",
+                "SFCTMP": "TMP_2maboveground",
+                "UU": "UGRD_10maboveground",
+                "VV": "VGRD_10maboveground",
+                "LWDN": "DLWRF_surface",
+                "SOLDN": "DSWRF_surface",
+                "SFCPRS": "PRES_surface"
+            }
+
         return block
 
     def get_cfe_block(self, cfe_standalone=False):
@@ -415,7 +446,7 @@ class RealizationGenerator:
             #model_type_name = "CFE"
             main_output_variable = "Q_OUT"
             
-            modules = [self.get_sloth_block(), self.get_pet_block(), self.get_cfe_block()]
+            modules = [self.get_sloth_block(), self.get_pet_block(var_names_map=True), self.get_cfe_block()]
                 
             output_variables = ["RAIN_RATE", "DIRECT_RUNOFF", "INFILTRATION_EXCESS", "NASH_LATERAL_RUNOFF",
                                "DEEP_GW_TO_CHANNEL_FLUX", "SOIL_TO_GW_FLUX", "Q_OUT", "SOIL_STORAGE", "POTENTIAL_ET", "ACTUAL_ET"]
@@ -505,7 +536,7 @@ class RealizationGenerator:
 # @param config_dir : input directory of the NOM config files
 # @param model_exe : path to NOM executable
 # Units and different forcing variables names and their mapping
-# Nels script                Jason Ducker script       Luciana's script
+# Nels script (AORC)         Jason Ducker script    NoahOWP BMI forcing vars names
 # APCP_surface [kg/m2/sec]   <-> RAINRATE [mm/sec] <-> PRCPNONC [mm/sec]
 # DLWRF_surface [W m-2]      <-> LWDOWN [W m-2]    <-> LWDN [W m-2]
 # DSWRF_surface [W m-2]      <-> SWDOWN [W m-2]    <-> SOLDN [W m-2]
