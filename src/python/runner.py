@@ -206,9 +206,11 @@ class Runner:
 
         fpar = " "
         if np_per_basin_local > 1:
-            fpar = os.path.join(json_dir, f"partition_{np_per_basin_local}.json")
-            partition = f"{self.ngen_dir}/cmake_build/partitionGenerator {gpkg_file} {gpkg_file} {fpar} {np_per_basin_local} \"\" \"\" "
-            result = subprocess.call(partition, shell=True)
+            fpar = os.path.join(json_dir, f"partitions_{np_per_basin_local}.json")
+            #partition = f"{self.ngen_dir}/cmake_build/partitionGenerator {gpkg_file} {gpkg_file} {fpar} {np_per_basin_local} \"\" \"\" "
+            partitions = f"python {self.sandbox_dir}/utils/python/local_only_partitions.py {gpkg_file} {np_per_basin_local} {os.getcwd()}/json"
+
+            result = subprocess.call(partitions, shell=True)
 
         return np_per_basin_local, fpar
 
