@@ -32,15 +32,15 @@ def get_schema_model_attributes(gdf_model):
     
     df = {}
     for d in schema.index:
-        if 'bexp_soil_layers_stag=1' in d:
+        if 'bexp_soil_layers_stag=1' in d or 'bexp_soil_layers_stag.1' in d:
             df['soil_b'] = d
-        if 'dksat_soil_layers_stag=1' in d:
+        if 'dksat_soil_layers_stag=1' in d or 'dksat_soil_layers_stag.1' in d:
             df['soil_dksat'] = d
-        if 'psisat_soil_layers_stag=1' in d:
+        if 'psisat_soil_layers_stag=1' in d or 'psisat_soil_layers_stag.1' in d:
             df['soil_psisat'] = d
-        if 'smcmax_soil_layers_stag=1' in d:
+        if 'smcmax_soil_layers_stag=1' in d or 'smcmax_soil_layers_stag.1' in d:
             df['soil_smcmax'] = d
-        if 'smcwlt_soil_layers_stag=1' in d:
+        if 'smcwlt_soil_layers_stag=1' in d or 'smcwlt_soil_layers_stag.1' in d:
             df['soil_smcwlt'] = d
     
         if 'ISLTYP' in d:
@@ -83,6 +83,9 @@ def get_schema_model_attributes(gdf_model):
             df['N_nash_surface'] = d
         if 'K_nash' in d:
             df['K_nash_surface'] = d
+
+        if 'terrain_slope' in d:
+            df['terrain_slope'] = d
 
     return df
 

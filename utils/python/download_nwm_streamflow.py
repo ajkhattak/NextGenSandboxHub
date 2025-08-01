@@ -11,6 +11,10 @@ from dataretrieval import nwis, utils, codes, nldi
 
 def get_comid(fid):
     gdf = nldi.get_features(feature_source="WQP", feature_id=fid)
+
+    if gdf.empty:
+        raise ValueError(f"No feature found for {fid}")
+    
     comid = int(gdf['comid'][0])
 
     return comid
