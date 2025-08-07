@@ -116,6 +116,17 @@ class RealizationGenerator:
                 "SOLDN": "DSWRF_surface",
                 "SFCPRS": "PRES_surface"
             }
+        elif (self.domain == "oconus" and var_names_map):
+            block['params']['variables_names_map'] = {
+                "PRCPNONC": "RAINRATE",
+                "Q2": "Q2D",
+                "SFCTMP": "T2D",
+                "UU": "U2D",
+                "VV": "V2D",
+                "LWDN": "LWDOWN",
+                "SOLDN": "SWDOWN",
+                "SFCPRS": "PSFC"
+            }
         elif (var_names_map):
               block['params']['variables_names_map'] = {
                   "PRCPNONC": "atmosphere_water__liquid_equivalent_precipitation_rate",
@@ -129,6 +140,7 @@ class RealizationGenerator:
               }
         
         return block
+
 
     def get_noah_owp_modular_block(self):
         block = {
@@ -189,6 +201,7 @@ class RealizationGenerator:
                 "registration_function": "register_bmi_cfe"
             }
         }
+        
         if cfe_standalone:
             sub_map = {
                 "ice_fraction_schaake": "ice_fraction_schaake",
@@ -196,10 +209,15 @@ class RealizationGenerator:
                 "soil_moisture_profile": "soil_moisture_profile"
             }
             block["params"]["variables_names_map"].update(sub_map)
+
         if "NOM" in self.formulation and not "PET" in self.formulation:
             block["params"]["variables_names_map"]["water_potential_evaporation_flux"] = "EVAPOTRANS"
         if "NOM" in self.formulation:
             block["params"]["variables_names_map"]["atmosphere_water__liquid_equivalent_precipitation_rate"] = "QINSUR"
+
+        if self.domain == "oconus" and not "NOM" in self.formulation:
+            block["params"]["variables_names_map"]["atmosphere_water__liquid_equivalent_precipitation_rate"] = "RAINRATE"
+
         return block
 
     def get_topmodel_block(self):
@@ -452,6 +470,8 @@ class RealizationGenerator:
                                "DEEP_GW_TO_CHANNEL_FLUX", "SOIL_TO_GW_FLUX", "Q_OUT", "SOIL_STORAGE", "POTENTIAL_ET", "ACTUAL_ET"]
             output_header_fields = ["rain_rate", "direct_runoff", "infiltration_excess", "nash_lateral_runoff",
                                    "deep_gw_to_channel_flux", "soil_to_gw_flux", "q_out", "soil_storage", "PET", "AET"]
+            output_variables = ["RAIN_RATE", "Q_OUT", "POTENTIAL_ET", "ACTUAL_ET"]
+            output_header_fields = ["rain_rate", "q_out", "PET", "AET"]
         elif "NOM" in self.formulation and "CFE" in self.formulation:
             #model_type_name = "NOM_CFE"
             main_output_variable = "Q_OUT"

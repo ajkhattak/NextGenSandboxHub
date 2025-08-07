@@ -623,7 +623,7 @@ class ConfigurationGenerator:
         d['compute_parameters']['forcing_parameters']['nts'] = int(diff_time / dt)
         d['compute_parameters']['forcing_parameters']['max_loop_size'] = 10000000
 
-        d['compute_parameters']['cpu_pool'] = 10
+        d['compute_parameters']['cpu_pool'] = 1
 
         if self.ngen_cal_type in ['calibration', 'validation', 'calibvalid', 'restart']:
             stream_output = {
@@ -828,9 +828,15 @@ class ConfigurationCalib:
         if (self.ngen_cal_type == 'restart' or self.ngen_cal_type == "validation"):
 
             if (self.ngen_cal_type == 'validation'):
-                state_file = glob.glob(str(Path(self.output_dir) / "*_worker" / "*_parameter_df_state.parquet"))[0]
+                try:
+                    state_file = glob.glob(str(Path(self.output_dir) / "*_parameter_df_state.parquet"))[0]
+                except:
+                    state_file = glob.glob(str(Path(self.output_dir) / "*_worker" / "*_parameter_df_state.parquet"))[0]
             elif (self.ngen_cal_type == 'restart'):
-                state_file = glob.glob(str(Path(self.restart_dir) / "*_worker" / "*_parameter_df_state.parquet"))[0]
+                try:
+                    state_file = glob.glob(str(Path(self.restart_dir) / "*_parameter_df_state.parquet"))[0]
+                except:
+                    state_file = glob.glob(str(Path(self.restart_dir) / "*_worker" / "*_parameter_df_state.parquet"))[0]
 
             df_parq = pd.read_parquet(state_file)
             df_params = pd.read_csv(Path(state_file).parent / "best_params.txt", header = None)
