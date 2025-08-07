@@ -19,8 +19,14 @@ def get_comid(fid):
 
     return comid
 
+def get_gage_name(gage_id):
+    if not 'USGS' in gage_id:
+        gage_id = 'USGS-'+gage_id
+    gdf = nldi.get_features(feature_source="nwissite", feature_id=gage_id)
+    gage_name = gdf['name'][0]
+    return gage_name
 
-def get_stream_discharge(gage_id, start_time, end_time):
+def get_stream_discharge(gage_id, start_time, end_time, domain):
 
     #gage_id = "USGS-01052500"
     if not 'USGS' in gage_id:
@@ -29,8 +35,16 @@ def get_stream_discharge(gage_id, start_time, end_time):
     comid = get_comid(gage_id)
     
     #awspath2 ='https://noaa-nwm-retrospective-2-1-zarr-pds.s3.amazonaws.com/ldasout.zarr'
-    
-    awspath3  = 'https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/CONUS/zarr/chrtout.zarr'
+    if domain.lower() == "conus":
+        domain = "CONUS"
+    elif domain.lower() == "hi":
+        domain = "Hawaii"
+    elif domain.lower() == "pr":
+        domain = "PR"
+    elif domain.lower() == "AK":
+        domain = "Alaska"
+
+    awspath3  = f'https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/{domain}/zarr/chrtout.zarr'
     #nwm_url  = 's3://noaa-nwm-retrospective-3-0-pds/CONUS/zarr/chrtout.zarr' # this also works
     
     ds = xr.open_zarr(awspath3,consolidated=True)
@@ -55,7 +69,6 @@ def get_stream_discharge(gage_id, start_time, end_time):
 
 if __name__ == "__main__":
 
-
     try:
         parser = argparse.ArgumentParser()
         parser.add_argument("-gid", dest="gage_id",    type=str, required=True,  help="USGS gage ID")
@@ -67,5 +80,5 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     
-    get_stream_discharge(args.gage_id, args.start_time, args.end_time)
+    get_stream_discharge(args.gage_id, args.start_time, args.end_time, "conus")
     

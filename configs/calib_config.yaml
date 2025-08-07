@@ -13,79 +13,72 @@ general:
 
   start_iteration: 0
   # The total number of search iterations to run
-  iterations: 100
+  iterations: 500
   random_seed: 444
   workdir: ./
-     
+
 # Define parameters to calibrate, their bounds, and initial values.
 cfe_params: &cfe_params
   -
     name: b # beta exponent on Clapp-Hornberger (1978) soil water relations
     min: 0.0
-    max: 21.94
+    max: 15
     init: 4.05
   -
     name: satdk # saturated hydraulic conductivity
     min: 0.0
-    max: 0.000726
-    init: 3.38e-06
+    max: 0.00726
+    init: 3.38e-04
   -
     name: satpsi # saturated capillary head
     min: 0.0
     max: 0.995
     init: 0.355
-
   -
     name: maxsmc # saturated soil moisture content
-    min: 0.20554
+    min: 0.16
     max: 0.6
     init: 0.439
-
   -
     name: max_gw_storage # maximum storage in the conceptual reservoir
     min: 0.01
-    max: 0.2
+    max: 0.5
     init: 0.05
-
   -
     name: Cgw  #groundwater coefficient
-    min: 1.6266e-06
-    max: 0.1
-    init: 1.6266e-05
-
+    min: 1.8e-06
+    max: 1.8E-2  
+    init: 1.8e-04
   -
     name: expon # exponent parameter (1.0 for linear reservoir) (groundwater)
     min: 1.0
-    max: 8.0
+    max: 15.0
     init: 5.0
-
   - 
     name: Kn # Nash Config param for lateral subsurface runoff
     min: 0.0
     max: 1.0
-    init: 0.03
-
+    init: 0.3
   - 
     name: Klf # Nash Config param - primary reservoir
     min: 0.0
     max: 1.0
-    init: 0.01
- 
+    init: 0.1
   - 
     name: Kinf_nash_surface # runon infiltration coefficient (NASH CASCADE runoff only; cfe2.0)
-    min: 0.001
-    max: 0.005
-    init: 0.002
+    min: 0.0001
+    max: 1.0
+    init: 0.0005 
 
-  - 
-    name: retention_depth_nash_surface # used only with CFE2.0
-    min: 0.0
-    max: 0.02
-    init: 0.001
+  #- 
+  #  name: retention_depth_nash_surface # used only with CFE2.0
+  #  min: 0.0
+  #  max: 0.1
+  #  init: 0.00001
   -
     name: refkdt # used only with Schakee
-    min: 0.1
-    max: 4.0
+    min: 0.001
+    max: 8.0
     init: 3.0
 
   # these params can be calibrated as well
@@ -102,8 +95,8 @@ cfe_params: &cfe_params
     init: 0.066
   - 
     name: alpha_fc # field capacity
-    min: 0.1
-    max: 1.0
+    min: 0.15
+    max: 0.33
     init: 0.33
     
 noah_owp_params: &noah_owp_params
@@ -146,7 +139,7 @@ noah_owp_params: &noah_owp_params
     max: 12.6
     init: 9.0
 
-
+    
 # Model specific configuration
 model:
     type: ngen
@@ -164,8 +157,10 @@ model:
         NoahOWP: *noah_owp_params
     eval_params:
       # choices are "kling_gupta", "nnse", "custom", "single_peak", "volume"
-      objective: "nnse"
-      target : "max"
+      objective: "kling_gupta"
+      target : "min"
+      #objective: "nnse"
+      #target : "max"
     plugins:
       - "ngen_cal_user_plugins.ngen_cal_save_subcat_output_plugin.SaveData" # saves cat_*.csv or nex-*.csv to "output_iteration" directory
       - "ngen_cal_user_plugins.ngen_cal_save_sim_obs_plugin.SaveData"          # saves simulated and observed discharge at the outlet
