@@ -11,6 +11,10 @@
 library(yaml)
 library(stringr)
 library(sf)
+library(dataRetrieval)
+library(ggplot2)
+library(glue)
+
 args <- commandArgs(trailingOnly = TRUE)
 
 setup <-function() {
@@ -38,7 +42,7 @@ setup <-function() {
   reinstall_hydrofabric <<- inputs$gpkg_model_params$reinstall_hydrofabric
   reinstall_arrow   <<- inputs$gpkg_model_params$reinstall_arrow
 
-  source(paste0(sandbox_dir, "/src_r/install_load_libs.R"))
+  source(paste0(sandbox_dir, "/src/R/install_load_libs.R"))
   
   if (!file.exists(input_dir)) {
     print(glue("Input directory does not exist, provided: {input_dir}"))
@@ -307,6 +311,45 @@ check_slope <- function(){
   }
 }
 
+check_subset <- function(tolerance = 5, plot = FALSE){
+  # Sum the areas assigned to each divide
+  area_hf_sqkm <- sum(divides$areasqkm)
+  
+  # # Manually calculate the areas using the divide geometries
+  # area_calc_hf_sqkm <- divides %>%
+  #   st_area() %>%
+  #   units::set_units("km^2") %>%
+  #   sum()
+  
+  # We COULD check if these match, but I think they always do. 
+  
+  # Pull the NWIS metadata for this gage to get the drainage area
+  gage_meta <- suppressMessages(readNWISsite(basin))
+  usgs_area_sqmi <- gage_meta$drain_area_va
+
+  # Convert the USGS area to km^2
+  usgs_area_sqkm <- usgs_area_sqmi*2.58999
+  
+  # Calculate the percent difference between usgs_area_sqkm and area_hf_sqkm
+  pct_diff <- abs(usgs_area_sqkm - area_hf_sqkm) / usgs_area_sqkm * 100
+  percent_differences_area[[length(percent_differences_area) + 1]] <<- pct_diff
+  
+  # Print an error if the percent difference is greater than the tolerance
+  if (pct_diff > tolerance) {
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
+    failed_attrs[[length(failed_attrs) + 1]] <<- "hfsubset"
+    failed_reason[[length(failed_reason) + 1]] <<- paste0("Likely over-subset area: USGS area = ", round(usgs_area_sqkm,2),
+                                                           " km^2, HF area = ", round(area_hf_sqkm,2),
+                                                           " km^2, pct diff = ", round(pct_diff,2), "%")
+    stop(paste0("Drainage area mismatch in geopackage: ", infile, 
+                " - USGS area = ", round(usgs_area_sqkm,2),
+                " km^2, HF area = ", round(area_hf_sqkm,2),
+                " km^2, pct diff = ", round(pct_diff,2), "%"))
+  }
+  
+  # TODO: potentially add a plotting component that visually shows the different areas
+}
+
 ################################ OPTIONS #######################################
 
 # Run QA/QC Functions ---------------------------------------------------------
@@ -322,6 +365,7 @@ failed_cats <- list()
 failed_attrs <- list()
 failed_reason <- list()
 failed_cats_list <- list()
+percent_differences_area <- list()
 
 # Loop through each basin and apply QA/QC checks
 for (basin in basins) {
@@ -338,6 +382,10 @@ for (basin in basins) {
     check_n_nash()
     check_k_nash()
     check_slope()
+    
+    divides <- suppressWarnings(st_read(infile, layer = "divides", quiet = TRUE))
+    
+    check_subset(tolerance = 0)
     
   }, error = function(e) {
     # Handle error: print message and skip to the next iteration
@@ -363,3 +411,17 @@ if (nrow(failed_df) == 0) {
   print(glue("Basins failed QA/QC: {failed_df$basin}"))
   write.csv(failed_df, glue("{input_dir}/failed_basin_attrs.csv"), row.names = FALSE)
 }
+
+# Plot a histogram of the percent differences in area
+p <- ggplot(data.frame(percent_differences_area = unlist(percent_differences_area)), 
+            aes(x = percent_differences_area)) +
+  geom_histogram(binwidth = 1, fill = "turquoise4", color = "black", alpha = 0.7) +
+  labs(title = "Percent Differences in Drainage Area between USGS and Hydrofabric",
+       x = "Percent Difference (%)",
+       y = glue("# of Basins (n = {length(basins)})")) +
+  theme_bw()
+
+# Save the plot
+ggsave(glue("{input_dir}/percent_differences_area_histogram.png"), plot = p, 
+       width = 8, height = 6, bg = "white")
+
