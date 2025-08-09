@@ -24,8 +24,8 @@ class Runner:
         self.config_calib = config_calib
         self.load_configuration()
 
-        if self.np_per_basin > 1 and not os.path.exists(f"{self.ngen_dir}/cmake_build/partitionGenerator"):
-            sys.exit("Partitioning geopackage is requested but partitionGenerator does not exist! Quitting...")
+        #if self.np_per_basin > 1 and not os.path.exists(f"{self.ngen_dir}/cmake_build/partitionGenerator"):
+        #    sys.exit("Partitioning geopackage is requested but partitionGenerator does not exist! Quitting...")
 
     def run(self):
         if self.ngen_cal_type not in ['calibration', 'validation', 'calibvalid', 'restart']:
