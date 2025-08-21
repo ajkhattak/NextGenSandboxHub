@@ -28,15 +28,23 @@ class Runner:
         #    sys.exit("Partitioning geopackage is requested but partitionGenerator does not exist! Quitting...")
 
     def run(self):
+
+        self.infile = os.path.join(self.output_dir, "basins_passed.csv")
+        self.indata = pd.read_csv(self.infile, dtype=str)
+
+        if self.gage_ids:
+            self.indata = self.indata[self.indata['gage_id'].isin(self.gage_ids)]
+            self.indata.reset_index(drop=True, inplace=True)
+
         if self.ngen_cal_type not in ['calibration', 'validation', 'calibvalid', 'restart']:
             print("Running NextGen without calibration ...")
             self.run_ngen_without_calibration()
         else:
             print(f'Running NextGen with task_type {self.ngen_cal_type}')
-            infile = os.path.join(self.output_dir, "basins_passed.csv")
-            indata = pd.read_csv(infile, dtype=str)
+
             pool = multiprocessing.Pool(processes=self.basins_in_par)
-            tuple_list = list(zip(indata["gage_id"], indata['num_divides']))
+            tuple_list = list(zip(self.indata["gage_id"], self.indata['num_divides']))
+            tuple_list = list(zip(self.indata["gage_id"], self.indata['num_divides']))
             results = pool.map(self.run_ngen_with_calibration, tuple_list)
             pool.close()
             pool.join()
@@ -89,9 +97,18 @@ class Runner:
             if not self.restart_dir:
                 raise FileNotFoundError(f"restart_dir does not exist, provided {self.restart_dir}.")
 
+        gage_ids = dsim.get('gage_ids', None)
+        gage_ids = gage_ids or []  # Default to empty list [] if None
+
+        # If it's a single string, convert to list
+        if isinstance(gage_ids, str):
+            self.gage_ids = [gage_ids]
+        elif not isinstance(gage_ids, list):
+            raise TypeError(f"gage_ids must be a string, list, or None, but got {type(self.gage_ids).__name__}")
+        
     def run_ngen_without_calibration(self):
-        infile = os.path.join(self.output_dir, "basins_passed.csv")
-        indata = pd.read_csv(infile, dtype=str)
+        #infile = os.path.join(self.output_dir, "basins_passed.csv")
+        #indata = pd.read_csv(infile, dtype=str)
         ngen_exe = os.path.join(self.ngen_dir, "cmake_build/ngen")
 
         for id, ncats in zip(indata["gage_id"], indata['num_divides']):
@@ -209,8 +226,8 @@ class Runner:
             #fpar = os.path.join(json_dir, f"partitions_{np_per_basin_local}.json")
             #partition = f"{self.ngen_dir}/cmake_build/partitionGenerator {gpkg_file} {gpkg_file} {fpar} {np_per_basin_local} \"\" \"\" "
             fpar = os.path.join("configs", f"partitions_{np_per_basin_local}.json")
-            partitions = f"python {self.sandbox_dir}/utils/python/local_only_partitions.py {gpkg_file} {np_per_basin_local} {os.getcwd()}/json"
-
+            partitions = f"python {self.sandbox_dir}/utils/python/local_only_partitions.py {gpkg_file} {np_per_basin_local} {os.getcwd()}/configs"
+            print ("PP ", partitions)
             result = subprocess.call(partitions, shell=True)
 
         return np_per_basin_local, fpar

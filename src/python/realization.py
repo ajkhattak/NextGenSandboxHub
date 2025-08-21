@@ -177,7 +177,8 @@ class RealizationGenerator:
                 "VV": "VGRD_10maboveground",
                 "LWDN": "DLWRF_surface",
                 "SOLDN": "DSWRF_surface",
-                "SFCPRS": "PRES_surface"
+                "SFCPRS": "PRES_surface",
+                "NoahPET" : "water_potential_evaporation_flux"
             }
 
         return block
@@ -212,6 +213,11 @@ class RealizationGenerator:
 
         if "NOM" in self.formulation and not "PET" in self.formulation:
             block["params"]["variables_names_map"]["water_potential_evaporation_flux"] = "EVAPOTRANS"
+
+        # for hybrid formulation
+        if "NOM" in self.formulation and "PET" in self.formulation:
+            block["params"]["variables_names_map"]["water_potential_evaporation_flux"] = "EVAPOTRANS"
+
         if "NOM" in self.formulation:
             block["params"]["variables_names_map"]["atmosphere_water__liquid_equivalent_precipitation_rate"] = "QINSUR"
 
@@ -481,6 +487,9 @@ class RealizationGenerator:
         
         output_variables = ["RAIN_RATE", "Q_OUT", "POTENTIAL_ET", "ACTUAL_ET"]
         output_header_fields = ["rain_rate", "q_out", "PET", "AET"]
+
+        output_variables = ["Q_OUT"]
+        output_header_fields = ["q_out"]
         
         """
         if ("CFE" in self.formulation)  and ("PET" in self.formulation):
