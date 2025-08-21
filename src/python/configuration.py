@@ -753,7 +753,8 @@ class ConfigurationCalib:
     def write_calib_input_files(self):
         
         conf_dir = os.path.join(self.output_dir, "configs")
-        realization = glob.glob(os.path.join(self.output_dir, "json/realization_*.json"))
+        #realization = glob.glob(os.path.join(self.output_dir, "json/realization_*.json"))
+        realization = glob.glob(os.path.join(conf_dir, "realization_*.json"))
 
         assert len(realization) == 1
 
