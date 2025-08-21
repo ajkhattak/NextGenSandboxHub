@@ -81,8 +81,10 @@ class Generate:
             
         if "NOM" in self.formulation:
             ConfigGen.write_nom_input_files()
+
         if "PET" in self.formulation:
             ConfigGen.write_pet_input_files()
+
         if "CFE" in self.formulation:
             ConfigGen.write_cfe_input_files()
 
