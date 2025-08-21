@@ -73,6 +73,8 @@ class Driver:
         dsim = d['simulation']
         self.task_type = (dsim.get('task_type', 'control')).lower()
 
+        self.gage_ids = dsim.get('gage_ids', None)
+
         if self.task_type == 'calibration' or self.task_type == 'calibvalid' or self.task_type == 'restart':
             if "calibration_time" not in dsim or not isinstance(dsim["calibration_time"], dict):
                 raise ValueError("calibration_time is not provided or is not a valid dictionary.")
@@ -212,12 +214,22 @@ class Driver:
 
         return basin_ids, num_cats
 
-        
+
     def main(self, nproc=4):
         basins_passed = os.path.join(self.output_dir, "basins_passed.csv")
+        file_exists = os.path.exists(basins_passed)
 
-        if os.path.exists(basins_passed):
-            os.remove(basins_passed)
+        existing_gages = set()
+        if self.gage_ids is None:
+            if file_exists:
+                os.remove(basins_passed)
+        else:
+            # Load existing gage_ids if file exists and is not empty
+
+            if file_exists and os.path.getsize(basins_passed) > 0:
+                with open(basins_passed, 'r', newline='') as file:
+                    reader = csv.DictReader(file)
+                    existing_gages = {row['gage_id'] for row in reader}
 
         forcing_files = self.get_forcing_files(self.gpkg_dirs)
 
@@ -233,16 +245,65 @@ class Driver:
             basin_ids.extend(result[0])
             num_cats.extend(result[1])
 
-        with open(basins_passed, 'w', newline='') as file:
-            dat = zip(basin_ids, num_cats)
+        new_gages = [
+            (gid, ncat) for gid, ncat in zip(basin_ids, num_cats)
+            if gid not in existing_gages
+        ]
+
+        # Append or create a new file
+        mode = 'a' if file_exists else 'w'
+        with open(basins_passed, mode, newline='') as file:
             writer = csv.writer(file)
-            writer.writerow(['gage_id', 'num_divides'])
-            writer.writerows(dat)
+            # Write header if creating a new file OR if the existing file is empty
+            if not file_exists or os.path.getsize(basins_passed) == 0:
+                writer.writerow(['gage_id', 'num_divides'])
+            writer.writerows(new_gages)
+
+        # logging
+        if new_gages:
+            print(f"Added {len(new_gages)} new basin(s) to {basins_passed}")
+        else:
+            print("No new basins to add.")
 
         pool.close()
         pool.join()
 
         return len(num_cats)
+
+
+    def load_gpkg_dirs(self):
+        # Get all subdirectories inside input_dir
+        all_dirs = glob.glob(os.path.join(self.input_dir, '*/'), recursive=True)
+
+        # Filter directories that have a "data" folder that contains a .gpkg file
+        self.gpkg_dirs = [
+            Path(g) for g in all_dirs
+            if os.path.exists(os.path.join(g, 'data')) and 
+            glob.glob(os.path.join(g, 'data', '*.gpkg'))
+        ]
+
+        gage_ids = self.gage_ids or []  # Default to empty list [] if None
+
+        # If it's a single string, convert to list
+        if isinstance(gage_ids, str):
+            gage_ids = [gage_ids]
+        elif not isinstance(gage_ids, list):
+            raise TypeError(f"gage_ids must be a string, list, or None, but got {type(self.gage_ids).__name__}")
+
+
+        # If gage_id is provided, further filter based on gage_id presence in .gpkg filenames
+
+        if gage_ids:
+            self.gpkg_dirs = [
+                g for g in self.gpkg_dirs
+                if any(
+                    any(gid in Path(f).stem for gid in gage_ids)
+                    for f in glob.glob(os.path.join(g, 'data', '*.gpkg'))
+                )
+            ]
+
+        assert self.gpkg_dirs, f"No .gpkg files found in the data directory under {self.input_dir}."
+
 
     def run(self):
         start_time = time.time()
@@ -264,10 +325,7 @@ class Driver:
         if not os.path.exists(os.path.join(self.sandbox_dir, "src/python")):
             sys.exit("check `sandbox_dir`, it should be the parent directory of `src/python` directory")
 
-        all_dirs = glob.glob(os.path.join(self.input_dir, '*/'), recursive=True)
-        self.gpkg_dirs = [Path(g) for g in all_dirs if os.path.exists(os.path.join(g, 'data')) and glob.glob(os.path.join(g, 'data', '*.gpkg'))]
-        assert self.gpkg_dirs, f"No .gpkg files found in the data directory under {self.input_dir}."
-
+        self.load_gpkg_dirs()
         
         self.output_dirs = [self.output_dir / Path(g).name for g in self.gpkg_dirs]
         success_ncats = self.main(nproc=self.basins_in_par)
