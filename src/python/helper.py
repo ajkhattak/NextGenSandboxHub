@@ -15,7 +15,7 @@ def create_clean_dirs(output_dir,
         subdirs  = os.listdir(output_dir)
         os.mkdir(rename_existing_simulation)
         for d in subdirs:
-            if (d in ["configs", "json", "outputs"]):
+            if (d in ["configs", "outputs"]):
                 shutil.move(d, rename_existing_simulation)
 
     
@@ -30,7 +30,7 @@ def create_clean_dirs(output_dir,
     elif (clean == ["existing"]):
         subdirs  = os.listdir(output_dir)
         for d in subdirs:
-            if (d in ["configs", "json", "outputs"]):
+            if (d in ["configs", "outputs"]):
                 try:
                     shutil.rmtree(d)
                 except:
@@ -47,14 +47,13 @@ def create_clean_dirs(output_dir,
     if (setup_simulation):
         subdirs  = os.listdir(output_dir)
         for d in subdirs:
-            if (d in ["configs", "json", "outputs"]):
+            if (d in ["configs", "outputs"]):
                 try:
                     shutil.rmtree(d)
                 except:
                     os.remove(d)
         
         os.mkdir("configs")
-        os.mkdir("json")
         os.makedirs("outputs/div")
         os.makedirs("outputs/troute")
         os.makedirs("outputs/troute_parq")
