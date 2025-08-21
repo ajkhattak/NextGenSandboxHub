@@ -37,7 +37,7 @@ class RealizationGenerator:
         self.domain          = domain.lower()
         
         realization_name = self.formulation.replace(",","_").lower()
-        self.realization_file = os.path.join(self.output_dir,"json",f"realization_{realization_name}.json")
+        self.realization_file = os.path.join(self.output_dir,"configs",f"realization_{realization_name}.json")
         
         if "CFE-S" in self.formulation:
             surface_water_partitioning_scheme = "Schaake"
@@ -62,9 +62,9 @@ class RealizationGenerator:
             print(f"SMP config files directory does not exist. {smp_dir}")
             sys.exit(0)
 
-        lasam_dir = os.path.join(self.output_dir, "configs", "lasam")
-        if 'LASAM' in self.formulation and not os.path.exists(lasam_dir):
-            print(f"LASAM config files directory does not exist. {lasam_dir}")
+        casam_dir = os.path.join(self.output_dir, "configs", "casam")
+        if 'CASAM' in self.formulation and not os.path.exists(casam_dir):
+            print(f"CASAM config files directory does not exist. {casam_dir}")
             sys.exit(0)
             
     
@@ -281,7 +281,7 @@ class RealizationGenerator:
                 "soil_storage": "SOIL_STORAGE",
                 "soil_storage_change": "SOIL_STORAGE_CHANGE"
             }
-        elif self.coupled_models == "nom_lasam_smp_sft":
+        elif self.coupled_models == "nom_casam_smp_sft":
             name_map = {
                 "soil_storage": "sloth_soil_storage",
                 "soil_storage_change": "sloth_soil_storage_change",
@@ -290,12 +290,12 @@ class RealizationGenerator:
                 "num_wetting_fronts": "soil_num_wetting_fronts"
             }
         else:
-            print("coupled_models name should be nom_cfe_smp_sft or nom_lasam_smp_sft, provided is ", self.coupled_models)
+            print("coupled_models name should be nom_cfe_smp_sft or nom_casam_smp_sft, provided is ", self.coupled_models)
             quit()
         block["params"]["variables_names_map"] = name_map
         return block
 
-    def get_lasam_block(self):
+    def get_casam_block(self):
         #note the model_type_name should be LGAR as this name is currently supported by ngen-cal for calibration
         block = {
             "name": "bmi_c++",
@@ -303,8 +303,8 @@ class RealizationGenerator:
                 "name": "bmi_c++",
                 "model_type_name": "LGAR",
                 "main_output_variable": "precipitation_rate",
-                "library_file": self.lib_files['LASAM'],
-                "init_config": os.path.join(self.config_dir, 'lasam/lasam_config_{{id}}.txt'),
+                "library_file": self.lib_files['CASAM'],
+                "init_config": os.path.join(self.config_dir, 'casam/casam_config_{{id}}.txt'),
                 "allow_exceed_end_time": True,
                 "uses_forcing_file": False,
                 "variables_names_map": {
@@ -364,7 +364,7 @@ class RealizationGenerator:
                 "global_deficit(1,double,1,node)": 0.0
             }
         else:
-            msg = "coupled_models name should be nom_cfe, or nom_cfe_smp_sft or nom_lasam_smp_sft, provided is " + self.coupled_models
+            msg = "coupled_models name should be nom_cfe, or nom_cfe_smp_sft or nom_casam_smp_sft, provided is " + self.coupled_models
             sys.exit(msg)
         block["params"]["model_params"] = params
         return block
@@ -459,7 +459,30 @@ class RealizationGenerator:
         modules = []
 
         model_type_name = self.formulation.replace(",","_")
+
+        modules = [self.get_sloth_block()]
+
+        output_variables = []
+        output_header_fields = []
+
+        if ("NOM" in self.formulation):
+           modules.append(self.get_noah_owp_modular_block())
+
+        if ("PET" in self.formulation):
+            modules.append(self.get_pet_block(var_names_map=True))
+
+        if ("CFE" in self.formulation):
+            main_output_variable = "Q_OUT"
+            modules.append(self.get_cfe_block())
+
+        if ("CASAM" in self.formulation):
+            main_output_variable = "total_discharge"
+            modules.append(self.get_casam_block())
         
+        output_variables = ["RAIN_RATE", "Q_OUT", "POTENTIAL_ET", "ACTUAL_ET"]
+        output_header_fields = ["rain_rate", "q_out", "PET", "AET"]
+        
+        """
         if ("CFE" in self.formulation)  and ("PET" in self.formulation):
             #model_type_name = "CFE"
             main_output_variable = "Q_OUT"
@@ -535,7 +558,7 @@ class RealizationGenerator:
                                    "soil_storage", "direct_runoff", "giuh_runoff", "deep_gw_to_channel_flux", "soil_to_gw_flux", "q_out",
                                    "infiltration", "soil_moisture_fraction"]
 
-
+        """
         assert len(output_variables) == len(output_header_fields)
 
         global_block["params"]["model_type_name"] = model_type_name

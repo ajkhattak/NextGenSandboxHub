@@ -26,7 +26,25 @@ def get_gage_name(gage_id):
     gage_name = gdf['name'][0]
     return gage_name
 
-def get_stream_discharge(gage_id, start_time, end_time, domain):
+def get_nwm_streamflow(gage_list, start_time, end_time, domain='conus'):
+    results = {}
+    for g in gage_list:
+        df = get_streamflow_per_gage(
+            g,
+            start_time=start_time,
+            end_time=end_time,
+            domain=domain
+        )
+        df.set_index('time', inplace=True)
+        gage_name = get_gage_name(g)
+        results[g] = {
+            'name': gage_name,
+            'data': df
+        }
+    return results
+
+
+def get_streamflow_per_gage(gage_id, start_time, end_time, domain):
 
     #gage_id = "USGS-01052500"
     if not 'USGS' in gage_id:

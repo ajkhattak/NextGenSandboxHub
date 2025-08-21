@@ -17,7 +17,7 @@ sandbox_dir = path.parent
 from src.python import forcing, driver, runner
 
 
-def CheckSandbox_VENV():
+def CheckSandboxVENV():
     VENV_SANDBOX = Path.home() / ".venv_sandbox_py3.11"
 
     # Check if the virtual environment exists
@@ -39,9 +39,9 @@ def CheckSandbox_VENV():
 formulations_supported = [
     "NOM,CFE",
     "PET,CFE",
+    "NOM,PET,CFE",
     "NOM,LASAM",
     "PET,LASAM",
-    "NOM,CFE,PET",
     "NOM,CFE,SMP,SFT",
     "NOM,LASAM,SMP,SFT",
     "NOM,TOPMODEL",
@@ -105,7 +105,7 @@ if __name__ == "__main__":
         parser.add_argument("-conf",   action='store_true',    help="Generate config files")
         parser.add_argument("-run",    action='store_true',    help="Run NextGen simulations")
         parser.add_argument("-i",      dest="sandbox_infile", type=str, required=False,  help="sandbox config file")
-        parser.add_argument("-j",      dest="calib_infile",    type=str, required=False,  help="caliberation config file")
+        parser.add_argument("-j",      dest="calib_infile",   type=str, required=False,  help="caliberation config file")
         args = parser.parse_args()
     except SystemExit:
         print("Formulations supported:\n" + "\n".join(formulations_supported))
@@ -134,6 +134,6 @@ if __name__ == "__main__":
         sys.exit(0)
 
     # check if expected Python virtual env exists and activated
-    CheckSandbox_VENV()
+    CheckSandboxVENV()
 
     Sandbox(sandbox_config, calib_config)
