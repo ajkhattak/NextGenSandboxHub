@@ -75,6 +75,9 @@ class Driver:
 
         self.gage_ids = dsim.get('gage_ids', None)
 
+        self.sim_name_suffix = dsim.get('sim_name_suffix') or None
+
+
         if self.task_type == 'calibration' or self.task_type == 'calibvalid' or self.task_type == 'restart':
             if "calibration_time" not in dsim or not isinstance(dsim["calibration_time"], dict):
                 raise ValueError("calibration_time is not provided or is not a valid dictionary.")
@@ -237,6 +240,7 @@ class Driver:
         num_cats = []
 
         pool = multiprocessing.Pool(processes=nproc)
+        print ("OO ", self.output_dirs)
         tuple_list = list(zip(self.gpkg_dirs, self.output_dirs, forcing_files))
         results = pool.map(self.generate_catchment_files, tuple_list)
         results = [result for result in results if result is not None]
@@ -326,8 +330,12 @@ class Driver:
             sys.exit("check `sandbox_dir`, it should be the parent directory of `src/python` directory")
 
         self.load_gpkg_dirs()
-        
-        self.output_dirs = [self.output_dir / Path(g).name for g in self.gpkg_dirs]
+
+        if self.sim_name_suffix:
+            self.output_dirs = [self.output_dir / f"{Path(g).name}_{self.sim_name_suffix}" for g in self.gpkg_dirs]
+        else:
+            self.output_dirs = [self.output_dir / Path(g).name for g in self.gpkg_dirs]
+
         success_ncats = self.main(nproc=self.basins_in_par)
         
         end_time = time.time()
