@@ -240,7 +240,7 @@ class Driver:
         num_cats = []
 
         pool = multiprocessing.Pool(processes=nproc)
-        print ("OO ", self.output_dirs)
+
         tuple_list = list(zip(self.gpkg_dirs, self.output_dirs, forcing_files))
         results = pool.map(self.generate_catchment_files, tuple_list)
         results = [result for result in results if result is not None]
@@ -322,7 +322,9 @@ class Driver:
             elif check.lower() in ["n", "no"]:
                 sys.exit("Quiting...")
 
-        assert os.path.exists(self.output_dir)
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir, exist_ok=True)
+    
         assert os.path.exists(self.sandbox_dir)
         assert os.path.exists(self.ngen_dir)
 
