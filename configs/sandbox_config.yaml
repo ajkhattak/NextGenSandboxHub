@@ -52,7 +52,7 @@ formulation :
 simulation :
   task_type : "<pick_option>" # calibvalid, calibration, validation, restart, control
   gage_ids    :  "01105000"   # gage id, list of ids; if Null, basin_passed.csv file is loaded
-  sim_name_suffix  :  "kge" # user specified name; the directory wil be, e.g., 01105000_kge
+  sim_name_suffix  :  "pet_cfe" # user specified name; the directory wil be, e.g., 01105000_pet_cfe
   calibration_time : {"start_time" : "2016-10-01 00:00:00", "end_time" : "2021-09-30 23:00:00"}
   calib_eval_time  : {"start_time" : "2017-10-01 00:00:00", "end_time" : "2021-09-30 23:00:00"}
   validation_time  : {"start_time" : "2010-11-22 14:00:00", "end_time" : "2010-12-23 02:00:00"}
