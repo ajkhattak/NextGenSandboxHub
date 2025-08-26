@@ -105,7 +105,9 @@ class Runner:
             self.gage_ids = [gage_ids]
         elif not isinstance(gage_ids, list):
             raise TypeError(f"gage_ids must be a string, list, or None, but got {type(self.gage_ids).__name__}")
-        
+
+        self.sim_name_suffix = dsim.get('sim_name_suffix') or None
+
     def run_ngen_without_calibration(self):
         #infile = os.path.join(self.output_dir, "basins_passed.csv")
         #indata = pd.read_csv(infile, dtype=str)
@@ -146,6 +148,10 @@ class Runner:
         id, ncats = basin
         ncats = int(ncats)
         o_dir = self.output_dir / id
+
+        if self.sim_name_suffix:
+            o_dir = self.output_dir / f"{id}_{self.sim_name_suffix}"
+
         i_dir = Path(self.input_dir) / id
         os.chdir(o_dir)
         print("cwd: ", os.getcwd())
