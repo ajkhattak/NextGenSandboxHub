@@ -497,10 +497,13 @@ class RealizationGenerator:
             main_output_variable = "total_discharge"
             modules.append(self.get_casam_block())
         
-        output_variables = ["RAIN_RATE", "Q_OUT", "POTENTIAL_ET", "ACTUAL_ET"]
-        output_header_fields = ["rain_rate", "q_out", "PET", "AET"]
+        #output_variables = ["RAIN_RATE", "Q_OUT", "POTENTIAL_ET", "ACTUAL_ET"]
+        #output_header_fields = ["rain_rate", "q_out", "PET", "AET"]
 
-        output_variables = ["Q_OUT"]
+        if ("CFE" in self.formulation):
+            output_variables = ["Q_OUT"]
+        if ("TOPMODEL" in self.formulation):
+            output_variables = ["Qout"]
         output_header_fields = ["q_out"]
         
         """
