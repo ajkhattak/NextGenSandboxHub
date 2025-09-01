@@ -43,7 +43,7 @@ class Driver:
         
         dformul = d['formulation']
         self.ngen_dir      = dformul["ngen_dir"]
-        self.formulation   = dformul['models']
+        self.formulation   = dformul['models'].upper()
         self.clean         = self.process_clean_input_param(dformul.get('clean', "none"))
         self.verbosity     = dformul.get('verbosity', 0)
         self.basins_in_par = dformul.get('basins_in_par', 1)
@@ -119,6 +119,7 @@ class Driver:
                     if not fdir.exists() or not fdir.is_dir():
                         raise ValueError(f"Forcing directory '{fdir}' does not exist.")
                     if self.is_corrected_forcing:
+                        cf_infile = glob.glob(f"{fdir}/*_corrected.nc")[0]
                         forcing_file = glob.glob(f"{fdir}/*_corrected.nc")[0]
                     else:
                         nc_file = glob.glob(f"{fdir}/*.nc")

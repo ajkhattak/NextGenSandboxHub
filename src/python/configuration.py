@@ -51,6 +51,8 @@ class ConfigurationGenerator:
 
             self.surface_runoff_scheme = df_custom['CFE']['surface_runoff_scheme']
             self.pet_method = df_custom['PET']["pet_method"]
+            self.surface_runoff_scheme = df_custom['CFE']['surface_water_partitioning_scheme']
+
 
         self.soil_params_NWM_dir = os.path.join(self.ngen_dir,"extern/noah-owp-modular/noah-owp-modular/parameters")
                 
@@ -140,7 +142,7 @@ class ConfigurationGenerator:
         mask = gdf['elevation_mean'].le(0.0)
         gdf.loc[mask, 'elevation_mean'] = 1.0
 
-        if "topmodel" in self.formulation:
+        if "TOPMODEL" in self.formulation:
             gdf['twi'] = gdf_soil[params['twi']]
             gdf['width_dist'] = gdf_soil[params['width_dist']]
 

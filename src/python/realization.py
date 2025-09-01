@@ -52,6 +52,11 @@ class RealizationGenerator:
             print(f"CFE config files directory does not exist. {cfe_dir}")
             sys.exit(0)
 
+        topmodel_dir = os.path.join(self.output_dir, "configs", "topmodel")
+        if 'TOPMODEL' in self.formulation and not os.path.exists(topmodel_dir):
+            print(f"TopModel config files directory does not exist. {topmodel_dir}")
+            sys.exit(0)
+
         sft_dir = os.path.join(self.output_dir, "configs", "sft")
         if 'SFT' in self.formulation and not os.path.exists(sft_dir):
             print(f"SFT config files directory does not exist. {sft_dir}")
@@ -177,8 +182,7 @@ class RealizationGenerator:
                 "VV": "VGRD_10maboveground",
                 "LWDN": "DLWRF_surface",
                 "SOLDN": "DSWRF_surface",
-                "SFCPRS": "PRES_surface",
-                "NoahPET" : "water_potential_evaporation_flux"
+                "SFCPRS": "PRES_surface"
             }
 
         return block
@@ -346,13 +350,14 @@ class RealizationGenerator:
             params = {
                 "ice_fraction_schaake(1,double,m,node)": 0.0,
                 "ice_fraction_xinanjiang(1,double,1,node)": 0.0,
-                "soil_moisture_profile(1,double,1,node)": 0.0
+                "soil_moisture_profile(1,double,1,node)": 0.0,
+                "NoahPET(1,double,1,node)": -999.9
             }
         elif "LASAM" in self.formulation and not "SFT" in self.formulation:
             params = {
                 "soil_temperature_profile(1,double,K,node)": 275.15
             }
-        elif "SMP" in self.formuation and not "TOPMODEL" in self.formulation and not "LASAM" in self.formulation:
+        elif "SMP" in self.formulation and not "TOPMODEL" in self.formulation and not "LASAM" in self.formulation:
             params = {
                 "soil_moisture_wetting_fronts(1,double,1,node)": 0.0,
                 "soil_depth_wetting_fronts(1,double,1,node)": 0.0,
@@ -369,8 +374,12 @@ class RealizationGenerator:
                 "Qv_topmodel(1,double,1,node)": 0.0,
                 "global_deficit(1,double,1,node)": 0.0
             }
+        elif "TOPMODEL" in self.formulation:
+            params = {
+                "NoahPET(1,double,1,node)": -999.9
+            }
         else:
-            msg = "coupled_models name should be nom_cfe, or nom_cfe_smp_sft or nom_casam_smp_sft, provided is " + self.coupled_models
+            msg = "Formulation not supported yet. " + self.formulation
             sys.exit(msg)
         block["params"]["model_params"] = params
         return block
@@ -476,6 +485,9 @@ class RealizationGenerator:
 
         if ("PET" in self.formulation):
             modules.append(self.get_pet_block(var_names_map=True))
+
+        if ("TOPMODEL" in self.formulation):
+            modules.append(self.get_topmodel_block())
 
         if ("CFE" in self.formulation):
             main_output_variable = "Q_OUT"

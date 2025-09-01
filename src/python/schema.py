@@ -87,9 +87,12 @@ def get_schema_model_attributes(gdf_model):
         if 'terrain_slope' in d:
             df['terrain_slope'] = d
 
-        if not "terrain_slope" in schema.index:
-            df['terrain_slope'] = "mean.slope_1km"
+    if not "terrain_slope" in schema.index:
+        df['terrain_slope'] = "mean.slope_1km"
 
+    if "terrain_aspect" in schema.index:
+        df['aspect_mean'] = "terrain_aspect"
+            
     return df
 
 
