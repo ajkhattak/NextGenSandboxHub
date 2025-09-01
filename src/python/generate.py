@@ -45,9 +45,9 @@ class Generate:
 
         self.formulation_supported = formulation_supported
 
-        if "T-route" in self.formulation_in or "t-route" in self.formulation_in:
-            self.formulation_supported_w_troute = [f'{model},T-route' for model in self.formulation_supported]
-            
+        if "T-route" in self.formulation_in or "t-route" in self.formulation_in or "T-ROUTE" in self.formulation_in:
+            self.formulation_supported_w_troute = [f'{model},T-ROUTE' for model in self.formulation_supported]
+
         if self.formulation_in in self.formulation_supported or self.formulation_in in self.formulation_supported_w_troute:
             self.formulation = self.formulation_in
         else:
@@ -87,6 +87,9 @@ class Generate:
 
         if "CFE" in self.formulation:
             ConfigGen.write_cfe_input_files()
+
+        if "TOPMODEL" in self.formulation:
+            ConfigGen.write_topmodel_input_files()
 
         if "LASAM" in self.formulation:
             ConfigGen.write_lasam_input_files()

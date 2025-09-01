@@ -97,22 +97,22 @@ cfe_params: &cfe_params
     max: 1.0
     init: 0.33
 
-# Calibratable parameters for CFE Xinanjiang water partitioning scheme
-#   - # Maybe parameter
-#     name: a_Xinanjiang_inflection_point_parameter # Xinanjiang: Tension water distribution inflection parameter
-#     min: 0.001
-#     max: 0.017
-#     init: 0.001
-#   - # Maybe parameter
-#     name: b_Xinanjiang_shape_parameter # Xinanjiang: Tension water distribution shape parameter
-#     min: 0.0
-#     max: 1.0
-#     init: 0.5
-#   -
-#     name: x_Xinanjiang_shape_parameter # Xinanjiang: Tension water distribution shape parameter 
-#     min: 0.0
-#     max: 6.04
-#     init: 3
+  # Calibratable parameters for CFE Xinanjiang water partitioning scheme
+  #- 
+  #  name: a_Xinanjiang_inflection_point_parameter # Xinanjiang: Tension water distribution inflection parameter
+  #  min: -0.493
+  #  max: 0.493
+  #  init: 0.25
+  #- 
+  #  name: b_Xinanjiang_shape_parameter # Xinanjiang: Tension water distribution shape parameter
+  #  min: 9.0e-4
+  #  max: 10.0
+  #  init: 2.5
+  #-
+  #  name: x_Xinanjiang_shape_parameter # Xinanjiang: Tension water distribution shape parameter 
+  #  min: 5.0e-4
+  #  max: 10.0
+  #  init: 2.5
 
 ############################## NoahOWP-Modular  ####################################
 # inside config_calib.yaml use
@@ -159,6 +159,42 @@ nom_params: &nom_params
     max: 12.6
     init: 9.0
 
+# NWM v3.0 calibratable parameters ranges
+noah_owp_paramsNWM: &noah_owp_paramsNWM
+  -
+    name: MFSNO # fractional snow covered area (FSNO) curve parameter (pseduo multiplier)
+    min: 0.5
+    max: 4.0
+    init: 2.5
+  -
+    name: SCAMAX # maximum fractional snow-covered area
+    min: 0.7
+    max: 1.0
+    init: 0.5
+  -
+    name: RSURF_SNOW # surface resistence for snow [s/m]
+    min: 0.136
+    max: 100.0
+    init: 50.0
+  -
+    name: CWP # canopy wind absorption coefficient (formerly CWPVT) (multiplier)
+    # values below derived as absolute values from param tables
+    min: 0.09
+    max: 0.36
+    init: 0.1
+  -
+    name: VCMX25 # maximum rate of carboxylation at 25c (umol co2/m**2/s) (multiplier)
+    # values below derived as absolute values from param tables
+    min: 24
+    max: 112
+    init: 50
+  -
+    name: MP # slope of conductance-to-photosynthesis relationship (multiplier)
+    # values below derived as absolute values from param tables
+    min: 3.6
+    max: 12.6
+    init: 9.0
+    
 ###############################  TOPMODEL  #########################################
 # inside config_calib.yaml use
 # model:

@@ -8,10 +8,11 @@ import matplotlib.dates as mdates
 
 from dataretrieval import nwis, utils, codes, nldi
 
+#Available data sources are: ['ca_gages', 'census2020-nhdpv2', 'epa_nrsa', 'geoconnex-demo', 'gfv11_pois', 'GRAND', 'HILARRI', 'huc12pp', 'huc12pp_102020', 'nmwdi-st', 'npdes', 'nwisgw', 'nwissite', 'ref_dams', 'ref_gage', 'vigil', 'wade', 'wade_rights', 'wade_timeseries', 'WQP', 'comid']
 
 def get_comid(fid):
-    gdf = nldi.get_features(feature_source="WQP", feature_id=fid)
-
+    #gdf = nldi.get_features(feature_source="WQP", feature_id=fid)
+    gdf = nldi.get_features(feature_source="nwissite", feature_id=fid)
     if gdf.empty:
         raise ValueError(f"No feature found for {fid}")
     

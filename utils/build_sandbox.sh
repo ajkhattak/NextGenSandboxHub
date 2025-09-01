@@ -70,6 +70,3 @@ if [ "$BUILD_SANDBOX" == "ON" ]; then
     echo "Building Python Virtual Environments for Sandbox"
     build_sandbox
 fi
-
-
-

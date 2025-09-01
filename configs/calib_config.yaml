@@ -67,7 +67,7 @@ cfe_params: &cfe_params
   - 
     name: Kinf_nash_surface # runon infiltration coefficient (NASH CASCADE runoff only; cfe2.0)
     min: 0.0001
-    max: 1.0
+    max: 0.1
     init: 0.0005 
 
   #- 
@@ -97,41 +97,37 @@ cfe_params: &cfe_params
     name: alpha_fc # field capacity
     min: 0.15
     max: 0.33
-    init: 0.33
-    
+    init: 0.20
+
+# consistent with NWM v3.0
 noah_owp_params: &noah_owp_params
   -
     name: MFSNO # fractional snow covered area (FSNO) curve parameter (pseduo multiplier)
-    min: 0.625
-    max: 5.0
+    min: 0.5
+    max: 4.0
     init: 2.5
   -
     name: SCAMAX # maximum fractional snow-covered area
     min: 0.7
     max: 1.0
-    init: 1.0
+    init: 0.5
   -
     name: RSURF_SNOW # surface resistence for snow [s/m]
-    min: 0.1
+    min: 0.136
     max: 100.0
     init: 50.0
   -
-    name: HVT # canopy top height (m)
-    min: 0.0
-    max: 20.0
-    init: 1.0
-  -
     name: CWP # canopy wind absorption coefficient (formerly CWPVT) (multiplier)
     # values below derived as absolute values from param tables
-    min: 0.18
-    max: 5.0
-    init: 1.0
+    min: 0.09
+    max: 0.36
+    init: 0.1
   -
     name: VCMX25 # maximum rate of carboxylation at 25c (umol co2/m**2/s) (multiplier)
     # values below derived as absolute values from param tables
-    min: 0.0
-    max: 80.0
-    init: 50.0
+    min: 0
+    max: 112
+    init: 40
   -
     name: MP # slope of conductance-to-photosynthesis relationship (multiplier)
     # values below derived as absolute values from param tables
