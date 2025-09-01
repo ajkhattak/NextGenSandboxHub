@@ -330,10 +330,10 @@ class ConfigurationGenerator:
                 "0",
                 f'{cat_name}',
                 f"./forcing/{cat_name}.csv",
-                f'./{topmodel_dir}/subcat_{cat_name}.dat',
-                f'./{topmodel_dir}/params_{cat_name}.dat',
-                f'./{topmodel_dir}/topmod_{cat_name}.out',
-                f'./{topmodel_dir}/hyd_{cat_name}.out'
+                f'{topmodel_dir}/subcat_{cat_name}.dat',
+                f'{topmodel_dir}/params_{cat_name}.dat',
+                f'{topmodel_dir}/topmod_{cat_name}.out',
+                f'{topmodel_dir}/hyd_{cat_name}.out'
             ]
 
             fname_tm = f'topmod_{cat_name}.run'
