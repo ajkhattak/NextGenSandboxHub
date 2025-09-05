@@ -127,6 +127,8 @@ DriverGivenGPKG <- function(gage_files,
                             dem_output_dir = "",
                             dem_input_file = NULL,
                             compute_divide_attributes = FALSE,
+                            nlcd_data_path = "",
+                            calculate_vegetation = FALSE,
                             nproc = 1) {
   
   print ("DRIVER GIVEN GEOPACKAGE FUNCTION")
@@ -487,8 +489,11 @@ RunDriver <- function(gage_id = NULL,
 
   #######################. COMPUTE TERRAIN SLOPE ###########################
   # STEP #8: Take slope from the slope grid calculated in the TWI function
-
   slope <-  slope_function(div_infile = outfile, dem_output_dir = dem_output_dir)
+  
+  #######################. COMPUTE ASPECT ###########################
+  # STEP #8b: Compute aspect from the DEM 
+  aspect <-  aspect_function(div_infile = outfile, dem_output_dir = dem_output_dir)
   ####################### WRITE MODEL ATTRIBUTE FILE ###########################
   # STEP #9: Append GIUH, TWI, width function, slope, and Nash cascade N and K parameters
   # to model attributes layers
@@ -503,6 +508,7 @@ RunDriver <- function(gage_id = NULL,
 
   d_attr$K_nash_surface <- nash_params_surface$K_nash
   d_attr$terrain_slope <- slope$mean.slope
+  d_attr$terrain_aspect <- aspect$fun.aspect
   
   # Fix attribute naming issues (specific to PR hydrofabric)
   if ("mode.bexp_Time=_soil_layers_stag=1" %in% names(d_attr)) {

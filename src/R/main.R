@@ -23,7 +23,9 @@
 #   STEP #7: Compute Nash cascade parameters (N and K) for surface runoff (inside driver.R)
 #   STEP #8: Compute terrain slope from the DEM (inside driver.R)
 #   STEP #8a: Compute NLCD landcover (inside driver.R)
-#   STEP #9: Append GIUH, TWI, width function, Nash cascade parameters, slope, and vegetation type to model_attributes layer (inside driver.R)
+#   STEP #8b: Compute aspect from the DEM (inside driver.R)
+#   STEP #9: Append GIUH, TWI, width function, Nash cascade parameters, slope, 
+#   aspect, and vegetation type to model_attributes layer (inside driver.R)
 
 
 ################################ SETUP #########################################
@@ -50,6 +52,7 @@
 
 library(yaml)
 args <- commandArgs(trailingOnly = TRUE)
+Sys.setenv("AWS_NO_SIGN_REQUEST" = "YES")
 
 Setup <-function() {
 
