@@ -234,3 +234,19 @@ reprojection_function <- function(outfile, epsg = 5070){
   file.remove(gpkg_path)
   file.copy(gpkg_temp, gpkg_path, overwrite = TRUE)
 }
+
+circular_mean <- function (values, coverage_fraction) {
+
+  # adopted from the 'zonal' package: https://github.com/mikejohnson51/zonal/blob/8d932f3d419489f90e7ab6c6afa085791324dc46/R/custom_function.R#L30
+  #TODO: figure out how to integrate the existing function
+  degrad = pi / 180
+
+  sinr <- sum(sin(values * degrad), na.rm = TRUE)
+
+  cosr <- sum(cos(values * degrad), na.rm = TRUE)
+
+  val = atan2(sinr, cosr) * (1 / degrad)
+
+  ifelse(val < 0, 180 + (val + 180), val)
+
+}
