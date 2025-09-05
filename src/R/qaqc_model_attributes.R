@@ -11,6 +11,10 @@
 library(yaml)
 library(stringr)
 library(sf)
+library(dataRetrieval)
+library(ggplot2)
+library(glue)
+
 args <- commandArgs(trailingOnly = TRUE)
 
 setup <-function() {
@@ -38,7 +42,7 @@ setup <-function() {
   reinstall_hydrofabric <<- inputs$gpkg_model_params$reinstall_hydrofabric
   reinstall_arrow   <<- inputs$gpkg_model_params$reinstall_arrow
 
-  source(paste0(sandbox_dir, "/src_r/install_load_libs.R"))
+  source(paste0(sandbox_dir, "/src/R/install_load_libs.R"))
   
   if (!file.exists(input_dir)) {
     print(glue("Input directory does not exist, provided: {input_dir}"))
@@ -69,7 +73,7 @@ check_nwm_attrs <- function(){
       failed_attrs[[length(failed_attrs) + 1]] <<- var
       failed_reason[[length(failed_reason) + 1]] <<- "Missing"
     }
-    stop(paste0("Missing NWM attributes in geopackage: ", infile, " - ", missing_vars))
+    warning(paste0("Missing NWM attributes in geopackage: ", infile, " - ", missing_vars))
   }
   
   # Check if any of the nwm_attrs are NA or NaN
@@ -101,7 +105,7 @@ check_giuh <- function(){
     failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "GIUH"
     failed_reason[[length(failed_reason) + 1]] <<- "NA value(s)"
-    stop(paste0("NA or NaN found in GIUH in geopackage: ", infile))
+    warning(paste0("NA or NaN found in GIUH in geopackage: ", infile))
   }
   # Extract the actual values
   # Use str_extract_all to extract each ordinate within curly brackets
@@ -117,12 +121,12 @@ check_giuh <- function(){
     failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "GIUH"
     failed_reason[[length(failed_reason) + 1]] <<- "Missing frequency(ies)"
-    stop(paste0("GIUH sums contain NA: ", infile))
+    warning(paste0("GIUH sums contain NA: ", infile))
   } else if (any(sums < 0.99) | any(sums > 1.01)) {
     failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "GIUH"
     failed_reason[[length(failed_reason) + 1]] <<- "Unreasonable value(s)"
-    stop(paste0("GIUH sums are not equal to 1 in geopackage: ", infile))
+    warning(paste0("GIUH sums are not equal to 1 in geopackage: ", infile))
   }
   
   # Subset the sums that are < 0.99
@@ -147,7 +151,7 @@ check_twi <- function(){
     failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "TWI"
     failed_reason[[length(failed_reason) + 1]] <<- "NA value(s)"
-    stop(paste0("NA or NaN found in TWI in geopackage: ", infile))
+    warning(paste0("NA or NaN found in TWI in geopackage: ", infile))
   }
   
   # Extract the actual values
@@ -168,12 +172,12 @@ check_twi <- function(){
     failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "TWI"
     failed_reason[[length(failed_reason) + 1]] <<- "Missing frequency(ies)"
-    stop(paste0("TWI sums contain NA: ", infile))
+    warning(paste0("TWI sums contain NA: ", infile))
   } else if (any(sums < 0.99) | any(sums > 1.01)) {
     failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "TWI"
     failed_reason[[length(failed_reason) + 1]] <<- "Unreasonable value(s)"
-    stop(paste0("TWI sums are not equal to 1 in geopackage: ", infile))
+    warning(paste0("TWI sums are not equal to 1 in geopackage: ", infile))
   }
   
   rm(twi, twi_ords, v, frequencies, sums)
@@ -195,7 +199,7 @@ check_width <- function(){
     failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "width"
     failed_reason[[length(failed_reason) + 1]] <<- "NA value(s)"
-    stop(paste0("NA or NaN found in Width in geopackage: ", infile))
+    warning(paste0("NA or NaN found in Width in geopackage: ", infile))
   }
   
   # Extract the actual values
@@ -215,12 +219,12 @@ check_width <- function(){
     failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "width"
     failed_reason[[length(failed_reason) + 1]] <<- "Missing frequency(ies)"
-    stop(paste0("Width sums contain NA: ", infile))
+    warning(paste0("Width sums contain NA: ", infile))
   } else if (any(sums < 0.99) | any(sums > 1.01)) {
     failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "width"
     failed_reason[[length(failed_reason) + 1]] <<- "Unreasonable value(s)"
-    stop(paste0("Width sums are not equal to 1 in geopackage: ", infile))
+    warning(paste0("Width sums are not equal to 1 in geopackage: ", infile))
   }
   
   rm(width, width_ords, v, frequencies, sums)
@@ -242,7 +246,7 @@ check_n_nash <- function(){
     failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "N_nash"
     failed_reason[[length(failed_reason) + 1]] <<- "NA value(s)"
-    stop(paste0("NA or NaN found in N_nash_surface in geopackage: ", infile))
+    warning(paste0("NA or NaN found in N_nash_surface in geopackage: ", infile))
   }
   
   # Check if any values are something besides 2 or 5
@@ -253,7 +257,7 @@ check_n_nash <- function(){
     failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "N_nash"
     failed_reason[[length(failed_reason) + 1]] <<- "Unreasonable value(s)"
-    stop(paste0("N_nash_surface values are neither 2 or 5 in geopackage: ", infile))
+    warning(paste0("N_nash_surface values are neither 2 or 5 in geopackage: ", infile))
   }
   
   rm(n_nash)
@@ -275,7 +279,7 @@ check_k_nash <- function(){
     failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "K_nash"
     failed_reason[[length(failed_reason) + 1]] <<- "NA value(s)"
-    stop(paste0("NA or NaN found in K_nash_surface in geopackage: ", infile))
+    warning(paste0("NA or NaN found in K_nash_surface in geopackage: ", infile))
   }
 }
 
@@ -295,7 +299,7 @@ check_slope <- function(){
     failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "terrain_slope"
     failed_reason[[length(failed_reason) + 1]] <<- "NA value(s)"
-    stop(paste0("NA or NaN found in terrain_slope in geopackage: ", infile))
+    warning(paste0("NA or NaN found in terrain_slope in geopackage: ", infile))
   }
   
   # Check if any values are > 90
@@ -303,10 +307,90 @@ check_slope <- function(){
     failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
     failed_attrs[[length(failed_attrs) + 1]] <<- "terrain_slope"
     failed_reason[[length(failed_reason) + 1]] <<- "Unreasonable value(s)"
-    stop(paste0("terrain_slope values are greater than 90 in geopackage: ", infile))
+    warning(paste0("terrain_slope values are greater than 90 in geopackage: ", infile))
   }
 }
 
+check_subset <- function(tolerance = 5, plot = FALSE){
+  # Sum the areas assigned to each divide
+  area_hf_sqkm <- sum(divides$areasqkm)
+  
+  # # Manually calculate the areas using the divide geometries
+  # area_calc_hf_sqkm <- divides %>%
+  #   st_area() %>%
+  #   units::set_units("km^2") %>%
+  #   sum()
+  
+  # We COULD check if these match, but I think they always do. 
+  
+  # Pull the NWIS metadata for this gage to get the drainage area
+  gage_meta <- suppressMessages(readNWISsite(basin))
+  usgs_area_sqmi <- gage_meta$drain_area_va
+
+  # Convert the USGS area to km^2
+  usgs_area_sqkm <- usgs_area_sqmi*2.58999
+  
+  # Calculate the percent difference between usgs_area_sqkm and area_hf_sqkm
+  pct_diff <- abs(usgs_area_sqkm - area_hf_sqkm) / usgs_area_sqkm * 100
+  percent_differences_area[[length(percent_differences_area) + 1]] <<- pct_diff
+  
+  # Print an error if the percent difference is greater than the tolerance
+  if (pct_diff > tolerance) {
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
+    failed_attrs[[length(failed_attrs) + 1]] <<- "hfsubset"
+    failed_reason[[length(failed_reason) + 1]] <<- paste0("Likely over-subset area: USGS area = ", round(usgs_area_sqkm,2),
+                                                           " km^2, HF area = ", round(area_hf_sqkm,2),
+                                                           " km^2, pct diff = ", round(pct_diff,2), "%")
+    warning(paste0("Drainage area mismatch in geopackage: ", infile, 
+                " - USGS area = ", round(usgs_area_sqkm,2),
+                " km^2, HF area = ", round(area_hf_sqkm,2),
+                " km^2, pct diff = ", round(pct_diff,2), "%"))
+  }
+  
+  # TODO: potentially add a plotting component that visually shows the different areas
+}
+
+
+check_aspect <- function(){
+  # Does it exist?
+  if ("terrain_aspect" %in% colnames(model_attributes)) {
+    aspect <- model_attributes$terrain_aspect
+  } else {
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
+    failed_attrs[[length(failed_attrs) + 1]] <<- "terrain_aspect"
+    failed_reason[[length(failed_reason) + 1]] <<- "Missing"
+    stop(paste0("terrain_aspect not found in geopackage: ", infile))
+  }
+  
+  # Is it NA or NaN?
+  if (any(is.na(aspect)) | any(is.nan(aspect))) {
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
+    failed_attrs[[length(failed_attrs) + 1]] <<- "terrain_aspect"
+    failed_reason[[length(failed_reason) + 1]] <<- "NA value(s)"
+    warning(paste0("NA or NaN found in terrain_aspect in geopackage: ", infile))
+  }
+  
+  # Check if any values are <0 or >360
+  if (any(aspect <0 | any(aspect >360))) {
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
+    failed_attrs[[length(failed_attrs) + 1]] <<- "terrain_aspect"
+    failed_reason[[length(failed_reason) + 1]] <<- "Unreasonable value(s)"
+    warning(paste0("terrain_aspect values are less than 0 or greater than 360 in geopackage: ", infile))
+  }
+}
+
+check_gage_index <- function(){
+  # Check the flowpath_attributes layer to see if the gage ID exists in the gage column
+  if (!basin %in% flowpath_attributes$gage) {
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
+    failed_attrs[[length(failed_attrs) + 1]] <<- "gage"
+    failed_reason[[length(failed_reason) + 1]] <<- "Desired gage ID not indexed in flowpath-attributes"
+    failed_cats[[length(failed_cats) + 1]] <<- paste(basin)
+    failed_attrs[[length(failed_attrs) + 1]] <<- "gage_nex_id"
+    failed_reason[[length(failed_reason) + 1]] <<- "Desired gage ID not indexed in flowpath-attributes"
+    warning(paste0("Gage ID not found in gage column in flowpath-attributes in geopackage: ", infile))
+  } 
+}
 ################################ OPTIONS #######################################
 
 # Run QA/QC Functions ---------------------------------------------------------
@@ -314,7 +398,14 @@ check_slope <- function(){
 basins <- list.files(input_dir)
 
 # Remove anything that's not numeric
-basins <- basins[str_detect(basins, "^[0-9]+$")]
+# basins <- basins[str_detect(basins, "^[0-9]+$")]
+
+# Extract the numeric strings:
+basins <- str_extract(basins, "[0-9]+")
+
+# Remove any NAs:
+basins <- basins[!is.na(basins)]
+
 
 # basin <- "15294005" # for testing a specific basin
 # Create an empty list to append basins with QA/QC issues to 
@@ -322,12 +413,21 @@ failed_cats <- list()
 failed_attrs <- list()
 failed_reason <- list()
 failed_cats_list <- list()
+percent_differences_area <- list()
 
 # Loop through each basin and apply QA/QC checks
 for (basin in basins) {
   tryCatch({
     # Read the geopackage -------------------
-    infile <- glue('{input_dir}/{basin}/data/gage_{basin}.gpkg')
+    if(file.exists(glue('{input_dir}/{basin}/data/gage_{basin}.gpkg'))){
+      infile <- glue('{input_dir}/{basin}/data/gage_{basin}.gpkg')
+    } else if(file.exists(glue('{input_dir}/gage_{basin}.gpkg'))){
+      infile <- glue('{input_dir}/gage_{basin}.gpkg')
+    } else {
+      cat("Geopackage not found for catchment:", basin, "\n")
+      failed_cats_list[[length(failed_cats_list) + 1]] <<- basin
+      next
+    }
     # print (paste0("Reading geopackage: ", basename(infile)))
     model_attributes <- suppressWarnings(st_read(infile, layer = "divide-attributes", quiet = TRUE))
     
@@ -338,6 +438,15 @@ for (basin in basins) {
     check_n_nash()
     check_k_nash()
     check_slope()
+    check_aspect()
+    
+    divides <- suppressWarnings(st_read(infile, layer = "divides", quiet = TRUE))
+    
+    check_subset(tolerance = 0)
+    
+    flowpath_attributes <- suppressWarnings(st_read(infile, layer = "flowpath-attributes", quiet = TRUE))
+    
+    check_gage_index()
     
   }, error = function(e) {
     # Handle error: print message and skip to the next iteration
@@ -363,3 +472,17 @@ if (nrow(failed_df) == 0) {
   print(glue("Basins failed QA/QC: {failed_df$basin}"))
   write.csv(failed_df, glue("{input_dir}/failed_basin_attrs.csv"), row.names = FALSE)
 }
+
+# Plot a histogram of the percent differences in area
+p <- ggplot(data.frame(percent_differences_area = unlist(percent_differences_area)), 
+            aes(x = percent_differences_area)) +
+  geom_histogram(binwidth = 1, fill = "turquoise4", color = "black", alpha = 0.7) +
+  labs(title = "Percent Differences in Drainage Area between USGS and Hydrofabric",
+       x = "Percent Difference (%)",
+       y = glue("# of Basins (n = {length(basins)})")) +
+  theme_bw()
+
+# Save the plot
+ggsave(glue("{input_dir}/percent_differences_area_histogram.png"), plot = p, 
+       width = 8, height = 6, bg = "white")
+
