@@ -18,17 +18,13 @@
 #           export NETCDF_ROOT=/usr/local/opt/netcdf-fortran
 #           export PATH="/usr/local/opt/gcc@11/bin:$PATH"
 		    
-
-
-
-
 ###############################################################
 
 export wkdir=$(pwd)
 export builddir="cmake_build"
 cd ${wkdir}
 
-#####################################################
+###############################################################
 # Set build options below. Turn ON or OFF as needed.
 # For first-time setup, build all components in the following order:
 #   1. NGEN
@@ -43,7 +39,7 @@ HF_VERSION=2.0     # provide hydrofabric version
 
 ngen_dir=/home/Ahmad.Jan.Khattak/Code/ngen
 
-#####################################################
+###############################################################
 
 build_ngen()
 {
