@@ -9,11 +9,17 @@
 #         - git submodule update --init --recursive
 # Step 2: Setup bash file
 #         - Refer to the instructions here: (utils/setup_ec2.sh, line 23)
+#         - For a quick reference: set the following environment variables in your bash file
+#           export CC=/usr/local/opt/gcc@11/bin/gcc-11
+#           export CXX=/usr/local/opt/gcc@11/bin/g++-11
+#           export FC=/usr/local/opt/gcc@11/bin/gfortran-11
+#           export F90=${FC}  # Alias for Fortran compiler
+#           export CFORT=${FC}  # Alias for Fortran compiler
+#           export NETCDF_ROOT=/usr/local/opt/netcdf-fortran
+#           export PATH="/usr/local/opt/gcc@11/bin:$PATH"
+		    
 
 
-# 1st build NGEN
-# 2nd build MODELS
-# 3rd build T-ROUTE
 
 
 ###############################################################
@@ -23,11 +29,17 @@ export builddir="cmake_build"
 cd ${wkdir}
 
 #####################################################
+# Set build options below. Turn ON or OFF as needed.
+# For first-time setup, build all components in the following order:
+#   1. NGEN
+#   2. MODELS
+#   3. T-ROUTE
 
-BUILD_NGEN=ON
-BUILD_MODELS=OFF
-BUILD_TROUTE=OFF
-HF_VERSION=2.0
+BUILD_NGEN=ON      # Required first
+BUILD_MODELS=ON    # Build after NGEN
+BUILD_TROUTE=ON    # Build after MODELS
+
+HF_VERSION=2.0     # provide hydrofabric version
 
 ngen_dir=/home/Ahmad.Jan.Khattak/Code/ngen
 
