@@ -24,11 +24,12 @@ cd ${wkdir}
 
 #####################################################
 
-BUILD_NGEN=OFF
+BUILD_NGEN=ON
 BUILD_MODELS=OFF
-BUILD_TROUTE=ON
+BUILD_TROUTE=OFF
+HF_VERSION=2.0
 
-ngen_dir=/Users/ahmadjankhattak/Code/ngen/ngen
+ngen_dir=/home/Ahmad.Jan.Khattak/Code/ngen
 
 #####################################################
 
@@ -49,20 +50,26 @@ build_ngen()
 	  -DNetCDF_ROOT=${NETCDF_ROOT}/lib \
 	  -B ${builddir} \
 	  -S .
-    
-    make -j8 -C ${builddir}
+
+    #make -j8 -C ${builddir}
     # run the following if ran into tests timeout issues
-    #cmake -j4 --build cmake_build --target ngen
-    #cmake --build cmake_build --tartget ngen -j8
+    cmake --build cmake_build --target ngen -j8
     popd
 }
 
 
 build_troute()
 {
-    pushd $ngen_dir/extern/t-route
-    git checkout master
-    git pull
+    if [ ${HF_VERSION} == 2.0 ]; then
+	pushd $ngen_dir/extern
+	git clone https://github.com/aaraney/t-route t-route-hf2.0
+	cd t-route-hf2.0
+	git checkout hf_2_2_support_sans_seans_fork
+    else
+	pushd $ngen_dir/extern/t-route
+	git checkout master
+	git pull
+    fi
 
     ##hot patch nc config to nf config
     #sed -i 's/nc-config/nf-config/g' src/kernel/reservoir/makefile
