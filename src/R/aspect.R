@@ -8,7 +8,7 @@
 aspect_function <- function(div_infile, dem_output_dir) {
   div <- read_sf(div_infile, 'divides')
 
-  dem <- rast(glue("{dem_output_dir}/dem.tif"))
+  dem <- rast(glue("{dem_output_dir}/dem_corr.tif"))
   aspect <- wbt_aspect(dem, glue("{dem_output_dir}/aspect.tif"))
   aspect <- rast(glue("{dem_output_dir}/aspect.tif"))
 
