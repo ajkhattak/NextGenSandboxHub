@@ -807,7 +807,7 @@ class ConfigurationCalib:
             d['model']['parallel'] = self.num_proc
             d['model']['partitions'] = self.realization_file_par
 
-        if os_name == "DarwinX":
+        if os_name == "Darwin":
             d['model']['binary'] = f'PYTHONEXECUTABLE=$(which python) ' + os.path.join(self.ngen_dir, "cmake_build/ngen")
         else:
             d['model']['binary'] = os.path.join(self.ngen_dir, "cmake_build/ngen")
