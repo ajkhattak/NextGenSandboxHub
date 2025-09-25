@@ -178,13 +178,22 @@ class ConfigurationGenerator:
         start_time = pd.Timestamp(self.simulation_time['start_time']).strftime("%Y%m%d%H%M")
         end_time = pd.Timestamp(self.simulation_time['end_time']).strftime("%Y%m%d%H%M")
 
+        flat_domain = 0.0
+        
         for catID in self.catids:
             cat_name = 'cat-' + str(catID)
             centroid_x = str(self.gdf['geometry'][cat_name].centroid.x)
             centroid_y = str(self.gdf['geometry'][cat_name].centroid.y)
             soil_type = str(self.gdf.loc[cat_name]['ISLTYP'])
             veg_type = str(self.gdf.loc[cat_name]['IVGTYP'])
-            aspect = str(self.gdf.loc[cat_name]['aspect_mean'])
+
+            aspect = str(self.gdf.loc[cat_name]['aspect_mean'] * flat_domain)
+
+            # Lauren fixed computing slope in degrees, so the divide-attributes has correct slope now (July, 2025)
+            #slope  = self.gdf.loc[cat_name]['slope_mean']/100. # convert percent to ratio
+            #slope_deg = math.degrees(math.atan(slope)) # convert radian to degrees
+
+            terrain_slope = str(self.gdf.loc[cat_name]['terrain_slope']*flat_domain)
 
             # Lauren fixed computing slope in degrees, so the divide-attributes has correct slope now (July, 2025)
             #slope  = self.gdf.loc[cat_name]['slope_mean']/100. # convert percent to ratio
@@ -290,6 +299,8 @@ class ConfigurationGenerator:
                             s = [str(0.0),] * int(self.gdf['N_nash_surface'][cat_name])
                             s = delimiter.join(s)
                             file.write(f'nash_storage_surface={s}[]\n')
+                            file.write(f'retention_depth_nash_surface=0.0[]\n')
+
                     elif line.strip().startswith('N_nash_surface') or line.strip().startswith('K_nash_surface') or \
                          line.strip().startswith('nash_storage_surface'):
                         continue
@@ -796,7 +807,7 @@ class ConfigurationCalib:
             d['model']['parallel'] = self.num_proc
             d['model']['partitions'] = self.realization_file_par
 
-        if os_name == "Darwin":
+        if os_name == "DarwinX":
             d['model']['binary'] = f'PYTHONEXECUTABLE=$(which python) ' + os.path.join(self.ngen_dir, "cmake_build/ngen")
         else:
             d['model']['binary'] = os.path.join(self.ngen_dir, "cmake_build/ngen")

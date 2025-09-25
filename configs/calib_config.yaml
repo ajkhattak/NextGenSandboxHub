@@ -42,7 +42,7 @@ cfe_params: &cfe_params
   -
     name: max_gw_storage # maximum storage in the conceptual reservoir
     min: 0.01
-    max: 0.5
+    max: 0.25 #0.5
     init: 0.05
   -
     name: Cgw  #groundwater coefficient
@@ -64,11 +64,12 @@ cfe_params: &cfe_params
     min: 0.0
     max: 1.0
     init: 0.1
-  - 
-    name: Kinf_nash_surface # runon infiltration coefficient (NASH CASCADE runoff only; cfe2.0)
-    min: 0.0001
-    max: 0.1
-    init: 0.0005 
+
+  #- 
+  #  name: Kinf_nash_surface # runon infiltration coefficient (NASH CASCADE runoff only; cfe2.0)
+  #  min: 0.0001
+  #  max: 0.1
+  #  init: 0.0005
 
   #- 
   #  name: retention_depth_nash_surface # used only with CFE2.0
@@ -110,7 +111,8 @@ noah_owp_params: &noah_owp_params
     name: SCAMAX # maximum fractional snow-covered area
     min: 0.7
     max: 1.0
-    init: 0.5
+    init: 0.8
+
   -
     name: RSURF_SNOW # surface resistence for snow [s/m]
     min: 0.136
@@ -135,7 +137,7 @@ noah_owp_params: &noah_owp_params
     max: 12.6
     init: 9.0
 
-    
+
 # Model specific configuration
 model:
     type: ngen

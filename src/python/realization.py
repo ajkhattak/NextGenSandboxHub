@@ -505,6 +505,26 @@ class RealizationGenerator:
         if ("TOPMODEL" in self.formulation):
             output_variables = ["Qout"]
         output_header_fields = ["q_out"]
+
+        """
+        output_variables = [
+	    "FSNO",
+	    "SNOWH",
+	    "SNEQV",
+	    "QRAIN",
+	    "QSNOW",
+	    "ACSNOM",
+	    "QINSUR",
+	    "ETRAN",
+	    "EVAPOTRANS",
+	    "ECAN",
+	    "ISNOW",
+	    "FSA",
+	    "QSEVA",
+	    "SNLIQ",
+	    "FIRA"
+        ]
+        """
         
         """
         if ("CFE" in self.formulation)  and ("PET" in self.formulation):

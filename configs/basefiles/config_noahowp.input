@@ -28,7 +28,7 @@
 / 
 
 &model_options                                   ! see OptionsType.f90 for details
-  precip_phase_option               = 6
+  precip_phase_option               = 1
   snow_albedo_option                = 1
   dynamic_veg_option                = 4
   runoff_option                     = 3
@@ -61,6 +61,6 @@
 &initial_values
   dzsnso    =  0.0,  0.0,  0.0,  0.1,  0.3,  0.6,  1.0     ! level thickness [m]
   sice      =  0.0,  0.0,  0.0,  0.0                       ! initial soil ice profile [m3/m3]
-  sh2o      =  0.3,  0.3,  0.3,  0.3                       ! initial soil liquid profile [m3/m3]
+  sh2o      =  0.66,  0.66,  0.66,  0.66                       ! initial soil liquid profile [m3/m3]
   zwt       =  -2.0                                        ! initial water table depth below surface [m]
 /

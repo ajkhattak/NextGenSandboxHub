@@ -109,13 +109,14 @@ class Runner:
         self.sim_name_suffix = dsim.get('sim_name_suffix') or None
 
     def run_ngen_without_calibration(self):
-        #infile = os.path.join(self.output_dir, "basins_passed.csv")
-        #indata = pd.read_csv(infile, dtype=str)
         ngen_exe = os.path.join(self.ngen_dir, "cmake_build/ngen")
 
-        for id, ncats in zip(indata["gage_id"], indata['num_divides']):
+        for id, ncats in zip(self.indata["gage_id"], self.indata['num_divides']):
             ncats = int(ncats)
             o_dir = self.output_dir / id
+            if self.sim_name_suffix:
+                o_dir = self.output_dir / f"{id}_{self.sim_name_suffix}"
+
             i_dir = Path(self.input_dir) / id
             os.chdir(o_dir)
             print("cwd: ", os.getcwd())
@@ -128,9 +129,11 @@ class Runner:
             file_par = ""
             if np_per_basin_local > 1:
                 np_per_basin_local, file_par = self.generate_partition_basin_file(ncats, gpkg_file)
+                file_par = os.path.join(o_dir, file_par)
 
             print(f"Running basin {id} on cores {np_per_basin_local} ********", flush=True)
-            realization = glob.glob("json/realization_*.json")
+            realization = glob.glob(str( o_dir / "configs" / "realization_*.json"))
+
             assert len(realization) == 1
             realization = realization[0]
 

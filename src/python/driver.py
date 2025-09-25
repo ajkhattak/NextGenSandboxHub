@@ -119,8 +119,8 @@ class Driver:
                     if not fdir.exists() or not fdir.is_dir():
                         raise ValueError(f"Forcing directory '{fdir}' does not exist.")
                     if self.is_corrected_forcing:
-                        cf_infile = glob.glob(f"{fdir}/*_corrected.nc")[0]
                         forcing_file = glob.glob(f"{fdir}/*_corrected.nc")[0]
+
                     else:
                         nc_file = glob.glob(f"{fdir}/*.nc")
                         forcing_file = [f for f in nc_file if not "_corrected" in f][0]
