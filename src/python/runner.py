@@ -236,7 +236,6 @@ class Runner:
             #partition = f"{self.ngen_dir}/cmake_build/partitionGenerator {gpkg_file} {gpkg_file} {fpar} {np_per_basin_local} \"\" \"\" "
             fpar = os.path.join("configs", f"partitions_{np_per_basin_local}.json")
             partitions = f"python {self.sandbox_dir}/utils/python/local_only_partitions.py {gpkg_file} {np_per_basin_local} {os.getcwd()}/configs"
-            print ("PP ", partitions)
             result = subprocess.call(partitions, shell=True)
 
         return np_per_basin_local, fpar
