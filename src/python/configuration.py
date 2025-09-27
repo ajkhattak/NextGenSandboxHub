@@ -782,6 +782,9 @@ class ConfigurationCalib:
 
         
         d['general']['workdir']   = self.output_dir.as_posix()
+        if self.ngen_cal_type == "restart":
+            d['general']['restart'] = True
+
         d['model']['binary']      = os.path.join(self.ngen_dir, "cmake_build/ngen")
         d['model']['realization'] = realization[0]
         d['model']['hydrofabric'] = self.gpkg_file.as_posix()
@@ -807,7 +810,9 @@ class ConfigurationCalib:
             d['model']['parallel'] = self.num_proc
             d['model']['partitions'] = self.realization_file_par
 
-        if os_name == "Darwin":
+        # revist this part, the os_name is only needed when troute runs on multicores
+        # i.e., d['compute_parameters']['cpu_pool'] > 1, cpu_pool by default is 1
+        if os_name == "Darwin" and False:
             d['model']['binary'] = f'PYTHONEXECUTABLE=$(which python) ' + os.path.join(self.ngen_dir, "cmake_build/ngen")
         else:
             d['model']['binary'] = os.path.join(self.ngen_dir, "cmake_build/ngen")
