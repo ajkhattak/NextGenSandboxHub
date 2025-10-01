@@ -77,6 +77,15 @@ class Driver:
 
         self.sim_name_suffix = dsim.get('sim_name_suffix') or None
 
+        dlauncher = d.get('sandbox_launcher') or None
+
+        if dlauncher:
+            self.sb_launcher = dlauncher.get('exp_info', False)
+            self.exp_info_dir = dlauncher.get('exp_info_dir') or None
+            if self.exp_info_dir is None:
+                raise ValueError("sandbox_launcher is True, but exp_info_dir not provided")
+        else:
+            self.sb_launcher = False
 
         if self.task_type == 'calibration' or self.task_type == 'calibvalid' or self.task_type == 'restart':
             if "calibration_time" not in dsim or not isinstance(dsim["calibration_time"], dict):
@@ -120,7 +129,6 @@ class Driver:
                         raise ValueError(f"Forcing directory '{fdir}' does not exist.")
                     if self.is_corrected_forcing:
                         forcing_file = glob.glob(f"{fdir}/*_corrected.nc")[0]
-
                     else:
                         nc_file = glob.glob(f"{fdir}/*.nc")
                         forcing_file = [f for f in nc_file if not "_corrected" in f][0]
@@ -177,10 +185,30 @@ class Driver:
         gpkg_dir = Path(glob.glob(str(i_dir / "data" / "*.gpkg"))[0])
         gpkg_id = i_dir.name
 
-        filled_dot = '●'
+        # this meta data is needed to resubmit jobs on HPC after wallclock time outs
+
+        if self.sb_launcher:
+
+            # write meta data to YAML for restarting
+            sim_info = {
+                "basin_id"   : gpkg_id,
+                "input_dir"  : str(i_dir),
+                "output_dir" : str(o_dir),
+                "cwd"        : os.getcwd()
+            }
+
+            os.makedirs(str(o_dir.parent / self.exp_info_dir) , exist_ok=True)
+
+            # Write to YAML file
+            sim_yaml_file = o_dir.parent / self.exp_info_dir / f"info_{gpkg_id}.yml"
+
+            if not sim_yaml_file.exists():
+                with open(sim_yaml_file, "w") as f:
+                    yaml.dump(sim_info, f, default_flow_style=False)
+
 
         if self.verbosity >= 1:
-            print(filled_dot, gpkg_name, end="")
+            print("-- ", gpkg_name, end="")
 
         gpkg_dir = os.path.join(i_dir, gpkg_dir)
 
