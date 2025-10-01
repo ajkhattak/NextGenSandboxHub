@@ -55,17 +55,31 @@ class ConfigurationGenerator:
 
 
         self.soil_params_NWM_dir = os.path.join(self.ngen_dir,"extern/noah-owp-modular/noah-owp-modular/parameters")
-                
+
         self.gdf, self.catids = self.read_gpkg_file()
 
-        self.soil_class_NWM = self.get_soil_class_NWM()
+        self.soil_class_NWM, self.vegetation_height = self.get_soil_class_NWM()
 
         
     def get_soil_class_NWM(self):
         nom_soil_file = os.path.join(self.soil_params_NWM_dir, "SOILPARM.TBL")
-        header = ['index', 'BB', 'DRYSMC', 'F11', 'MAXSMC', 'REFSMC', 'SATPSI', 'SATDK', 'SATDW', 'WLTSMC', 'QTZ', 'BVIC', 'AXAJ', 'BXAJ', 'XXAJ', 'BDVIC', 'BBVIC', 'GDVIC', 'ISLTYP']
+        header = ['index', 'BB', 'DRYSMC', 'F11', 'MAXSMC', 'REFSMC', 'SATPSI', 'SATDK', 'SATDW',
+                  'WLTSMC', 'QTZ', 'BVIC', 'AXAJ', 'BXAJ', 'XXAJ', 'BDVIC', 'BBVIC', 'GDVIC', 'ISLTYP']
         df = pd.read_table(nom_soil_file, delimiter=',', index_col=0, skiprows=3, nrows=19, names=header)
-        return df
+
+        nom_veg_file = os.path.join(self.soil_params_NWM_dir, "MPTABLE.TBL")
+        with open(nom_veg_file, 'r') as f:
+            lines = f.readlines()
+
+        # Extract HVT values
+        for line in lines:
+            if line.strip().startswith("HVT"):
+                hvt_line = line.split('=')[1]   # Remove 'HVT =' or 'HVT   ='
+                hvt_values = [float(x.strip().rstrip(',')) for x in hvt_line.strip().split(',') if x.strip()]
+                HVT = {i: val for i, val in enumerate(hvt_values, start=1)}
+                break
+
+        return df, HVT
 
     def read_gpkg_file(self):
         try:
@@ -194,12 +208,6 @@ class ConfigurationGenerator:
             #slope_deg = math.degrees(math.atan(slope)) # convert radian to degrees
 
             terrain_slope = str(self.gdf.loc[cat_name]['terrain_slope']*flat_domain)
-
-            # Lauren fixed computing slope in degrees, so the divide-attributes has correct slope now (July, 2025)
-            #slope  = self.gdf.loc[cat_name]['slope_mean']/100. # convert percent to ratio
-            #slope_deg = math.degrees(math.atan(slope)) # convert radian to degrees
-
-            terrain_slope = str(self.gdf.loc[cat_name]['terrain_slope'])
             
             fname_nom = f'noahowp_config_{cat_name}.input'
             nom_file = os.path.join(nom_dir, fname_nom)
@@ -551,6 +559,15 @@ class ConfigurationGenerator:
             centroid_y = str(df_cats['geometry'][cat_name].centroid.y)
             elevation_mean = self.gdf['elevation_mean'][cat_name]
 
+            veg_type = int(self.gdf.loc[cat_name]['IVGTYP'])
+
+            veg_height = self.vegetation_height[veg_type]
+            # taken from evapotranpiration repo (see include/PETPenmanMonteithMethod.h)
+            zero_plane_displacement = 2.0/3.0 *  veg_height
+            momentum_transfer_roughness_length = 0.1845 * zero_plane_displacement 
+            heat_transfer_roughness_length = 0.1 * momentum_transfer_roughness_length
+
+            # surface_longwave_emissivity: snow/ice=[0.97-0.99], bare soil=[0.93–0.96], veg=[0.95–0.98], water=[0.98–0.99]
             pet_params = [
                 'verbose=0',
                 f'pet_method={self.pet_method}',
@@ -560,15 +577,15 @@ class ConfigurationGenerator:
                 'yes_wrf=0',
                 'wind_speed_measurement_height_m=10.0',
                 'humidity_measurement_height_m=2.0',
-                'vegetation_height_m=16.0',
-                'zero_plane_displacement_height_m=0.0003',
-                'momentum_transfer_roughness_length=0.0',
-                'heat_transfer_roughness_length_m=0.0',
-                'surface_longwave_emissivity=1.0',
-                'surface_shortwave_albedo=0.17',
+                f'vegetation_height_m={veg_height}',
+                f'zero_plane_displacement_height_m={zero_plane_displacement}',
+                f'momentum_transfer_roughness_length={momentum_transfer_roughness_length}',
+                f'heat_transfer_roughness_length_m={heat_transfer_roughness_length}',
+                'surface_longwave_emissivity=0.965',
+                'surface_shortwave_albedo=0.2',
                 'cloud_base_height_known=FALSE',
                 'time_step_size_s=3600',
-                'num_timesteps=720',
+                'num_timesteps=1',
                 'shortwave_radiation_provided=1',
                 f'latitude_degrees={centroid_y}',
                 f'longitude_degrees={centroid_x}',

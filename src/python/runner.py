@@ -98,7 +98,7 @@ class Runner:
                 raise FileNotFoundError(f"restart_dir does not exist, provided {self.restart_dir}.")
 
         gage_ids = dsim.get('gage_ids', None)
-        gage_ids = gage_ids or []  # Default to empty list [] if None
+        self.gage_ids = gage_ids or []  # Default to empty list [] if None
 
         # If it's a single string, convert to list
         if isinstance(gage_ids, str):
