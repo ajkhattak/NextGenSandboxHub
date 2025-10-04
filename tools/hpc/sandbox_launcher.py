@@ -92,11 +92,10 @@ def get_max_iter_for_gage(gage_id):
 
 
 # Total wallclock time in seconds (e.g., 8 hours = 28800)
-TOTAL_WALLCLOCK = 180 #8 * 60 * 60
+TOTAL_WALLCLOCK = 240 #8 * 60 * 60
 
 # Time before limit to trigger resubmission (e.g., 2 minutes)
 BUFFER_TIME = 2 * 60
-
 
 start_time = time.time()
 end_time = start_time + TOTAL_WALLCLOCK - BUFFER_TIME
@@ -142,8 +141,7 @@ def run_experiment(gage_id, current_iter, use_slurm=False):
         cmd = ["python", "sandbox.py", "-run", "-i", sb_cfg_file, "-j", calib_cfg_file]
         print(f"[{gage_id}] Running locally: {' '.join(cmd)}")
         return subprocess.Popen(cmd)
-
-    return subprocess.Popen(cmd)
+    
 
 
 def main():
@@ -182,19 +180,29 @@ def main():
         print("\nAll gages already completed. Nothing to run.")
         return
 
-    # === Wait for wallclock to expire or jobs to finish ===
-    while time.time() < end_time and any(proc.poll() is None for proc in running_processes.values()):
-        time.sleep(10)
-
-    # === wallclock max time reached? Kill remaining jobs ===
-    if time.time() >= end_time:
-        print("\n Wallclock limit reached — terminating remaining processes...")
-        for gage_id, proc in running_processes.items():
-            if proc.poll() is None:
-                print(f"[{gage_id}] Terminating...")
-                proc.terminate()
-                time.sleep(5)
-
+    if not use_slurm:
+        # === Wait for wallclock to expire or jobs to finish ===
+        while time.time() < end_time and any(proc.poll() is None for proc in running_processes.values()):
+            time.sleep(10)
+    
+        # === wallclock max time reached? Kill remaining jobs ===
+        if time.time() >= end_time:
+            print("\n Wallclock limit reached — terminating remaining processes...")
+            for gage_id, proc in running_processes.items():
+                if proc.poll() is None:
+                    print(f"[{gage_id}] Terminating...")
+                    #proc.terminate()
+                    #time.sleep(5)
+                    try:
+                        proc.wait(timeout=10)
+                        proc.terminate()
+                    except subprocess.TimeoutExpired:
+                        print(f"[{gage_id}] Didn't terminate in time. Killing...")
+                        proc.kill()
+                        proc.wait()
+            running_processes.clear()
+    
+    
     # === Check progress and resubmit if needed ===
     still_incomplete = []
     for gage_id in gage_ids:
@@ -206,7 +214,7 @@ def main():
     if still_incomplete:
         print(f"\nResubmitting sandbox_launcher.py via sbatch for: {still_incomplete}")
         if use_slurm:
-            subprocess.run(["sbatch", "run_launcher.slurm"])
+            subprocess.run(["sbatch", "submit_launcher.slurm"])
         else:
             # For local testing
             os.execvp("python", ["python", "sandbox_launcher.py"])
@@ -214,7 +222,7 @@ def main():
     else:
         print("\nAll gages completed maximum iterations. Done.")
 
-    print(f"\n=== Launcher Finished @ {datetime.now().strftime('%F %T')} ===")
+    print(f"\n=== Launcher Finished at {datetime.now().strftime('%F %T')} ===")
 
 if __name__ == "__main__":
     main()
