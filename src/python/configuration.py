@@ -49,9 +49,8 @@ class ConfigurationGenerator:
         with open(os.path.join(self.sandbox_dir, "configs/basefiles", "custom.yaml"), 'r') as file:
             df_custom = yaml.safe_load(file)['models']
 
-            self.surface_runoff_scheme = df_custom['CFE']['surface_runoff_scheme']
             self.pet_method = df_custom['PET']["pet_method"]
-            self.surface_runoff_scheme = df_custom['CFE']['surface_water_partitioning_scheme']
+            self.surface_water_partitioning_scheme = df_custom['CFE']['surface_water_partitioning_scheme']
 
 
         self.soil_params_NWM_dir = os.path.join(self.ngen_dir,"extern/noah-owp-modular/noah-owp-modular/parameters")
@@ -290,18 +289,16 @@ class ConfigurationGenerator:
                         file.write(f'Cgw={self.gdf["Cgw"][cat_name]}[m h-1]\n')
                     elif line.strip().startswith('expon'):
                         file.write(f'expon={self.gdf["gw_expon"][cat_name]}[]\n')
-                    #elif line.strip().startswith('soil_storage'):
-                    #    file.write(f'soil_storage={self.gdf["soil_smcmax"][cat_name]}[m/m]\n')
-                    elif line.strip().startswith('surface_runoff_scheme'):
-                        surface_runoff_scheme = line.strip().split("=")[1]
+                    elif line.strip().startswith('surface_water_partitioning_scheme'):
+                        surface_water_partitioning_scheme = line.strip().split("=")[1]
                         file.write(line)
 
-                        if surface_runoff_scheme == "GIUH" or surface_runoff_scheme == 1:
+                        if surface_water_partitioning_scheme == "GIUH" or surface_water_partitioning_scheme == 1:
                             giuh_cat = json.loads(self.gdf['giuh'][cat_name])
                             giuh_cat = pd.DataFrame(giuh_cat, columns=['v', 'frequency'])
                             giuh_ordinates = ",".join(str(x) for x in np.array(giuh_cat["frequency"]))
                             file.write(f'giuh_ordinates={giuh_ordinates}\n')
-                        elif surface_runoff_scheme == "NASH_CASCADE" or surface_runoff_scheme == 2:
+                        elif surface_water_partitioning_scheme == "NASH_CASCADE" or surface_water_partitioning_scheme == 2:
                             file.write(f'N_nash_surface={int(self.gdf["N_nash_surface"][cat_name])}[]\n')
                             file.write(f'K_nash_surface={self.gdf["K_nash_surface"][cat_name]}[h-1]\n')
                             s = [str(0.0),] * int(self.gdf['N_nash_surface'][cat_name])
@@ -334,6 +331,11 @@ class ConfigurationGenerator:
                             file.write(f"ice_content_threshold={ice_content_threshold}")
                     else:
                         file.write(line)
+                if "SFT" in self.formulation:
+                    ice_content_threshold = 0.3
+                    file.write("sft_coupled=true\n")
+                    file.write(f"ice_content_threshold={ice_content_threshold}")
+
 
 
     def write_topmodel_input_files(self):
@@ -408,23 +410,25 @@ class ConfigurationGenerator:
             with open(tm_file, "w") as f:
                 f.writelines('\n'.join(subcat))
 
-    def write_sft_input_files(self,
-                              surface_water_partitioning_scheme):
+    def write_sft_input_files(self):
 
         sft_dir = os.path.join(self.output_dir, "configs/sft")
-        if not surface_water_partitioning_scheme in ["Schaake", "Xinanjiang"]:
+        self.create_directory(sft_dir)
+        if not self.surface_water_partitioning_scheme in ["Schaake", "Xinanjiang"]:
             sys.exit("Runoff scheme should be: Schaake or Xinanjiang")
 
-        ncells = 19
+        ncells = 4 #19
         soil_z = "0.1,0.15,0.18,0.23,0.29,0.36,0.44,0.55,0.69,0.86,1.07,1.34,1.66,2.07,2.58,3.22,4.01,5.0,6.0"
+        soil_z = "0.1,0.5,1.0,2.0"
         delimiter = ','
         nsteps_yr = 365 * 24
 
         for catID in self.catids:
             cat_name = 'cat-' + str(catID)
-            forcing_file = glob.glob(os.path.join(self.forcing_dir, cat_name + '*.csv'))[0]
-            df_forcing = pd.read_csv(self.forcing_file, delimiter=',', usecols=['T2D'], nrows=nsteps_yr, index_col=None)
-            MAAT = [str(round(df_forcing['T2D'].mean(), 2)),] * ncells
+            #forcing_file = glob.glob(os.path.join(self.forcing_dir, cat_name + '*.csv'))[0]
+            #df_forcing = pd.read_csv(self.forcing_file, delimiter=',', usecols=['T2D'], nrows=nsteps_yr, index_col=None)
+            #MAAT = [str(round(df_forcing['T2D'].mean(), 2)),] * ncells
+            MAAT = [str(285.0),] * ncells
             MAAT = delimiter.join(MAAT)
             soil_id = self.gdf['ISLTYP'][cat_name]
 
@@ -437,7 +441,7 @@ class ConfigurationGenerator:
                 f'soil_params.b={self.gdf["soil_b"][cat_name]}[]',
                 f'soil_params.satpsi={self.gdf["soil_satpsi"][cat_name]}[m]',
                 f'soil_params.quartz={self.soil_class_NWM["QTZ"][soil_id]}[]',
-                f'ice_fraction_scheme={surface_water_partitioning_scheme}',
+                f'ice_fraction_scheme={self.surface_water_partitioning_scheme}',
                 f'soil_z={soil_z}[m]',
                 f'soil_temperature={MAAT}[K]'
             ]
@@ -450,9 +454,11 @@ class ConfigurationGenerator:
     def write_smp_input_files(self, cfe_coupled, lasam_coupled=False):
         
         smp_dir = os.path.join(self.output_dir, "configs/smp")
+        self.create_directory(smp_dir)
         
         soil_z = "0.1,0.15,0.18,0.23,0.29,0.36,0.44,0.55,0.69,0.86,1.07,1.34,1.66,2.07,2.58,3.22,4.01,5.0,6.0"
-
+        soil_z = "0.1,0.5,1.0,2.0"
+        
         for catID in self.catids:
             cat_name = 'cat-' + str(catID)
             soil_id = self.gdf['ISLTYP'][cat_name]

@@ -6,4 +6,4 @@ models:
     surface_water_partitioning_scheme : "Schaake" #Xinanjiang
     sft_coupled           : "false"
   PET:
-    pet_method : 3
+    pet_method : 4

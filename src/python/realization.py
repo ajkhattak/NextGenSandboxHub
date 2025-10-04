@@ -256,7 +256,7 @@ class RealizationGenerator:
             "name": "bmi_c++",
             "params": {
                 "name": "bmi_c++",
-                "model_type_name": "SFT",
+                "model_type_name": "SoilFreezeThaw",
                 "main_output_variable": "num_cells",
                 "library_file": self.lib_files['SoilFreezeThaw'],
                 "init_config": os.path.join(self.config_dir, 'sft/sft_config_{{id}}.txt'),
@@ -274,7 +274,7 @@ class RealizationGenerator:
             "name": "bmi_c++",
             "params": {
                 "name": "bmi_c++",
-                "model_type_name": "SMP",
+                "model_type_name": "SoilMoistureProfile",
                 "main_output_variable": "soil_water_table",
                 "library_file": self.lib_files['SoilMoistureProfiles'],
                 "init_config": os.path.join(self.config_dir, 'smp/smp_config_{{id}}.txt'),
@@ -286,12 +286,13 @@ class RealizationGenerator:
                 }
             }
         }
-        if self.coupled_models in ["nom_cfe_smp_sft", "cfe_smp", "nom_cfe_smp"]:
+
+        if "CFE" in self.formulation:
             name_map = {
                 "soil_storage": "SOIL_STORAGE",
                 "soil_storage_change": "SOIL_STORAGE_CHANGE"
             }
-        elif self.coupled_models == "nom_casam_smp_sft":
+        elif "CASAM" in self.formulation:
             name_map = {
                 "soil_storage": "sloth_soil_storage",
                 "soil_storage_change": "sloth_soil_storage_change",
@@ -496,7 +497,13 @@ class RealizationGenerator:
         if ("CASAM" in self.formulation):
             main_output_variable = "total_discharge"
             modules.append(self.get_casam_block())
-        
+
+        if ("SMP" in self.formulation):
+            modules.append(self.get_smp_block())
+
+        if ("SFT" in self.formulation):
+            modules.append(self.get_sft_block())
+            
         #output_variables = ["RAIN_RATE", "Q_OUT", "POTENTIAL_ET", "ACTUAL_ET"]
         #output_header_fields = ["rain_rate", "q_out", "PET", "AET"]
 
