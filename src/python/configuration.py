@@ -289,7 +289,7 @@ class ConfigurationGenerator:
                         file.write(f'Cgw={self.gdf["Cgw"][cat_name]}[m h-1]\n')
                     elif line.strip().startswith('expon'):
                         file.write(f'expon={self.gdf["gw_expon"][cat_name]}[]\n')
-                    elif line.strip().startswith('surface_water_partitioning_scheme'):
+                    elif line.strip().startswith('surface_runoff_scheme'):
                         surface_water_partitioning_scheme = line.strip().split("=")[1]
                         file.write(line)
 
