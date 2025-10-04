@@ -94,6 +94,16 @@ class Generate:
         if "LASAM" in self.formulation:
             ConfigGen.write_lasam_input_files()
 
+        if "SFT" in self.formulation:
+            ConfigGen.write_sft_input_files()
+
+        if "SMP" in self.formulation:
+            
+            if "CFE" in self.formulation:
+                ConfigGen.write_smp_input_files(cfe_coupled=True, lasam_coupled=False)
+            elif "LASAM" in self.formulation:
+                ConfigGen.write_smp_input_files(cfe_coupled=False, lasam_coupled=True)
+            
         if "T-route" in self.formulation_in or "t-route" in self.formulation_in or "T-ROUTE" in self.formulation_in:
             ConfigGen.write_troute_input_files()
         

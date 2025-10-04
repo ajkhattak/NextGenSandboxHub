@@ -42,12 +42,14 @@ class Runner:
         else:
             print(f'Running NextGen with task_type {self.ngen_cal_type}')
 
-            pool = multiprocessing.Pool(processes=self.basins_in_par)
-            tuple_list = list(zip(self.indata["gage_id"], self.indata['num_divides']))
-            tuple_list = list(zip(self.indata["gage_id"], self.indata['num_divides']))
-            results = pool.map(self.run_ngen_with_calibration, tuple_list)
-            pool.close()
-            pool.join()
+            tuple_list = zip(self.indata["gage_id"], self.indata['num_divides'])
+            
+            if self.basins_in_par > 1:
+                with multiprocessing.Pool(processes=self.basins_in_par) as pool:
+                    results = pool.map(self.run_ngen_with_calibration, tuple_list)
+            else:
+                for gage_id, num_divides in tuple_list:
+                    self.run_ngen_with_calibration((gage_id, num_divides))
 
 
     def load_configuration(self):
