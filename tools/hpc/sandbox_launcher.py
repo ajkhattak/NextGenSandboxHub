@@ -14,7 +14,7 @@ models = ["NOM, CFE, T-route", "PET, CFE, T-route"]  # Adjust model list as need
 
 main_o_dir = Path("/Users/ahmadjankhattak/Core/projects/nwm_bm_sims/nom_pet_cfe_set4")
 exp_config_dir = main_o_dir / "exp_configs"
-exp_info_dir   = main_o_dir / "exp_info_dir1"
+exp_info_dir   = main_o_dir / "exp_info_dir"
 
 sandbox_config_file = main_o_dir / "sandbox_basefiles" / "sandbox_config_base.yaml"
 calib_config_file   = main_o_dir / "sandbox_basefiles" / "calib_config_base.yaml"
