@@ -66,7 +66,7 @@ class ReadObservedData:
         filename: str, start_time: datetime, end_time: datetime, window: int
     ) -> pd.Series:
         # read file
-        print ("filename: ", filename)
+
         df = pd.read_csv(filename, usecols=["value_date", "value"])
 
         df["value_date"] = pd.to_datetime(df["value_date"])
@@ -120,7 +120,7 @@ class ReadObservedData:
 
     @hookimpl(wrapper=True)
     def ngen_cal_model_output(
-        self, id: str | None
+        self, nexus: Nexus
     ) -> typing.Generator[None, pd.Series, pd.Series]:
         sim = yield
 
