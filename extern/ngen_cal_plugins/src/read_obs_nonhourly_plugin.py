@@ -77,7 +77,7 @@ class ReadObservedData:
         df.set_index("value_date", inplace=True)
         df = df.loc[start_time:end_time]
 
-        # get total hours to ensure the length of observed data is consistent with the leght of simulated data
+        # get total hours to ensure the length of observed data is consistent with the length of simulated data
         total_hours = (end_time - start_time).total_seconds() / 3600.0
         length = int(total_hours / window)
 
