@@ -60,12 +60,13 @@ class ReadObservedData:
     ) -> pd.Series:
         # read file
 
-        df = pd.read_csv(filename, usecols=["value_date", "value"])
+        df = pd.read_csv(filename, usecols=["value_time", "value"])
 
-        df["value_date"] = pd.to_datetime(df["value_date"])
+        df["value_time"] = pd.to_datetime(df["value_time"])
 
-        df.set_index("value_date", inplace=True)
+        df.set_index("value_time", inplace=True)
         ds = df.loc[start_time:end_time]
+        ds = df["value"][:]
 
         ds.rename("obs_flow", inplace=True)
         

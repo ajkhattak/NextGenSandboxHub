@@ -868,12 +868,12 @@ class ConfigurationCalib:
             d['model']['val_params'] = val_params
 
         # see if user have provided local observed data
-        local_obs_data_flag = d.get('model', {}).get('plugin_settings', {}).get('ngen_cal_read_obs_data', None)
+        local_obs_data_flag = d.get('model', {}).get('plugin_settings', {}).get('read_obs_data', None)
 
         if (local_obs_data_flag is not None):
-            obs_dir = d['model']['plugin_settings']['ngen_cal_read_obs_data']['obs_data_path']
+            obs_dir = d['model']['plugin_settings']['read_obs_data']['obs_data_path']
             obs_file = glob.glob(f'{obs_dir}/{gpkg_name}*.csv')[0]
-            d['model']['plugin_settings']['ngen_cal_read_obs_data']['obs_data_path'] = obs_file
+            d['model']['plugin_settings']['read_obs_data']['obs_data_path'] = obs_file
 
 
         if (self.ngen_cal_type == 'restart' or self.ngen_cal_type == "validation"):
