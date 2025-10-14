@@ -38,8 +38,9 @@ build_sandbox()
     
     pip install -U pip==24.0
     
-    pip install -r ./utils/requirements.txt
-    
+    #pip install -r ./utils/requirements.txt
+    pip install -e .
+
     git submodule update --init
     git submodule update --remote extern/ngen-cal
     git submodule update --remote extern/CIROH_DL_NextGen
