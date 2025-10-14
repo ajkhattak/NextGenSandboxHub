@@ -49,11 +49,11 @@ class ReadObservedData:
         # HACK: fix this in future
         _workdir = path
         
-        self.obs_data_path = config.plugin_settings["ngen_cal_read_obs_data"][
+        self.obs_data_path = config.plugin_settings["read_obs_data"][
             "obs_data_path"
         ]
-        self.units = config.plugin_settings["ngen_cal_read_obs_data"]["units"]
-        self.window = int(config.plugin_settings["ngen_cal_read_obs_data"]["window"])
+        self.units = config.plugin_settings["read_obs_data"]["units"]
+        self.window = int(config.plugin_settings["read_obs_data"]["window"])
 
         start = self.obs_kwargs["start_time"]
         end = self.obs_kwargs["end_time"]
@@ -67,9 +67,9 @@ class ReadObservedData:
     ) -> pd.Series:
         # read file
 
-        df = pd.read_csv(filename, usecols=["value_date", "value"])
+        df = pd.read_csv(filename, usecols=["value_time", "value"])
 
-        df["value_date"] = pd.to_datetime(df["value_date"])
+        df["value_date"] = pd.to_datetime(df["value_time"])
         if self.units == "ft3/sec" or self.units == "ft3/s":
             df["value"] = self.ft3_to_m3 * df["value"]
 
@@ -84,6 +84,7 @@ class ReadObservedData:
         assert length > 0
 
         ds = df["value"][:length]
+
         ds.rename("obs_flow", inplace=True)
 
         global ds_obs_test
