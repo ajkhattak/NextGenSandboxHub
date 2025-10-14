@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=64.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sandbox"
+version = "0.3.0"
+description = "Sandbox Hub for running NextGen models and evaluation tools."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Ahmad Jan Khattak", email = "ajkhattak@gmail.com" }]
+
+dependencies = [
+    "pip>=24.0",
+    "numpy~=1.0",
+    "setuptools>=64.0,<69.0",
+    "pandas>=1.1.5,<=2.2.0",
+    "xarray",
+    "netcdf4<=1.6.3",
+    "pyyaml",
+    "toolz",
+    "joblib",
+    "deprecated",
+    "pyarrow<12.0",
+    "geopandas",
+    "fiona",
+    "pygeohydro",
+    "Cython>3,!=3.0.4"
+]
+
+[project.scripts]
+sandbox = "NextGenSandboxHub.sandbox:main"
