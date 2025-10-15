@@ -45,12 +45,10 @@ formulations_supported = [
     "PET,LASAM",
     "NOM,CFE,SMP,SFT",
     "NOM,PET,TOPMODEL",
-    "NOM,LASAM,SMP,SFT",
-    "BASELINE,CFE",
-    "BASELINE,LAS"
+    "NOM,LASAM,SMP,SFT"
 ]
 
-def Sandbox(sandbox_config, calib_config):
+def Sandbox(args, sandbox_config, calib_config):
     
     if (args.subset):
         print ("Generating geopackages...")
@@ -95,10 +93,8 @@ def Sandbox(sandbox_config, calib_config):
     
     print ("**********************************")
     
-    
 
-if __name__ == "__main__":
-    
+def main():
     try:
         parser = argparse.ArgumentParser()
         parser.add_argument("-subset", action='store_true',    help="Subset basin (generate .gpkg files)")
@@ -137,4 +133,4 @@ if __name__ == "__main__":
     # check if expected Python virtual env exists and activated
     CheckSandboxVENV()
 
-    Sandbox(sandbox_config, calib_config)
+    Sandbox(args, sandbox_config, calib_config)

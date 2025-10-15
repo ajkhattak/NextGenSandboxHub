@@ -28,5 +28,13 @@ dependencies = [
     "Cython>3,!=3.0.4"
 ]
 
+
 [project.scripts]
-sandbox = "NextGenSandboxHub.sandbox:main"
+sandbox = "sandbox:main"
+
+
+[tool.setuptools]
+py-modules = ["sandbox"]
+
+[tool.setuptools.packages.find]
+include = ["src"]
