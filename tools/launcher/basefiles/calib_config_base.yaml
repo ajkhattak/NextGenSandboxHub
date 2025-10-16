@@ -13,7 +13,7 @@ general:
 
   start_iteration: 0
   # The total number of search iterations to run
-  iterations: 10
+  iterations: 500
   random_seed: 444
   workdir: ./
 
@@ -36,23 +36,23 @@ cfe_params: &cfe_params
     init: 0.355
   -
     name: maxsmc # saturated soil moisture content
-    min: 0.16 #0.4
-    max: 0.6 #0.45
+    min: 0.16
+    max: 0.6
     init: 0.439
   -
     name: max_gw_storage # maximum storage in the conceptual reservoir
     min: 0.01
-    max: 0.25 #0.5
+    max: 0.25
     init: 0.05
   -
     name: Cgw  #groundwater coefficient
     min: 1.8e-06
-    max: 1.8E-2  
+    max: 1.8E-3
     init: 1.8e-04
   -
     name: expon # exponent parameter (1.0 for linear reservoir) (groundwater)
     min: 1.0
-    max: 15.0
+    max: 8.0
     init: 5.0
   - 
     name: Kn # Nash Config param for lateral subsurface runoff
@@ -64,12 +64,11 @@ cfe_params: &cfe_params
     min: 0.0
     max: 1.0
     init: 0.1
-
   #- 
   #  name: Kinf_nash_surface # runon infiltration coefficient (NASH CASCADE runoff only; cfe2.0)
   #  min: 0.0001
-  #  max: 0.1
-  #  init: 0.0005
+  #  max: 1.0
+  #  init: 0.0005 
 
   #- 
   #  name: retention_depth_nash_surface # used only with CFE2.0
@@ -99,31 +98,18 @@ cfe_params: &cfe_params
     min: 0.15
     max: 0.33
     init: 0.20
-
-# consistent with NWM v3.0
+    
 noah_owp_params: &noah_owp_params
-  #-
-  #  name: MFSNO # fractional snow covered area (FSNO) curve parameter (pseduo multiplier)
-  #  min: 3.5 #0.5
-  #  max: 4.0 #4.0
-  #  init: 3.5 #2.5
-  #- # bad range but lower fsno 
-  #  name: MFSNO # fractional snow covered area (FSNO) curve parameter (pseduo multiplier)
-  #  min: 5.0 #0.5
-  #  max: 8.0  #4.0
-  #  init: 6.0 #2.5
   -
     name: MFSNO # fractional snow covered area (FSNO) curve parameter (pseduo multiplier)
-    min: 3.0
-    max: 6.0
-    init: 4.0
-
+    min: 0.5
+    max: 4.0
+    init: 2.5
   -
     name: SCAMAX # maximum fractional snow-covered area
     min: 0.7
     max: 1.0
     init: 0.8
-
   -
     name: RSURF_SNOW # surface resistence for snow [s/m]
     min: 0.136
@@ -138,16 +124,25 @@ noah_owp_params: &noah_owp_params
   -
     name: VCMX25 # maximum rate of carboxylation at 25c (umol co2/m**2/s) (multiplier)
     # values below derived as absolute values from param tables
-    min: 0
-    max: 112
-    init: 40
+    min: 20.0 
+    max: 120.0 
+    init: 40.0
   -
     name: MP # slope of conductance-to-photosynthesis relationship (multiplier)
     # values below derived as absolute values from param tables
     min: 3.6
     max: 12.6
     init: 9.0
-
+  -
+    name: RSURF_EXP # surface resistence for snow [s/m]
+    min: 1.0
+    max: 6.0
+    init: 3.0
+  -
+    name: SHDMAX # annual maximum fraction of surface covered by vegetation
+    min: 0.05
+    max: 0.95
+    init: 0.5  
 
 # Model specific configuration
 model:
@@ -171,12 +166,10 @@ model:
       #objective: "nnse"
       #target : "max"
     plugins:
-      - "ngen_cal_user_plugins.ngen_cal_save_subcat_output_plugin.SaveData" # saves cat_*.csv or nex-*.csv to "output_iteration" directory
-      - "ngen_cal_user_plugins.ngen_cal_save_sim_obs_plugin.SaveData"          # saves simulated and observed discharge at the outlet
+      - "ngen_cal_user_plugins.save_divide_output_plugin.SaveData" # saves cat_*.csv or nex-*.csv to "output_iteration" directory
+      - "ngen_cal_user_plugins.save_sim_obs_plugin.SaveData"          # saves simulated and observed discharge at the outlet
       - "ngen_cal_user_plugins.metrics.ComputeMetrics"
-      #- "ngen_cal_user_plugins.ngen_cal_read_obs_plugin.ReadObservedData"
-    #plugin_settings:
-    #  ngen_cal_read_obs_data:
-    #    obs_data_path: /Users/ahmadjankhattak/Core/projects/nwm_bm_sims/usgs_streamflow_obs
-    #    units: "m3/sec"
-    #    window: 1 # data interval in hours
+      - "ngen_cal_user_plugins.read_obs_plugin.ReadObservedData"
+    plugin_settings:
+      read_obs_data:
+        obs_data_path: /scratch4/NCEPDEV/ohd/Ahmad.Jan.Khattak/Core/projects/nwm_v4_bm/usgs_obs_streamflow
