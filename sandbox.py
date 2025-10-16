@@ -37,9 +37,12 @@ def CheckSandboxVENV():
 
 
 formulations_supported = [
-    "NOM,CFE",
-    "PET,CFE",
-    "NOM,PET,CFE",
+    "NOM,CFE-S",
+    "PET,CFE-S",
+    "NOM,PET,CFE-S",
+    "NOM,CFE-X",
+    "PET,CFE-X",
+    "NOM,PET,CFE-X",
     "NOM,TOPMODEL",
     "PET,TOPMODEL",
     "NOM,LASAM",

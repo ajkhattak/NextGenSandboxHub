@@ -50,7 +50,6 @@ class ConfigurationGenerator:
             df_custom = yaml.safe_load(file)['models']
 
             self.pet_method = df_custom['PET']["pet_method"]
-            self.surface_water_partitioning_scheme = df_custom['CFE']['surface_water_partitioning_scheme']
 
 
         self.soil_params_NWM_dir = os.path.join(self.ngen_dir,"extern/noah-owp-modular/noah-owp-modular/parameters")
@@ -290,15 +289,15 @@ class ConfigurationGenerator:
                     elif line.strip().startswith('expon'):
                         file.write(f'expon={self.gdf["gw_expon"][cat_name]}[]\n')
                     elif line.strip().startswith('surface_runoff_scheme'):
-                        surface_water_partitioning_scheme = line.strip().split("=")[1]
+                        surface_runoff_scheme = line.strip().split("=")[1]
                         file.write(line)
 
-                        if surface_water_partitioning_scheme == "GIUH" or surface_water_partitioning_scheme == 1:
+                        if surface_runoff_scheme == "GIUH" or surface_runoff_scheme == 1:
                             giuh_cat = json.loads(self.gdf['giuh'][cat_name])
                             giuh_cat = pd.DataFrame(giuh_cat, columns=['v', 'frequency'])
                             giuh_ordinates = ",".join(str(x) for x in np.array(giuh_cat["frequency"]))
                             file.write(f'giuh_ordinates={giuh_ordinates}\n')
-                        elif surface_water_partitioning_scheme == "NASH_CASCADE" or surface_water_partitioning_scheme == 2:
+                        elif surface_runoff_scheme == "NASH_CASCADE" or surface_runoff_scheme == 2:
                             file.write(f'N_nash_surface={int(self.gdf["N_nash_surface"][cat_name])}[]\n')
                             file.write(f'K_nash_surface={self.gdf["K_nash_surface"][cat_name]}[h-1]\n')
                             s = [str(0.0),] * int(self.gdf['N_nash_surface'][cat_name])
@@ -310,15 +309,19 @@ class ConfigurationGenerator:
                          line.strip().startswith('nash_storage_surface'):
                         continue
                     elif line.strip().startswith('surface_water_partitioning_scheme'):
-                        surface_water_partitioning_scheme = line.strip().split("=")[1]
-                        file.write(line)
 
-                        if (surface_water_partitioning_scheme == "Xinanjiang"):
+                        if "CFE-X" in self.formulation:
+                            self.surface_water_partitioning_scheme = "Xinanjiang"
                             soil_id = self.gdf['ISLTYP'][cat_name]
-                            file.write
+                            file.write(f'surface_water_partitioning_scheme={self.surface_water_partitioning_scheme}\n')
                             file.write(f'a_Xinanjiang_inflection_point_parameter={self.soil_class_NWM["AXAJ"][soil_id]}\n')
                             file.write(f'b_Xinanjiang_shape_parameter={self.soil_class_NWM["BXAJ"][soil_id]}\n')
                             file.write(f'x_Xinanjiang_shape_parameter={self.soil_class_NWM["XXAJ"][soil_id]}\n')
+                            file.write("urban_decimal_fraction=0.0\n")
+                        elif "CFE-S" in self.formulation:
+                            self.surface_water_partitioning_scheme = line.strip().split("=")[1]
+                            file.write(line)
+
                     elif line.strip().startswith('a_Xinanjiang_inflection_point_parameter') or \
                          line.strip().startswith('b_Xinanjiang_shape_parameter') or \
                          line.strip().startswith('x_Xinanjiang_shape_parameter'):
