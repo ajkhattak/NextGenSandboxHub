@@ -15,7 +15,7 @@ def get_comid(fid):
     gdf = nldi.get_features(feature_source="nwissite", feature_id=fid)
     if gdf.empty:
         raise ValueError(f"No feature found for {fid}")
-    
+
     comid = int(gdf['comid'][0])
 
     return comid
@@ -52,7 +52,7 @@ def get_streamflow_per_gage(gage_id, start_time, end_time, domain):
         gage_id = 'USGS-'+gage_id
 
     comid = get_comid(gage_id)
-    
+
     #awspath2 ='https://noaa-nwm-retrospective-2-1-zarr-pds.s3.amazonaws.com/ldasout.zarr'
     if domain.lower() == "conus":
         domain = "CONUS"
@@ -65,18 +65,18 @@ def get_streamflow_per_gage(gage_id, start_time, end_time, domain):
 
     awspath3  = f'https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/{domain}/zarr/chrtout.zarr'
     #nwm_url  = 's3://noaa-nwm-retrospective-3-0-pds/CONUS/zarr/chrtout.zarr' # this also works
-    
+
     ds = xr.open_zarr(awspath3,consolidated=True)
 
     nwm_streamflow = ds['streamflow']
-    
+
     #nwm_streamflow has dimensions ('time', 'feature_id')
     # slice the time dimension by range of start and end times
     nwm_streamflow = nwm_streamflow.sel(time=slice(start_time, end_time))
-    
+
     # slice feature_id dimension by comid
     flow_data = nwm_streamflow.sel(feature_id=comid)
-    
+
     df = pd.DataFrame({
         'time': flow_data.time,
         'flow': flow_data.data
@@ -96,8 +96,7 @@ if __name__ == "__main__":
     except:
         parser.print_help()
         sys.exit(1)
-    
+
     args = parser.parse_args()
-    
+
     get_stream_discharge(args.gage_id, args.start_time, args.end_time, "conus")
-    
