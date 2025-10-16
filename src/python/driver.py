@@ -1,7 +1,7 @@
 ############################################################################################
 # Author  : Ahmad Jan Khattak
 # Contact : ahmad.jan.khattak@noaa.gov
-# Date    : October 11, 2023 
+# Date    : October 11, 2023
 ############################################################################################
 
 
@@ -32,7 +32,7 @@ class Driver:
         self.sandbox_config = infile
         self.formulations_supported = formulations_supported
         self.load_config()
-        
+
     def load_config(self):
         with open(self.sandbox_config, 'r') as file:
             d = yaml.safe_load(file)
@@ -40,12 +40,13 @@ class Driver:
         self.sandbox_dir  = d["sandbox_dir"]
         self.input_dir    = d["input_dir"]
         self.output_dir   = Path(d["output_dir"])
-        
+
         dformul = d['formulation']
         self.ngen_dir      = dformul["ngen_dir"]
         self.formulation   = dformul['models'].upper()
         self.clean         = self.process_clean_input_param(dformul.get('clean', "none"))
         self.verbosity     = dformul.get('verbosity', 0)
+        self.num_cpus      = int(dformul.get('np_per_basin', 1))
         self.basins_in_par = dformul.get('basins_in_par', 1)
         self.schema_type   = dformul.get('schema_type', "noaa-owp")
 
@@ -54,7 +55,7 @@ class Driver:
 
         # Forcing block
         dforcing = d['forcings']
-        
+
         self.forcing_time   = dforcing["forcing_time"]
         self.forcing_format = dforcing.get('forcing_format', '.nc')
         forcing_start_yr    = pd.Timestamp(self.forcing_time['start_time']).year
@@ -192,6 +193,7 @@ class Driver:
             # write meta data to YAML for restarting
             sim_info = {
                 "basin_id"   : gpkg_id,
+                "num_cpus"   : self.num_cpus,
                 "input_dir"  : str(i_dir),
                 "output_dir" : str(o_dir),
                 "cwd"        : os.getcwd()
