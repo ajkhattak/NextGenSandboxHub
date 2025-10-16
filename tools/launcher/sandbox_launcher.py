@@ -151,7 +151,7 @@ def run_experiment(gage_id, current_iter, use_slurm=False):
             "sbatch", f"--cpus-per-task={num_cpus}", f"--ntasks-per-node={num_cpus}",
             f"--job-name={job_name}",
             "--export=ALL,SANDBOX_FILE=" + sb_cfg_file + ",CALIB_FILE=" + calib_cfg_file,
-            "hpc/submit_gage.slurm"
+            "launcher/submit_gage.slurm"
         ]
         print(f"[{gage_id}] Submitting via SLURM: {' '.join(cmd)}")
         subprocess.run(cmd)
@@ -236,7 +236,7 @@ def main():
            return
 
         if use_slurm:
-            subprocess.run(["sbatch", "hpc/submit_launcher.slurm"])
+            subprocess.run(["sbatch", "launcher/submit_launcher.slurm"])
         else:
             # For local testing
             os.execvp("python", ["python", "sandbox_launcher.py"])
