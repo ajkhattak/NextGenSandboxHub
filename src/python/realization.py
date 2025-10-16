@@ -249,6 +249,10 @@ class RealizationGenerator:
                 "registration_function": "register_bmi_topmodel"
             }
         }
+
+        if not "NOM" in self.formulation and "PET" in self.formulation:
+            block["params"]["variables_names_map"]["water_potential_evaporation_flux"] = "water_potential_evaporation_flux"
+            block["params"]["variables_names_map"]["atmosphere_water__liquid_equivalent_precipitation_rate"] = "APCP_surface"
         return block
 
     def get_sft_block(self):
