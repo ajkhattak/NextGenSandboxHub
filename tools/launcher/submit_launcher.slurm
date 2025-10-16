@@ -30,4 +30,4 @@ echo "SLURM_JOB_ID: $SLURM_JOB_ID"
 
 #module load python/3.11  # if needed on your HPC
 echo "[run_launcher.slurm] Resubmitting sandbox_launcher.py"
-python hpc/sandbox_launcher.py
+python launcher/sandbox_launcher.py
