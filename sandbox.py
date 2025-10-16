@@ -41,6 +41,7 @@ formulations_supported = [
     "PET,CFE",
     "NOM,PET,CFE",
     "NOM,TOPMODEL",
+    "PET,TOPMODEL",
     "NOM,LASAM",
     "PET,LASAM",
     "NOM,CFE,SMP,SFT",
