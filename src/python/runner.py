@@ -61,8 +61,9 @@ class Runner:
         self.output_dir = Path(self.config["output_dir"])
 
         dformul = self.config['formulation']
-        self.ngen_dir = dformul["ngen_dir"]
-        self.np_per_basin = int(dformul.get('np_per_basin', 1))
+        self.ngen_dir      = dformul["ngen_dir"]
+        self.formulation   = dformul['models'].upper()
+        self.np_per_basin  = int(dformul.get('np_per_basin', 1))
         self.basins_in_par = int(dformul.get('basins_in_par', 1))
         self.np_per_basin_adaptive = int(dformul.get('np_per_basin_adaptive', True))
 
@@ -184,16 +185,17 @@ class Runner:
             restart_dir = self.restart_dir.replace("{*}", id)
 
             ConfigGen = configuration.ConfigurationCalib(gpkg_file = gpkg_file,
-                                                        output_dir = o_dir,
-                                                        ngen_dir = self.ngen_dir,
-                                                        realization_file_par = file_par,
-                                                        troute_output_file = troute_output_file,
-                                                        ngen_cal_type=ngen_cal_type_calib_restart,
-                                                        simulation_time=self.calibration_time,
-                                                        evaluation_time=self.calib_eval_time,
-                                                        ngen_cal_basefile=self.config_calib,
-                                                        restart_dir=restart_dir,
-                                                        num_proc=np_per_basin_local)
+                                                         output_dir = o_dir,
+                                                         ngen_dir = self.ngen_dir,
+                                                         realization_file_par = file_par,
+                                                         troute_output_file = troute_output_file,
+                                                         ngen_cal_type=ngen_cal_type_calib_restart,
+                                                         formulation = self.formulation,
+                                                         simulation_time=self.calibration_time,
+                                                         evaluation_time=self.calib_eval_time,
+                                                         ngen_cal_basefile=self.config_calib,
+                                                         restart_dir=restart_dir,
+                                                         num_proc=np_per_basin_local)
             
             ConfigGen.write_calib_input_files()
             
@@ -206,16 +208,17 @@ class Runner:
             start_time = pd.Timestamp(self.validation_time['start_time']).strftime("%Y%m%d%H%M")
             troute_output_file = os.path.join("./troute_output_{}.nc".format(start_time))
             ConfigGen = configuration.ConfigurationCalib(gpkg_file = gpkg_file,
-                                                        output_dir = o_dir,
-                                                        ngen_dir = self.ngen_dir,
-                                                        realization_file_par = file_par,
-                                                        troute_output_file = troute_output_file,
-                                                        ngen_cal_type='validation',
-                                                        simulation_time=self.validation_time,
-                                                        evaluation_time=self.valid_eval_time,
-                                                        ngen_cal_basefile=self.config_calib,
-                                                        restart_dir=self.restart_dir,
-                                                        num_proc=np_per_basin_local)
+                                                         output_dir = o_dir,
+                                                         ngen_dir = self.ngen_dir,
+                                                         realization_file_par = file_par,
+                                                         troute_output_file = troute_output_file,
+                                                         ngen_cal_type='validation',
+                                                         formulation = self.formulation,
+                                                         simulation_time=self.validation_time,
+                                                         evaluation_time=self.valid_eval_time,
+                                                         ngen_cal_basefile=self.config_calib,
+                                                         restart_dir=self.restart_dir,
+                                                         num_proc=np_per_basin_local)
             
             ConfigGen.write_calib_input_files()
             run_command = f"python {self.sandbox_dir}/src/python/validation.py configs/ngen-cal_valid_config.yaml"

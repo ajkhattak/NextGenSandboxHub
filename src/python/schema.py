@@ -70,6 +70,9 @@ def get_schema_model_attributes(gdf_model):
         if 'circ_mean.aspect' in d:
             df['aspect_mean'] = d
 
+        if 'mean.impervious' in d:
+            df['impervious_mean'] = d
+            
         if 'twi'in d:
             if 'twi_dist' in d:
                 df['twi_dist'] = d
