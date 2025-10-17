@@ -17,8 +17,8 @@ general:
   random_seed: 444
   workdir: ./
 
-# Define parameters to calibrate, their bounds, and initial values.
-cfe_params: &cfe_params
+# Define parameters to calibrate, their bounds, and initial values for CFE with Schaake
+cfes_params: &cfes_params
   -
     name: b # beta exponent on Clapp-Hornberger (1978) soil water relations
     min: 0.0
@@ -98,8 +98,146 @@ cfe_params: &cfe_params
     min: 0.15
     max: 0.33
     init: 0.20
-    
-noah_owp_params: &noah_owp_params
+
+# Define parameters to calibrate, their bounds, and initial values for CFE with Xinanjiang
+cfex_params: &cfex_params
+  -
+    name: b # beta exponent on Clapp-Hornberger (1978) soil water relations
+    min: 0.0
+    max: 15
+    init: 4.05
+  -
+    name: satdk # saturated hydraulic conductivity
+    min: 0.0
+    max: 0.00726
+    init: 3.38e-04
+  -
+    name: satpsi # saturated capillary head
+    min: 0.0
+    max: 0.995
+    init: 0.355
+  -
+    name: maxsmc # saturated soil moisture content
+    min: 0.16
+    max: 0.6
+    init: 0.439
+  -
+    name: max_gw_storage # maximum storage in the conceptual reservoir
+    min: 0.01
+    max: 0.25
+    init: 0.05
+  -
+    name: Cgw  #groundwater coefficient
+    min: 1.8e-06
+    max: 1.8E-3
+    init: 1.8e-04
+  -
+    name: expon # exponent parameter (1.0 for linear reservoir) (groundwater)
+    min: 1.0
+    max: 8.0
+    init: 5.0
+  - 
+    name: Kn # Nash Config param for lateral subsurface runoff
+    min: 0.0
+    max: 1.0
+    init: 0.3
+  - 
+    name: Klf # Nash Config param - primary reservoir
+    min: 0.0
+    max: 1.0
+    init: 0.1
+  #- 
+  #  name: Kinf_nash_surface # runon infiltration coefficient (NASH CASCADE runoff only; cfe2.0)
+  #  min: 0.0001
+  #  max: 1.0
+  #  init: 0.0005 
+
+  #- 
+  #  name: retention_depth_nash_surface # used only with CFE2.0
+  #  min: 0.0
+  #  max: 0.1
+  #  init: 0.00001
+  -
+    name: refkdt # used only with Schakee
+    min: 0.001
+    max: 8.0
+    init: 3.0
+
+  # these params can be calibrated as well
+  -   
+    name: slope # this factor (0-1) modifies the gradient of the hydraulic head at the soil bottom. 0=no-flow.
+    min: 0.0
+    max: 1.0
+    init: 0.01
+
+  - # Maybe parameter
+    name: wltsmc # wilting point soil moisture content
+    min: 0.0
+    max: 0.138
+    init: 0.066
+  - 
+    name: alpha_fc # field capacity
+    min: 0.15
+    max: 0.33
+    init: 0.20
+
+  # Calibratable parameters for CFE Xinanjiang water partitioning scheme
+  -
+    name: a_Xinanjiang_inflection_point_parameter # Xinanjiang: Tension water distribution inflection parameter
+    min: -0.493
+    max: 0.493
+    init: 0.25
+  -
+    name: b_Xinanjiang_shape_parameter # Xinanjiang: Tension water distribution shape parameter
+    min: 9.0e-4
+    max: 10.0
+    init: 2.5
+  -
+    name: x_Xinanjiang_shape_parameter # Xinanjiang: Tension water distribution shape parameter
+    min: 5.0e-4
+    max: 10.0
+    init: 2.5
+
+####################################################################################
+topmodel_params: &topmodel_params
+  -
+    name: szm
+    init: 0.032
+    min: 0.001
+    max: 0.2
+  -
+    name: sr0
+    init: 0.002
+    min: 0.001
+    max: 0.04
+  -
+    name: srmax
+    init: 0.05
+    min: 0.001
+    max: 1
+  -
+    name: td
+    init: 50
+    min: 0.001
+    max: 100
+  -
+    name: t0
+    init: 5
+    min: -8
+    max: 8
+  -
+    name: chv
+    init: 3600
+    min: 100
+    max: 4000
+  -
+    name: rv
+    init: 1000
+    min: 10
+    max: 4000
+
+
+noahowp_params: &noahowp_params
   -
     name: MFSNO # fractional snow covered area (FSNO) curve parameter (pseduo multiplier)
     min: 0.5
@@ -147,18 +285,15 @@ noah_owp_params: &noah_owp_params
 # Model specific configuration
 model:
     type: ngen
-    # NOTE: you may need to adjust this to the location of your NextGen installation
-    # A binary in $PATH or a qualified path to the binary to run
-    binary: "./ngen/cmake_build/ngen"
-    realization: ./realization.json
-    # Required path to catchment hydrofabirc file
-    hydrofabric: ./Gage_1022500.gpkg
-    eval_feature: wb-3550
+    binary: <*>
+    realization: <*>
+
+    hydrofabric: <*>
+    eval_feature: <*>
     # Each catchment upstream of observable nexus gets its own permuted parameter space, evaluates at one observable nexus 
     strategy: uniform
-    params: 
-        CFE: *cfe_params
-        NoahOWP: *noah_owp_params
+    params:
+        <*>
     eval_params:
       # choices are "kling_gupta", "nnse", "custom", "single_peak", "volume"
       objective: "kling_gupta"
@@ -172,4 +307,4 @@ model:
       - "ngen_cal_user_plugins.read_obs_plugin.ReadObservedData"
     plugin_settings:
       read_obs_data:
-        obs_data_path: /scratch4/NCEPDEV/ohd/Ahmad.Jan.Khattak/Core/projects/nwm_v4_bm/usgs_obs_streamflow
+        obs_data_path: /Users/ahmadjankhattak/Core/projects/nwm_bm_sims/usgs_obs_streamflow

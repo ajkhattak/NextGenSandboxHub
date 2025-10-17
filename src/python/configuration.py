@@ -116,10 +116,11 @@ class ConfigurationGenerator:
         gdf_soil['gw_Zmax'] = gdf_soil['gw_Zmax'] / 1000.0
         gdf_soil['gw_Coeff'] = gdf_soil['gw_Coeff'] * 3600 / (7.337700 * 1000 * 1000)
         gdf_soil['elevation_mean'] = gdf_soil[params['elevation_mean']].fillna(4) / 100. # convert cm to m
-        gdf_soil['slope_mean'] = gdf_soil[params['slope_mean']].fillna(1.0)
-        gdf_soil['aspect_mean'] = gdf_soil[params['aspect_mean']].fillna(1.0)
+        gdf_soil['slope_mean'] = gdf_soil[params['slope_mean']].fillna(0.0)
+        gdf_soil['aspect_mean'] = gdf_soil[params['aspect_mean']].fillna(0.0)
+        gdf_soil['impervious_mean'] = gdf_soil[params['impervious_mean']].fillna(0.0) / 100. # convert percent to fraction
 
-        gdf_soil['terrain_slope'] = gdf_soil[params['terrain_slope']].fillna(1.0)
+        gdf_soil['terrain_slope'] = gdf_soil[params['terrain_slope']].fillna(0.0)
 
         if self.schema_type == 'dangermond':
             gdf_soil['elevation_mean'] = gdf_soil['elevation_mean'] / 100.0
@@ -145,6 +146,7 @@ class ConfigurationGenerator:
         gdf['elevation_mean'] = gdf_soil['elevation_mean'].copy()
         gdf['slope_mean'] = gdf_soil['slope_mean'].copy()
         gdf['aspect_mean'] = gdf_soil['aspect_mean'].copy()
+        gdf['impervious_mean'] = gdf_soil['impervious_mean'].copy()
 
         mask = gdf['soil_b'].gt(0.0)
         min_value = gdf['soil_b'][mask].min()
@@ -317,7 +319,7 @@ class ConfigurationGenerator:
                             file.write(f'a_Xinanjiang_inflection_point_parameter={self.soil_class_NWM["AXAJ"][soil_id]}\n')
                             file.write(f'b_Xinanjiang_shape_parameter={self.soil_class_NWM["BXAJ"][soil_id]}\n')
                             file.write(f'x_Xinanjiang_shape_parameter={self.soil_class_NWM["XXAJ"][soil_id]}\n')
-                            file.write("urban_decimal_fraction=0.0\n")
+                            file.write(f"urban_decimal_fraction={self.gdf['impervious_mean'][cat_name]}\n")
                         elif "CFE-S" in self.formulation:
                             self.surface_water_partitioning_scheme = line.strip().split("=")[1]
                             file.write(line)
@@ -758,7 +760,7 @@ class ConfigurationGenerator:
 
 class ConfigurationCalib:
     def __init__(self, gpkg_file, output_dir, ngen_dir, realization_file_par, troute_output_file,
-                 ngen_cal_basefile, ngen_cal_type,
+                 ngen_cal_basefile, ngen_cal_type, formulation,
                  restart_dir, simulation_time, evaluation_time, num_proc):
         
         self.gpkg_file = gpkg_file
@@ -767,6 +769,7 @@ class ConfigurationCalib:
         self.realization_file_par = realization_file_par
         self.simulation_time = simulation_time
         self.evaluation_time = evaluation_time
+        self.formulation = formulation
         #self.verbosity = verbosity
         self.ngen_cal_type = ngen_cal_type
         self.num_proc = num_proc
@@ -792,95 +795,116 @@ class ConfigurationCalib:
     def write_calib_input_files(self):
         
         conf_dir = os.path.join(self.output_dir, "configs")
-        #realization = glob.glob(os.path.join(self.output_dir, "json/realization_*.json"))
-        realization = glob.glob(os.path.join(conf_dir, "realization_*.json"))
+        realization_file = glob.glob(os.path.join(conf_dir, "realization_*.json"))
 
-        assert len(realization) == 1
+        assert len(realization_file) == 1
 
         if not os.path.exists(self.ngen_cal_basefile):
             sys.exit(f"Sample calib yaml file does not exist, provided is {self.ngen_cal_basefile}")
 
-        basin_sandbox_dir = os.path.dirname(os.path.dirname(self.ngen_cal_basefile))
         gpkg_name = os.path.basename(self.gpkg_file).split(".")[0]
+        gage_id = self.get_flowpath_attributes()
 
         with open(self.ngen_cal_basefile, 'r') as file:
-            d = yaml.safe_load(file)
+            base_file = yaml.safe_load(file)
 
-        
-        d['general']['workdir']   = self.output_dir.as_posix()
+        df_new = {
+            "general": {
+                "strategy": {
+                    "type": base_file.get("type", "estimation"),
+                    "algorithm": base_file.get("algorithm", "dds")
+                },
+                "log": base_file.get("log", True),
+                "start_iteration": base_file.get("start_iteration", 0),
+                "iterations": base_file.get("iterations", 2),
+                "random_seed": base_file.get("random_seed", 444.0),
+                "workdir": self.output_dir.as_posix()
+            }
+        }
+
         if self.ngen_cal_type == "restart":
-            d['general']['restart'] = True
+            df_new["general"]["restart"] = True
 
-        d['model']['binary']      = os.path.join(self.ngen_dir, "cmake_build/ngen")
-        d['model']['realization'] = realization[0]
-        d['model']['hydrofabric'] = self.gpkg_file.as_posix()
-        d['model']['routing_output'] = self.troute_output_file
+        model_param_map = {
+            "CFE-S": "cfes_params",
+            "CFE-X": "cfex_params",
+            "TOPMODEL": "topmodel_params",
+            "NOM": "noahowp_params"
+        }
+        
+        # Add calibratable parameter blocks
+        for model in self.formulation.split(","):
+            model = model.strip()
+            for key, name in model_param_map.items():
+                param_values = base_file.get(name, [])
+                if key in model:
+                    df_new[f"{name}"] = param_values
+                    
+        df_new["model"] = {
+            "type": "ngen",
+            "binary": os.path.join(self.ngen_dir, "cmake_build/ngen"),
+            "realization": realization_file[0],
+            "hydrofabric": self.gpkg_file.as_posix(),
+            "routing_output": self.troute_output_file,
+            "strategy": base_file.get("strategy", "uniform"),
+            "eval_feature": gpkg_name.split("_")[1]
+        }
+            
+        if self.num_proc > 1:
+            df_new["model"]["parallel"] = self.num_proc
+            df_new["model"]["partitions"] = self.realization_file_par
 
         gage_id = self.get_flowpath_attributes()
-        """
-        if len(gage_id) == 1:
-            d['model']['eval_feature'] = gage_id[0]
-        else:
-            print("more than one rl_gages exist in the geopackage, using max drainage area to filter...")
-            div = gpd.read_file(self.gpkg_file, layer='divides')
-            df = div[['divide_id', 'tot_drainage_areasqkm']]
-            index = df['divide_id'].map(lambda x: 'wb-' + str(x.split("-")[1]))
-            df.set_index(index, inplace=True)
-            idmax = df['tot_drainage_areasqkm'].idxmax()
-            d['model']['eval_feature'] = idmax
-        """
 
-        d['model']['eval_feature'] = gpkg_name.split("_")[1]
 
-        if self.num_proc > 1:
-            d['model']['parallel'] = self.num_proc
-            d['model']['partitions'] = self.realization_file_par
+        df_new["model"]["params"] = {}
 
-        # revist this part, the os_name is only needed when troute runs on multicores
-        # i.e., d['compute_parameters']['cpu_pool'] > 1, cpu_pool by default is 1
-        if os_name == "Darwin" and False:
-            d['model']['binary'] = f'PYTHONEXECUTABLE=$(which python) ' + os.path.join(self.ngen_dir, "cmake_build/ngen")
-        else:
-            d['model']['binary'] = os.path.join(self.ngen_dir, "cmake_build/ngen")
+        for model in self.formulation.split(","):
+            model = model.strip()
+            for key, name in model_param_map.items():
+                if key in model:
+                    if key in ["CFE-S", "CFE-X"]:
+                        key = "CFE"
+                    if key == "NOM":
+                        key = "NoahOWP"
+                    param_values = base_file.get(name, [])
+                    df_new["model"]["params"][key] = param_values
 
-        if self.ngen_cal_type == 'calibration' or self.ngen_cal_type == 'restart':
-            val_params = {
+
+        if self.ngen_cal_type in ["calibration", "restart"]:
+            df_new["model"]["eval_params"] = {
                 'evaluation_start': self.evaluation_time['start_time'],
                 'evaluation_stop': self.evaluation_time['end_time']
             }
-            d['model']['eval_params'].update(val_params)
 
-        if self.ngen_cal_type == 'validation':
-            val_troute_output = {
-                'ngen_cal_troute_output': {
-                    'validation_routing_output': self.troute_output_file
-                }
-            }
-
-            try:
-                d['model']['plugin_settings'].update(val_troute_output)
-            except:
-                d['model']['plugin_settings'] = val_troute_output
-
-            val_params = {
+        # Validation
+        if self.ngen_cal_type == "validation":
+            df_new["model"]["val_params"] = {
                 'sim_start': self.simulation_time['start_time'],
                 'evaluation_start': self.evaluation_time['start_time'],
                 'evaluation_stop': self.evaluation_time['end_time'],
                 'objective': "kling_gupta"
             }
-            d['model']['val_params'] = val_params
 
+            df_new["model"]["plugin_settings"] = {
+                'ngen_cal_troute_output': {
+                    'validation_routing_output': self.troute_output_file
+                }
+            }
+
+        df_new["model"]["plugins"] = base_file.get("model", "").get("plugins", "")
         # see if user have provided local observed data
-        local_obs_data_flag = d.get('model', {}).get('plugin_settings', {}).get('read_obs_data', None)
+        obs_data_flag = base_file.get('model', {}).get('plugin_settings', {}).get('read_obs_data', None)
 
-        if (local_obs_data_flag is not None):
-            obs_dir = d['model']['plugin_settings']['read_obs_data']['obs_data_path']
+        if obs_data_flag:
+            obs_dir = base_file['model']['plugin_settings']['read_obs_data']['obs_data_path']
             obs_file = glob.glob(f'{obs_dir}/{gpkg_name}*.csv')[0]
-            d['model']['plugin_settings']['read_obs_data']['obs_data_path'] = obs_file
+            df_new.setdefault("model", {}).setdefault("plugin_settings", {})["read_obs_data"] = {
+                "obs_data_path": obs_file
+            }
+             
 
-
-        if (self.ngen_cal_type == 'restart' or self.ngen_cal_type == "validation"):
-
+        if self.ngen_cal_type in ['restart', 'validation']:
             if (self.ngen_cal_type == 'validation'):
                 try:
                     state_file = glob.glob(str(Path(self.output_dir) / "*_parameter_df_state.parquet"))[0]
@@ -900,17 +924,26 @@ class ConfigurationCalib:
             best_params_set = df_parq[best_itr]
             calib_params = best_params_set.index.to_list()
 
-            for block in d:
+            for block_name in base_file:
                 if '_params' in block:
-                    for par in d[block]:
+                    updated_params = []
+                    for par in base_file[block]:
                         if par['name'] in calib_params:
                             par['init'] = float(best_params_set[par['name']])
+                        updated_params.append(par)
 
-        config_fname = ""
-        if self.ngen_cal_type == 'calibration' or self.ngen_cal_type == 'restart':
+                    # Update correct param block in df_new
+                    if "CFE-S" in self.formulation and block_name == "cfes_params":
+                        df_new["model"]["params"] = updated_params
+                    elif "CFE-X" in self.formulation and block_name == "cfex_params":
+                        df_new["model"]["params"] = updated_params
+
+        if self.ngen_cal_type in ['calibration', 'restart']:
             config_fname = "ngen-cal_calib_config.yaml"
         elif self.ngen_cal_type == 'validation':
             config_fname = "ngen-cal_valid_config.yaml"
 
         with open(os.path.join(conf_dir, config_fname), 'w') as file:
-            yaml.dump(d, file, default_flow_style=False, sort_keys=False)
+            yaml.dump(df_new, file, default_flow_style=False, sort_keys=False)
+
+    
