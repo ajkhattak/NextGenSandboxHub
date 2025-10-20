@@ -4,9 +4,11 @@ import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
-
+from pathlib import Path
 
 from dataretrieval import nwis, utils, codes, nldi
+import s3fs
+import fsspec
 
 #Available data sources are: ['ca_gages', 'census2020-nhdpv2', 'epa_nrsa', 'geoconnex-demo', 'gfv11_pois', 'GRAND', 'HILARRI', 'huc12pp', 'huc12pp_102020', 'nmwdi-st', 'npdes', 'nwisgw', 'nwissite', 'ref_dams', 'ref_gage', 'vigil', 'wade', 'wade_rights', 'wade_timeseries', 'WQP', 'comid']
 
@@ -30,6 +32,7 @@ def get_gage_name(gage_id):
 def get_nwm_streamflow(gage_list, start_time, end_time, domain='conus'):
     results = {}
     for g in gage_list:
+        print (f"Downloading data for gage: [{g}]")
         df = get_streamflow_per_gage(
             g,
             start_time=start_time,
@@ -43,6 +46,42 @@ def get_nwm_streamflow(gage_list, start_time, end_time, domain='conus'):
             'data': df
         }
     return results
+
+def save_nwm_streamflow(gage_list,
+                        start_time,
+                        end_time,
+                        output_dir,
+                        domain='conus',
+                        file_format='parquet'  # or 'csv'
+                        ):
+    
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    for g in gage_list:
+        print (f"Downloading data for gage: [{g}]")
+        df = get_streamflow_per_gage(
+            g,
+            start_time=start_time,
+            end_time=end_time,
+            domain=domain
+        )
+        
+        df.set_index('time', inplace=True)
+
+        file_name = f"gage_{g}_streamflow.{file_format}"
+        file_path = output_dir / file_name
+
+        # Write to file
+        if file_format == 'csv':
+            df.to_csv(file_path)
+        elif file_format == 'parquet':
+            df.to_parquet(file_path)
+        else:
+            print(f"Unsupported file format: {file_format}")
+            continue
+
+        print(f"Saved: {file_path}")
 
 
 def get_streamflow_per_gage(gage_id, start_time, end_time, domain):
@@ -66,7 +105,14 @@ def get_streamflow_per_gage(gage_id, start_time, end_time, domain):
     awspath3  = f'https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/{domain}/zarr/chrtout.zarr'
     #nwm_url  = 's3://noaa-nwm-retrospective-3-0-pds/CONUS/zarr/chrtout.zarr' # this also works
 
-    ds = xr.open_zarr(awspath3,consolidated=True)
+    fs = s3fs.S3FileSystem(anon=True, requester_pays=True)
+    bucket = "noaa-nwm-retrospective-3-0-pds"
+    zarr_path = f"{domain}/zarr/chrtout.zarr"
+    
+    store = fs.get_mapper(f"{bucket}/{zarr_path}")
+    ds = xr.open_zarr(store, consolidated=True)
+        
+    #ds = xr.open_zarr(awspath3,consolidated=True)
 
     nwm_streamflow = ds['streamflow']
 
@@ -99,4 +145,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    get_stream_discharge(args.gage_id, args.start_time, args.end_time, "conus")
+    get_nwm_streamflow(args.gage_id, args.start_time, args.end_time, "conus")

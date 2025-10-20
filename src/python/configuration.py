@@ -320,6 +320,7 @@ class ConfigurationGenerator:
                             file.write(f'b_Xinanjiang_shape_parameter={self.soil_class_NWM["BXAJ"][soil_id]}\n')
                             file.write(f'x_Xinanjiang_shape_parameter={self.soil_class_NWM["XXAJ"][soil_id]}\n')
                             file.write(f"urban_decimal_fraction={self.gdf['impervious_mean'][cat_name]}\n")
+                            #file.write(f"urban_decimal_fraction=0.0\n")
                         elif "CFE-S" in self.formulation:
                             self.surface_water_partitioning_scheme = line.strip().split("=")[1]
                             file.write(line)
@@ -811,13 +812,13 @@ class ConfigurationCalib:
         df_new = {
             "general": {
                 "strategy": {
-                    "type": base_file.get("type", "estimation"),
-                    "algorithm": base_file.get("algorithm", "dds")
+                    "type": base_file.get("general").get("strategy").get("type", "estimation"),
+                    "algorithm": base_file.get("general").get("strategy").get("algorithm", "dds")
                 },
-                "log": base_file.get("log", True),
-                "start_iteration": base_file.get("start_iteration", 0),
-                "iterations": base_file.get("iterations", 2),
-                "random_seed": base_file.get("random_seed", 444.0),
+                "log": base_file.get("general").get("log", True),
+                "start_iteration": base_file.get("general").get("start_iteration", 0),
+                "iterations": base_file.get("general").get("iterations"),
+                "random_seed": base_file.get("general").get("random_seed", 444.0),
                 "workdir": self.output_dir.as_posix()
             }
         }
