@@ -35,7 +35,7 @@ BUILD_NGEN=ON      # Required first
 BUILD_MODELS=ON    # Build after NGEN
 BUILD_TROUTE=ON    # Build after MODELS
 
-HF_VERSION=2.0     # provide hydrofabric version
+HF_VERSION=2.2     # provide hydrofabric version
 
 ngen_dir=/home/Ahmad.Jan.Khattak/Code/ngen
 
@@ -68,10 +68,10 @@ build_ngen()
 
 build_troute()
 {
-    if [ ${HF_VERSION} == 2.0 ]; then
+    if [ ${HF_VERSION} == 2.2 ]; then
 	pushd $ngen_dir/extern
-	git clone https://github.com/aaraney/t-route t-route-hf2.0
-	cd t-route-hf2.0
+	git clone https://github.com/aaraney/t-route t-route-hf2.2
+	cd t-route-hf2.2
 	git checkout hf_2_2_support_sans_seans_fork
     else
 	pushd $ngen_dir/extern/t-route
