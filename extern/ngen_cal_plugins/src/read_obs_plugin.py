@@ -63,16 +63,15 @@ class ReadObservedData:
         df = pd.read_csv(filename, usecols=["value_time", "value"])
 
         df["value_time"] = pd.to_datetime(df["value_time"])
-
         df.set_index("value_time", inplace=True)
-        ds = df.loc[start_time:end_time]
-        ds = df["value"][:]
+
+        ds = df.loc[start_time:end_time, "value"].copy()
 
         ds.rename("obs_flow", inplace=True)
-        
+
         return ds
 
-    @hookimpl
+    @hookimpl(tryfirst=True)
     def ngen_cal_model_observations(
         self,
         nexus: Nexus,
