@@ -926,19 +926,12 @@ class ConfigurationCalib:
             best_params_set = df_parq[best_itr]
             calib_params = best_params_set.index.to_list()
 
-            updated_params = []
             for block_name in base_file:
                 if '_params' in block_name:    
                     for par in base_file[block_name]:
                         if par['name'] in calib_params:
-                            par['init'] = float(best_params_set[par['name']])
-                        updated_params.append(par)
-                
-            # Update correct param block in df_new
-            if "CFE-S" in self.formulation and block_name == "cfes_params":
-                df_new["model"]["params"] = updated_params
-            elif "CFE-X" in self.formulation and block_name == "cfex_params":
-                df_new["model"]["params"] = updated_params
+                            par['init'] = float(best_params_set[par['name']]) #modify in place
+
 
         if self.ngen_cal_type in ['calibration', 'restart']:
             config_fname = "ngen-cal_calib_config.yaml"
