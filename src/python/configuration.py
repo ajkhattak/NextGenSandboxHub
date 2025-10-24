@@ -819,7 +819,8 @@ class ConfigurationCalib:
                 "start_iteration": base_file.get("general").get("start_iteration", 0),
                 "iterations": base_file.get("general").get("iterations"),
                 "random_seed": base_file.get("general").get("random_seed", 444.0),
-                "workdir": self.output_dir.as_posix()
+                "workdir": self.output_dir.as_posix(),
+                "restart": base_file.get("general").get("restart", False),
             }
         }
 
