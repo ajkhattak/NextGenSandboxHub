@@ -12,7 +12,9 @@
 ### <ins>  Step 1. Build Sanbox Workflow
   - `git clone https://github.com/ajkhattak/NextGenSandboxHub && cd NextGenSandboxHub`
   - `git submodule update --init`
-  - Run `./utils/build_sandbox.sh` (this will install python env required for the workflow, t-route, and ngen)
+  - `./utils/build_sandbox.sh`
+
+NOTE: The script installs a python env named `.venv_sandbox_py3.11` (see utils/build_sandbox.sh [here](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/build_sandbox.sh#L18)). This environment MUST be activated before performing any of the following steps.
   
 ### <ins>  Step 2. Hydrofabric Installation
 Ensure R and Rtools are already installed before proceeding. There are two ways to install the required packages:
@@ -44,7 +46,7 @@ Ensure R and Rtools are already installed before proceeding. There are two ways 
 ### <ins> Step 4. Forcing Data Download
 The workflow uses [CIROH_DL_NextGen](https://github.com/ajkhattak/CIROH_DL_NextGen) forcing_prep tool to donwload atmospheric forcing data. It uses a Python environment (`~/.venv_forcing`) that is created during the workflow setup step (Step 1). To download the forcing data run:
 ```
-   python <path_to_sandboxhub>/sandbox.py -forc
+   sandbox -forc
 ```
 
 ====================================================================================
@@ -54,24 +56,30 @@ The workflow uses [CIROH_DL_NextGen](https://github.com/ajkhattak/CIROH_DL_NextG
 Note: The sandbox workflow assumes that [ngen](https://github.com/NOAA-OWP/ngen) and models including [t-route](https://github.com/NOAA-OWP/t-route) have been built in the Python virtual environment created in Step 1.
 
 ### <ins>  Step 5. Generate Configuration and Realization Files
-To generate configuratioin and realization files, setup the `formulation` block in the sandbox config file [here](configs/sandbox_config.yaml), and run the following command:
+Setup the sandbox config file [here](configs/sandbox_config.yaml), especially the `formulation` and `simulation` blocks, then run:
  ```
-    python <path_to_sandboxhub>/sandbox.py -conf
+    sandbox -conf
  ```
-
+For non-default input files, use
+ ```
+    sandbox -conf -i <sandbox_config_filename.yaml> -j <calib_config_filename.yaml>
+ ```
 ### <ins> Step 6. Run Calibration/Validation Simulations
-Setup the `ngen_cal` block in the sandbox config file [here](configs/sandbox_config.yaml), and run the following command, note this depends on all of the above steps:
+Run the following command — assuming you have already set up the sandbox configuration file [here](configs/sandbox_config.yaml) and calibration configuration file [here](configs/calib_config.yaml), and have successfully completed the steps above.
  ```
-    python <path_to_sandboxhub>/sandbox.py -run
+    sandbox -run
  ```
-
+For non-default input files, use
+ ```
+    sandbox -run -i <sandbox_config_filename.yaml> -j <calib_config_filename.yaml>
+ ```
 #### Summary
 1. Subset divide using hydrofabric
 2. Download forcing data
 3. Generate configuration files
 4. Run Simulations: Using
   ```
-    python <path_to_sandboxhub>/sandbox.py option
+    sandbox option
     OPTIONS = [-subset -forc -conf -run]
   ```
 - Option: `-subset` downloads geopackage(s) given a gage ID(s), extracts and locally compute TWI, GIUH, and Nash Cascade parameters; see `divide-attributes` in the gage_<basin_id>.gpkg file
@@ -79,7 +87,7 @@ Setup the `ngen_cal` block in the sandbox config file [here](configs/sandbox_con
 - Option: `-conf` generates configuration and realization files for the selected models/basins
 - Option: `-run` executes NextGen simulations with and without calibration
 
-Note: These options can be run individually or combined together, for example, `path_to/sandbox.py -subset -conf -run`. The `-subset` is an expensive step, should be run once to get the desired basin geopacakge and associated model parameters.
+Note: These options can be run individually or combined together, for example, `sandbox -subset -conf -run`. The `-subset` is an expensive step, should be run once to get the desired basin geopacakge and associated model parameters.
 
 
 
