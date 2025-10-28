@@ -11,15 +11,26 @@ import numpy as np
 import geopandas as gpd
 
 # ===========================  Inputs ==========================================
+gage_ids_non_snowy = ["02299950", "08070500", "03574500"]
+#gage_ids_snowy = ["04231000", "03366500", "04282000"] # snowy
+#gage_ids_snow_dom = ["05061000","06218500","09504420","11264500"] #snow-dom
 
-gage_ids = ["02299950", "08070500", "03574500"]
+models = ["PET, CFE-S, T-route", "PET, CFE-X, T-route", "PET, TopModel, T-route"]
+dir_name = ["pet_cfes_v2", "pet_cfex_v2"]
+gage_ids = gage_ids_non_snowy
 
-models = ["PET, CFE, T-route", "NOM, CFE, T-route"]  # Adjust model list as needed
-dir_name = ["pet_cfes", "nom_cfe"]
 
-index = 0
-sandbox_config_file = "/scratch4/NCEPDEV/ohd/Ahmad.Jan.Khattak/Core/projects/nwm_v4_bm/configs/sandbox_config_conus.yaml"
-calib_config_file   = "/scratch4/NCEPDEV/ohd/Ahmad.Jan.Khattak/Core/projects/nwm_v4_bm/configs/calib_config_cfes.yaml"
+#gage_ids = gage_ids_non_snowy + gage_ids_snowy + gage_ids_snow_dom
+#gage_ids = gage_ids_snowy + gage_ids_snow_dom
+
+#models = ["NOM, CFE-S, T-route", "NOM, CFE-X, T-route"]
+#dir_name = ["nom_cfes_v2", "nom_cfex_v2"]
+
+task_type = "validation"
+
+index = 1
+sandbox_config_file = "/scratch4/NCEPDEV/ohd/Ahmad.Jan.Khattak/Core/projects/nwm_v4_bm/configs/sandbox_config_base.yaml"
+calib_config_file   = "/scratch4/NCEPDEV/ohd/Ahmad.Jan.Khattak/Core/projects/nwm_v4_bm/configs/calib_config_base.yaml"
 
 use_slurm = True
 
@@ -60,6 +71,7 @@ def generate_config_files_for_gage(gage_id, generate=True):
     os.makedirs(exp_info_dir, exist_ok=True)
 
     sandbox_cfg_ofile = exp_config_dir / gage_id / f"sandbox_config_{gage_id}.yaml"
+    sandbox_cfg_ofile_valid = exp_config_dir / gage_id / f"sandbox_config_{gage_id}_validation.yaml"
     
     with open(sandbox_cfg_ofile, "w") as out_f:
         yaml.dump(sandbox_cfg, out_f, default_flow_style=False,sort_keys=False)
@@ -78,6 +90,12 @@ def generate_config_files_for_gage(gage_id, generate=True):
     calib_cfg['general']['restart'] = True
     with open(calib_cfg_ofile_restart, "w") as out_f:
         yaml.dump(calib_cfg, out_f, default_flow_style=False,sort_keys=False)
+
+    # Write to YAML (validation file)
+    sandbox_cfg_valid = sandbox_cfg.copy()
+    sandbox_cfg_valid['simulation']['task_type'] = "validation"
+    with open(sandbox_cfg_ofile_valid, "w") as out_f:
+        yaml.dump(sandbox_cfg_valid, out_f, default_flow_style=False,sort_keys=False)
 
     if generate:
         subprocess.run([
@@ -140,9 +158,10 @@ def get_num_cpus(gage_id):
 def run_experiment(gage_id, current_iter, use_slurm=False):
     sb_cfg_file = str(exp_config_dir / gage_id / f"sandbox_config_{gage_id}.yaml")
     calib_cfg_file = str(exp_config_dir / gage_id / f"calib_config_{gage_id}.yaml")
+
     if current_iter > 0:
         calib_cfg_file = str(exp_config_dir / gage_id / f"calib_config_{gage_id}_restart.yaml")
-
+    
     num_cpus = get_num_cpus(gage_id)
     job_name = f"{dir_name[index]}_{gage_id}"
     
@@ -161,7 +180,30 @@ def run_experiment(gage_id, current_iter, use_slurm=False):
         print(f"[{gage_id}] Running locally: {' '.join(cmd)}")
         return subprocess.Popen(cmd)
 
+def run_validation_experiment(gage_id, current_iter, use_slurm=False):
+    sb_cfg_file = str(exp_config_dir / gage_id / f"sandbox_config_{gage_id}_validation.yaml")
+    calib_cfg_file = str(exp_config_dir / gage_id / f"calib_config_{gage_id}.yaml")
+    if current_iter == 0:
+        print ("current iteration must be greater than 0 for validation run")
+        return
 
+    num_cpus = get_num_cpus(gage_id)
+    job_name = f"{dir_name[index]}_{gage_id}"
+
+    if use_slurm:
+        cmd = [
+            "sbatch", f"--cpus-per-task={num_cpus}", f"--ntasks-per-node={num_cpus}",
+            f"--job-name={job_name}",
+            "--export=ALL,SANDBOX_FILE=" + sb_cfg_file + ",CALIB_FILE=" + calib_cfg_file,
+            "launcher/submit_gage.slurm"
+        ]
+        print(f"[{gage_id}] Submitting validaiton run via SLURM: {' '.join(cmd)}")
+        subprocess.run(cmd)
+        return None  # No process handle returned when using SLURM
+    else:
+        cmd = ["sandbox", "-run", "-i", sb_cfg_file, "-j", calib_cfg_file]
+        print(f"[{gage_id}] Running locally: {' '.join(cmd)}")
+        return subprocess.Popen(cmd)
 
 def main():
 
@@ -194,6 +236,11 @@ def main():
         else:
             print(f"[{gage_id}] Already completed ({current_iter}/{max_iter})")
 
+        if task_type == "validation" and current_iter >= max_iter:
+            print ("[{gage_id}] Validation Run ")
+            proc = run_validation_experiment(gage_id, current_iter, use_slurm)
+
+            
     if not running_processes:
         print("\nAll gages already completed. Nothing to run.")
         return
@@ -236,6 +283,7 @@ def main():
            return
 
         if use_slurm:
+            print ("Before submit_launcher.slurm")
             subprocess.run(["sbatch", "launcher/submit_launcher.slurm"])
         else:
             # For local testing

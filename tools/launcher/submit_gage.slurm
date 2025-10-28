@@ -2,13 +2,13 @@
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --time=07:45:00
+#SBATCH --time=08:00:00
 #SBATCH --job-name=gage
 #SBATCH --account=ohd
 #SBATCH --error=log/gage_%j.err
 #SBATCH --output=log/gage_%j.out
 ##SBATCH --partition=ursa
-#SBATCH --mem=6G
+#SBATCH --mem=16G
 ##SBATCH --exclusive
 
 ##SBATCH --cpus-per-task=1
