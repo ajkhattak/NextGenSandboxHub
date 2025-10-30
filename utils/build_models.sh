@@ -18,11 +18,6 @@
 #           export NETCDF_ROOT=/usr/local/opt/netcdf-fortran
 #           export PATH="/usr/local/opt/gcc@11/bin:$PATH"
 		    
-###############################################################
-
-export wkdir=$(pwd)
-export builddir="cmake_build"
-cd ${wkdir}
 
 ###############################################################
 # Set build options below. Turn ON or OFF as needed.
@@ -31,19 +26,54 @@ cd ${wkdir}
 #   2. MODELS
 #   3. T-ROUTE
 
-BUILD_NGEN=ON      # Required first
+BUILD_NGEN=OFF      # Required first
 BUILD_MODELS=ON    # Build after NGEN
-BUILD_TROUTE=ON    # Build after MODELS
+BUILD_TROUTE=OFF    # Build after MODELS
 
 HF_VERSION=2.2     # provide hydrofabric version
 
-ngen_dir=/home/Ahmad.Jan.Khattak/Code/ngen
+NGEN_DIR=/Users/ahmadjankhattak/Code/ngen/ngen
+
+# Check if ngen directory exists
+if [ ! -d "$NGEN_DIR" ]; then
+    echo "Error: ngen directory does not exist: $NGEN_DIR"
+    exit 1
+fi
+
+# Check if it's a git repository
+if [ ! -d "$NGEN_DIR/.git" ]; then
+    echo "Error: ngen directory exists but is not a Git repository: $NGEN_DIR"
+    exit 1
+fi
+
+
+###############################################################
+# Check if current active venv matches the sandbox venv
+sandbox_config="./utils/build_sandbox.sh"
+if [ -f "$sandbox_config" ]; then
+    VENV_SANDBOX=$(grep -E '^VENV_SANDBOX=' "$sandbox_config" | head -n1 | cut -d'=' -f2-)
+else
+    echo "Error: Config file not found: $config_file"
+    exit 1
+fi
+
+# Expand the tilde (~) to full path
+VENV_SANDBOX=$(eval echo "$VENV_SANDBOX")
+
+if [ "$VIRTUAL_ENV" != "$VENV_SANDBOX" ]; then
+    echo "Error: This script must be run inside the sandbox environment:"
+    echo "Expected: $VENV_SANDBOX"
+    echo "Current : ${VIRTUAL_ENV:-<none>}"
+    exit 1
+fi
+###############################################################
+
 
 ###############################################################
 
 build_ngen()
 {
-    pushd $ngen_dir
+    pushd $NGEN_DIR
 
     rm -rf ${builddir}
     cmake -DCMAKE_BUILD_TYPE=Release \
@@ -69,12 +99,12 @@ build_ngen()
 build_troute()
 {
     if [ ${HF_VERSION} == 2.2 ]; then
-	pushd $ngen_dir/extern
+	pushd $NGEN_DIR/extern
 	git clone https://github.com/aaraney/t-route t-route-hf2.2
 	cd t-route-hf2.2
 	git checkout hf_2_2_support_sans_seans_fork
     else
-	pushd $ngen_dir/extern/t-route
+	pushd $NGEN_DIR/extern/t-route
 	git checkout master
 	git pull
     fi
@@ -92,11 +122,15 @@ build_troute()
     popd
 }
 
+
+
 build_models()
 {
-    pushd $ngen_dir
+    pushd $NGEN_DIR
 
-    for model in noah-owp-modular cfe evapotranspiration SoilFreezeThaw SoilMoistureProfiles LGAR; do
+    export builddir="cmake_build"
+
+    for model in noah-owp-modularx cfex evapotranspirationx SoilFreezeThawx SoilMoistureProfilesx CASAM snow17; do
 	rm -rf extern/$model/${builddir}
 	if [ "$model" == "noah-owp-modular" ]; then
 	    git submodule update --remote extern/${model}/${model}
@@ -109,16 +143,48 @@ build_models()
 	    make -C extern/${model}/${model}/${builddir}
 	fi
 	
-	if [ "$model" == "LGAR" ]; then
-	    git clone https://github.com/NOAA-OWP/LGAR-C extern/${model}/${model}
+	if [ "$model" == "CASAM" ]; then
+	    repo_url="https://github.com/NOAA-OWP/LGAR-C"
+	    dest_dir="extern/${model}/${model}"
+
+	    # Check if repo directory exists
+	    if [ -d "$dest_dir/.git" ]; then
+		echo "Repository already exists — updating..."
+		git -C "$dest_dir" pull --ff-only
+	    else
+		echo "Cloning repository..."
+		git clone "$repo_url" "$dest_dir"
+	    fi
+  
 	    cmake -B extern/${model}/${model}/${builddir} -S extern/${model}/${model} -DNGEN=ON -DCMAKE_BUILD_TYPE=Release
 	    make -C extern/${model}/${model}/${builddir}
 	fi
+
 	if [ "$model" == "evapotranspiration" ]; then
 	    git submodule update --remote extern/${model}/${model}
 	    cmake -B extern/${model}/${model}/${builddir} -S extern/${model}/${model} -DCMAKE_BUILD_TYPE=Release
 	    make -C extern/${model}/${model}/${builddir}
 	fi
+
+	if [ "$model" == "snow17" ]; then
+	    repo_url="https://github.com/NGWPC/snow17"
+	    dest_dir="extern/${model}/${model}"
+
+	    # Check if repo directory exists
+	    if [ -d "$dest_dir/.git" ]; then
+		echo "Repository already exists — updating..."
+		git -C "$dest_dir" pull --ff-only
+	    else
+		echo "Cloning repository..."
+		git clone "$repo_url" "$dest_dir"
+	    fi
+
+	    cp -r ./extern/iso_c_fortran_bmi "extern/${model}/"
+
+	    cmake -B "${dest_dir}/${builddir}" -S "$dest_dir" -DCMAKE_BUILD_TYPE=Release
+	    make -C "${dest_dir}/${builddir}"
+	fi
+
     done
 
     popd
