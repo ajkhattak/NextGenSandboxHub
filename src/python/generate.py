@@ -51,9 +51,8 @@ class Generate:
         if self.formulation_in in self.formulation_supported or self.formulation_in in self.formulation_supported_w_troute:
             self.formulation = self.formulation_in
         else:
-            str_msg = f"Invalid model option provided or formulation currently not supported: " + self.formulation_in
-            sys.exit(str_msg)
-
+            str_msg = f"Invalid model option provided or formulation currently not supported: {self.formulation_in}"
+            raise ValueError(str_msg)
 
         if self.verbosity >= 3:
             print("*******************************************")
@@ -97,6 +96,9 @@ class Generate:
         if "SFT" in self.formulation:
             ConfigGen.write_sft_input_files()
 
+        if "SNOW17" in self.formulation:
+            ConfigGen.write_snow17_input_files()
+            
         if "SMP" in self.formulation:
             
             if "CFE" in self.formulation:

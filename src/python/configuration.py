@@ -92,35 +92,35 @@ class ConfigurationGenerator:
         gdf_soil.set_index("divide_id", inplace=True)
         gdf_div = gpd.read_file(self.gpkg_file, layer='divides')
         gdf_div = gdf_div.to_crs("EPSG:4326")
+        gdf_div.set_index("divide_id", inplace=True)
 
         layers = fiona.listlayers(self.gpkg_file)
         flowpath_layer = [layer for layer in layers if 'flowpath' in layer][0]
 
         if self.verbosity >= 3:
-            print("Geopackage layers: ", layers)
-            print("\n")
+            print("Geopackage layers: ", layers, "\n")
 
         params = schema.get_schema_model_attributes(gdf_soil)
 
-        gdf_soil['soil_b'] = gdf_soil[params['soil_b']].fillna(16)
-        gdf_soil['soil_dksat'] = gdf_soil[params['soil_dksat']].fillna(0.00000338)
-        gdf_soil['soil_psisat'] = gdf_soil[params['soil_psisat']].fillna(0.355)
-        gdf_soil['soil_smcmax'] = gdf_soil[params['soil_smcmax']].fillna(0.439)
-        gdf_soil['soil_smcwlt'] = gdf_soil[params['soil_smcwlt']].fillna(0.066)
-        gdf_soil['gw_Zmax'] = gdf_soil[params['gw_Zmax']].fillna(0.01)
-        gdf_soil['gw_Coeff'] = gdf_soil[params['gw_Coeff']].fillna(1.8e-05)
-        gdf_soil['gw_Expon'] = gdf_soil[params['gw_Expon']].fillna(6.0)
-        gdf_soil['slope_1km'] = gdf_soil[params['slope_1km']].fillna(1.0)
-        gdf_soil['ISLTYP'] = gdf_soil[params['ISLTYP']].fillna(1).astype(int)
-        gdf_soil['IVGTYP'] = gdf_soil[params['IVGTYP']].fillna(1).astype(int)
-        gdf_soil['gw_Zmax'] = gdf_soil['gw_Zmax'] / 1000.0
-        gdf_soil['gw_Coeff'] = gdf_soil['gw_Coeff'] * 3600 / (7.337700 * 1000 * 1000)
-        gdf_soil['elevation_mean'] = gdf_soil[params['elevation_mean']].fillna(4) / 100. # convert cm to m
-        gdf_soil['slope_mean'] = gdf_soil[params['slope_mean']].fillna(0.0)
-        gdf_soil['aspect_mean'] = gdf_soil[params['aspect_mean']].fillna(0.0)
-        gdf_soil['impervious_mean'] = gdf_soil[params['impervious_mean']].fillna(0.0) / 100. # convert percent to fraction
-
-        gdf_soil['terrain_slope'] = gdf_soil[params['terrain_slope']].fillna(0.0)
+        gdf_soil['soil_b']           = gdf_soil[params['soil_b']].fillna(16)
+        gdf_soil['soil_dksat']       = gdf_soil[params['soil_dksat']].fillna(0.00000338)
+        gdf_soil['soil_psisat']      = gdf_soil[params['soil_psisat']].fillna(0.355)
+        gdf_soil['soil_smcmax']      = gdf_soil[params['soil_smcmax']].fillna(0.439)
+        gdf_soil['soil_smcwlt']      = gdf_soil[params['soil_smcwlt']].fillna(0.066)
+        gdf_soil['gw_Zmax']          = gdf_soil[params['gw_Zmax']].fillna(0.01)
+        gdf_soil['gw_Coeff']         = gdf_soil[params['gw_Coeff']].fillna(1.8e-05)
+        gdf_soil['gw_Expon']         = gdf_soil[params['gw_Expon']].fillna(6.0)
+        gdf_soil['slope_1km']        = gdf_soil[params['slope_1km']].fillna(1.0)
+        gdf_soil['ISLTYP']           = gdf_soil[params['ISLTYP']].fillna(1).astype(int)
+        gdf_soil['IVGTYP']           = gdf_soil[params['IVGTYP']].fillna(1).astype(int)
+        gdf_soil['gw_Zmax']          = gdf_soil['gw_Zmax'] / 1000.0
+        gdf_soil['gw_Coeff']         = gdf_soil['gw_Coeff'] * 3600 / (7.337700 * 1000 * 1000)
+        gdf_soil['elevation_mean']   = gdf_soil[params['elevation_mean']].fillna(4) / 100. # convert cm to m
+        gdf_soil['slope_mean']       = gdf_soil[params['slope_mean']].fillna(0.0)
+        gdf_soil['aspect_mean']      = gdf_soil[params['aspect_mean']].fillna(0.0)
+        gdf_soil['impervious_mean']  = gdf_soil[params['impervious_mean']].fillna(0.0) / 100. # convert percent to fraction
+        gdf_soil['terrain_slope']    = gdf_soil[params['terrain_slope']].fillna(0.0)
+        gdf_soil['divide_area']      = gdf_div["areasqkm"].fillna(1.0)
 
         if self.schema_type == 'dangermond':
             gdf_soil['elevation_mean'] = gdf_soil['elevation_mean'] / 100.0
@@ -166,6 +166,8 @@ class ConfigurationGenerator:
         gdf['K_nash_surface'] = gdf_soil[params['K_nash_surface']]
 
         gdf['terrain_slope'] = gdf_soil[params['terrain_slope']]
+
+        gdf['divide_area'] = gdf_soil['divide_area']
 
         df_cats = gpd.read_file(self.gpkg_file, layer='divides')
         catids = [int(re.findall('[0-9]+', s)[0]) for s in df_cats['divide_id']]
@@ -561,14 +563,16 @@ class ConfigurationGenerator:
         pet_dir = os.path.join(self.output_dir,"configs/pet")
         self.create_directory(pet_dir)
                 
-        df_cats = gpd.read_file(self.gpkg_file, layer='divides')
-        df_cats = df_cats.to_crs("EPSG:4326")
-        df_cats.set_index("divide_id", inplace=True)
+        #df_cats = gpd.read_file(self.gpkg_file, layer='divides')
+        #df_cats = df_cats.to_crs("EPSG:4326")
+        #df_cats.set_index("divide_id", inplace=True)
 
         for catID in self.catids:
             cat_name = 'cat-' + str(catID)
-            centroid_x = str(df_cats['geometry'][cat_name].centroid.x)
-            centroid_y = str(df_cats['geometry'][cat_name].centroid.y)
+            centroid_x = str(self.gdf['geometry'][cat_name].centroid.x)
+            centroid_y = str(self.gdf['geometry'][cat_name].centroid.y)
+            #centroid_x = str(df_cats['geometry'][cat_name].centroid.x)
+            #centroid_y = str(df_cats['geometry'][cat_name].centroid.y)
             elevation_mean = self.gdf['elevation_mean'][cat_name]
 
             veg_type = int(self.gdf.loc[cat_name]['IVGTYP'])
@@ -608,6 +612,78 @@ class ConfigurationGenerator:
             pet_file = os.path.join(pet_dir, fname_pet)
             with open(pet_file, "w") as f:
                 f.writelines('\n'.join(pet_params))
+
+    def write_snow17_input_files(self):
+
+        snow17_dir = os.path.join(self.output_dir, "configs/snow17")
+        self.create_directory(snow17_dir)
+
+        snow17_basefile = os.path.join(self.sandbox_dir, "configs/basefiles/config_snow17.namelist.input")
+
+        snow17_param_basefile = os.path.join(self.sandbox_dir, "configs/basefiles/snow17_params_cat.txt")
+        
+        if not os.path.exists(snow17_basefile):
+            sys.exit(f"Sample Snow17 config file does not exist: {snow17_basefile}")
+
+        # Read all lines from the base template
+        with open(snow17_basefile, "r") as infile:
+            lines = infile.readlines()
+
+        with open(snow17_param_basefile, "r") as infile_param:
+            lines_param = infile_param.readlines()
+            
+        for catID in self.catids:
+            cat_name = f"cat-{catID}"
+            fname_snow17       = f"snow17_config_{cat_name}.namelist.input"
+            fname_snow17_param = f"snow17_params_{cat_name}.txt"
+                        
+            snow17_file = os.path.join(snow17_dir, fname_snow17)
+            snow17_param_file = os.path.join(snow17_dir, fname_snow17_param)
+
+
+            with open(snow17_file, "w") as outfile:
+                for line in lines:
+
+                    if line.strip().startswith("!"):
+                        outfile.write(line)
+                        continue
+
+                    # Replace parameters
+                    if line.strip().startswith("main_id"):
+                        outfile.write(f'main_id             = "{cat_name}"     ! basin label or gage id\n')
+                    elif line.strip().startswith("forcing_root"):
+                        outfile.write(f'forcing_root        = "{self.forcing_dir}"\n')
+                    elif line.strip().startswith("output_root"):
+                        outfile.write(f'output_root         = "{self.output_dir}/output"\n')
+                    elif line.strip().startswith("snow17_param_file"):
+                        outfile.write(f'snow17_param_file   = "{snow17_param_file}"\n')
+                    else:
+                        outfile.write(line)             # Keep the rest of the lines unchanged
+
+            area = self.gdf['divide_area'][cat_name]
+            centroid_y = str(self.gdf['geometry'][cat_name].centroid.y)
+            elevation_mean = self.gdf['elevation_mean'][cat_name]
+
+            # write param files
+            with open(snow17_param_file, "w") as outfile_param:
+                for line in lines_param:
+
+                    if line.strip().startswith("!"):
+                        outfile.write(line)
+                        continue
+
+                    # Replace parameters
+                    if line.strip().startswith("hru_id"):
+                        outfile_param.write(f'hru_id {cat_name}\n')
+                    elif line.strip().startswith("hru_area"):
+                        outfile_param.write(f'hru_area {area}\n')
+                    elif line.strip().startswith("latitude"):
+                        outfile_param.write(f'latitude {centroid_y}\n')
+                    elif line.strip().startswith("elev"):
+                        outfile_param.write(f'elev {elevation_mean}\n')
+                    else:
+                        outfile_param.write(line)
+
 
     def write_troute_input_files(self):
 
@@ -828,10 +904,11 @@ class ConfigurationCalib:
             df_new["general"]["restart"] = True
 
         model_param_map = {
-            "CFE-S": "cfes_params",
-            "CFE-X": "cfex_params",
+            "CFE-S":    "cfes_params",
+            "CFE-X":    "cfex_params",
             "TOPMODEL": "topmodel_params",
-            "NOM": "noahowp_params"
+            "NOM":      "noahowp_params",
+            "SNOW17":   "snow17_params"
         }
         
         # Add calibratable parameter blocks
@@ -869,6 +946,8 @@ class ConfigurationCalib:
                         key = "CFE"
                     if key == "NOM":
                         key = "NoahOWP"
+                    if key == "SNOW17":
+                        key = "Snow17"
                     param_values = base_file.get(name, [])
                     df_new["model"]["params"][key] = param_values
 

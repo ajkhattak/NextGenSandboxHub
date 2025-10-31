@@ -47,6 +47,7 @@ build_sandbox()
     
     pip install 'extern/ngen-cal/python/ngen_cal[netcdf]'
     pip install extern/ngen-cal/python/ngen_config_gen
+    pip install extern/ngen-cal/python/ngen_conf
     pip install hydrotools.events
     pip install -e ./extern/ngen_cal_plugins
 

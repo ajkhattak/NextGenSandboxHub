@@ -81,7 +81,7 @@ class RealizationGenerator:
         ext = "lib*.so" if "linux" in platform else "lib*.dylib"
 
         for m in models:
-            if m in ['SoilFreezeThaw', 'cfe', 'SoilMoistureProfiles', 'LASAM', 'sloth', 'evapotranspiration', 'noah-owp-modular', 'topmodel']:
+            if m in ['SoilFreezeThaw', 'cfe', 'SoilMoistureProfiles', 'CASAM', 'sloth', 'evapotranspiration', 'noah-owp-modular', 'topmodel', 'snow17']:
                 path_m = os.path.join(os.path.join(extern_path, m), "cmake_build") if m in ['sloth', 'noah-owp-modular', 'topmodel'] else os.path.join(os.path.join(extern_path, m, m), "cmake_build")
                 if os.path.exists(path_m):
                     exe_m = glob.glob(os.path.join(path_m, ext))
@@ -187,6 +187,34 @@ class RealizationGenerator:
 
         return block
 
+    def get_snow17_block(self):
+        block = {
+            "name": "bmi_fortran",
+            "params": {
+                "name": "bmi_fortran",
+                "model_type_name": "Snow17",
+                "main_output_variable": "raim",
+                "library_file": self.lib_files['snow17'],
+                "init_config": os.path.join(self.config_dir, 'snow17/snow17_config_{{id}}.namelist.input'),
+                "allow_exceed_end_time": True,
+                "fixed_time_step": False,
+                "uses_forcing_file": False,
+                "variables_names_map": {
+                    "precip": "atmosphere_water__liquid_equivalent_precipitation_rate",
+                    "tair": "land_surface_air__temperature"
+                }
+            }
+        }
+
+        # AORC names (details at the end of file)
+        if (self.domain == "conus"):
+            block['params']['variables_names_map'] = {
+                "precip": "APCP_surface",
+                "tair": "TMP_2maboveground"
+            }
+
+        return block
+    
     def get_cfe_block(self, cfe_standalone=False):
         block = {
             "name": "bmi_c",
@@ -219,14 +247,17 @@ class RealizationGenerator:
             block["params"]["variables_names_map"]["water_potential_evaporation_flux"] = "EVAPOTRANS"
 
         # for hybrid formulation
-        if "NOM" in self.formulation and "PET" in self.formulation:
-            block["params"]["variables_names_map"]["water_potential_evaporation_flux"] = "EVAPOTRANS"
+        #if "NOM" in self.formulation and "PET" in self.formulation:
+        #    block["params"]["variables_names_map"]["water_potential_evaporation_flux"] = "EVAPOTRANS"
 
         if "NOM" in self.formulation:
             block["params"]["variables_names_map"]["atmosphere_water__liquid_equivalent_precipitation_rate"] = "QINSUR"
 
         if self.domain == "oconus" and not "NOM" in self.formulation:
             block["params"]["variables_names_map"]["atmosphere_water__liquid_equivalent_precipitation_rate"] = "RAINRATE"
+
+        if "SNOW17" in self.formulation:
+            block["params"]["variables_names_map"]["atmosphere_water__liquid_equivalent_precipitation_rate"] = "raim"
 
         return block
 
@@ -253,6 +284,11 @@ class RealizationGenerator:
         if not "NOM" in self.formulation and "PET" in self.formulation:
             block["params"]["variables_names_map"]["water_potential_evaporation_flux"] = "water_potential_evaporation_flux"
             block["params"]["variables_names_map"]["atmosphere_water__liquid_equivalent_precipitation_rate"] = "APCP_surface"
+
+        if "SNOW17" in self.formulation:
+            block["params"]["variables_names_map"]["atmosphere_water__liquid_equivalent_precipitation_rate"] = "raim"
+            block["params"]["variables_names_map"]["water_potential_evaporation_flux"] = "water_potential_evaporation_flux"
+            
         return block
 
     def get_sft_block(self):
@@ -491,6 +527,9 @@ class RealizationGenerator:
         if ("PET" in self.formulation):
             modules.append(self.get_pet_block(var_names_map=True))
 
+        if ("SNOW17" in self.formulation):
+           modules.append(self.get_snow17_block())
+           
         if ("TOPMODEL" in self.formulation):
             modules.append(self.get_topmodel_block())
 
@@ -517,25 +556,6 @@ class RealizationGenerator:
             output_variables = ["Qout"]
         output_header_fields = ["q_out"]
 
-        """
-        output_variables = [
-	    "FSNO",
-	    "SNOWH",
-	    "SNEQV",
-	    "QRAIN",
-	    "QSNOW",
-	    "ACSNOM",
-	    "QINSUR",
-	    "ETRAN",
-	    "EVAPOTRANS",
-	    "ECAN",
-	    "ISNOW",
-	    "FSA",
-	    "QSEVA",
-	    "SNLIQ",
-	    "FIRA"
-        ]
-        """
         
         """
         if ("CFE" in self.formulation)  and ("PET" in self.formulation):
