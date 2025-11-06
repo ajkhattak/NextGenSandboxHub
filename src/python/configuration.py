@@ -954,8 +954,11 @@ class ConfigurationCalib:
 
         if self.ngen_cal_type in ["calibration", "restart"]:
             df_new["model"]["eval_params"] = {
+                #'sim_start': self.simulation_time['start_time'],
                 'evaluation_start': self.evaluation_time['start_time'],
-                'evaluation_stop': self.evaluation_time['end_time']
+                'evaluation_stop' : self.evaluation_time['end_time'],
+                'objective': base_file.get("model").get("eval_params").get("objective", "kling_gupta"),
+                'target'   : base_file.get("model").get("eval_params").get("target", "min"),
             }
 
         # Validation
