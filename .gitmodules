@@ -4,6 +4,6 @@
 [submodule "extern/ngen-cal"]
 	path = extern/ngen-cal
 	url = https://github.com/ajkhattak/ngen-cal
-[submodule "lstm"]
+[submodule "extern/lstm"]
 	path = extern/lstm
 	url = https://github.com/ajkhattak/lstm
