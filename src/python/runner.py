@@ -4,7 +4,6 @@
 # Date    : July 5, 2024
 ############################################################################################
 
-
 import os
 import sys
 import pandas as pd
@@ -36,7 +35,10 @@ class Runner:
             self.indata = self.indata[self.indata['gage_id'].isin(self.gage_ids)]
             self.indata.reset_index(drop=True, inplace=True)
 
-        if self.ngen_cal_type not in ['calibration', 'validation', 'calibvalid', 'restart']:
+        if "LSTM" in self.formulation:
+            print("Running LSTM in NextGen ...")
+            self.run_ngen_without_calibration()
+        elif self.ngen_cal_type not in ['calibration', 'validation', 'calibvalid', 'restart']:
             print("Running NextGen without calibration ...")
             self.run_ngen_without_calibration()
         else:
@@ -110,6 +112,7 @@ class Runner:
             raise TypeError(f"gage_ids must be a string, list, or None, but got {type(self.gage_ids).__name__}")
 
         self.sim_name_suffix = dsim.get('sim_name_suffix') or None
+
 
     def run_ngen_without_calibration(self):
         ngen_exe = os.path.join(self.ngen_dir, "cmake_build/ngen")

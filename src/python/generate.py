@@ -98,6 +98,9 @@ class Generate:
 
         if "SNOW17" in self.formulation:
             ConfigGen.write_snow17_input_files()
+
+        if "LSTM" in self.formulation:
+            ConfigGen.write_lstm_input_files()
             
         if "SMP" in self.formulation:
             

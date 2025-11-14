@@ -684,6 +684,51 @@ class ConfigurationGenerator:
                     else:
                         outfile_param.write(line)
 
+    def write_lstm_input_files(self):
+
+        lstm_dir = os.path.join(self.output_dir, "configs/lstm")
+        self.create_directory(lstm_dir)
+
+        lstm_basefile = os.path.join(self.sandbox_dir, "configs/basefiles/config_lstm.yaml")
+
+        if not os.path.exists(lstm_basefile):
+            sys.exit(f"Sample LSTM config file does not exist: {lstm_basefile}")
+
+        with open(lstm_basefile, 'r') as file:
+            base_file = yaml.safe_load(file)
+
+        train_cfg_path = os.path.join(self.sandbox_dir, "extern/lstm", base_file.get("train_cfg_file"))
+        train_cfg_path = os.path.normpath(train_cfg_path)
+
+        gpkg_name = os.path.basename(self.gpkg_file).split(".")[0]
+        gage_id   = gpkg_name.split("_")[1]
+
+        for catID in self.catids:
+            cat_name   = f"cat-{catID}"
+            fname_lstm = f"lstm_config_{cat_name}.yaml"
+
+            df_new = {
+                "train_cfg_file": train_cfg_path
+            }
+
+            centroid_y = float(self.gdf['geometry'][cat_name].centroid.y)
+            centroid_x = float(self.gdf['geometry'][cat_name].centroid.x)
+            elevation_mean = float(self.gdf['elevation_mean'][cat_name])
+            area = float(self.gdf['divide_area'][cat_name])
+            terrain_slope = float(self.gdf['terrain_slope'][cat_name])
+
+            df_new["area_sqkm"]  = area
+            df_new["basin_id"]   = gage_id
+            df_new["elev_mean"]  = elevation_mean
+            df_new["slope_mean"] = terrain_slope
+            df_new["lat"]        = centroid_y
+            df_new["lon"]        = centroid_x
+            df_new["verbose"]    = 0
+            df_new["time_step"]  = "1 hour"
+            df_new["initial_state"] = "zero"
+
+            with open(os.path.join(lstm_dir, fname_lstm), 'w') as file:
+                yaml.dump(df_new, file, default_flow_style=False, sort_keys=False)
 
     def write_troute_input_files(self):
 
@@ -697,6 +742,12 @@ class ConfigurationGenerator:
         with open(troute_basefile, 'r') as file:
             d = yaml.safe_load(file)
 
+        # get the terminal nexus id
+        gdf_net = gpd.read_file(self.gpkg_file, layer="network")
+        gpkg_id = gpkg_name.split("_")[1]
+        mask    = gdf_net["hl_uri"].str.contains(gpkg_id, na=False)
+        terminal_nexus_id = gdf_net.loc[mask, "toid"].iloc[0]
+        
         d['network_topology_parameters']['supernetwork_parameters']['geo_file_path'] = self.gpkg_file
         d['network_topology_parameters']['waterbody_parameters']['level_pool']['level_pool_waterbody_parameter_file_path'] = self.gpkg_file
         d['network_topology_parameters']['supernetwork_parameters']['title_string'] = gpkg_name
@@ -756,12 +807,19 @@ class ConfigurationGenerator:
             stream_output = {
                 "stream_output": {
                     'stream_output_directory': os.path.join(self.output_dir, "outputs/troute"),
+                    'mask_output': os.path.join(troute_dir, "mask_output.yaml"),
                     'stream_output_time': -1,
                     'stream_output_type': '.nc',
                     'stream_output_internal_frequency': 60
                 }
             }
-
+            # write mask file for terminal nexus output only
+            dnex = {
+                "nex": [terminal_nexus_id.split("-")[1]]
+                }
+            with open(os.path.join(troute_dir, "mask_output.yaml"), 'w') as file:
+                yaml.dump(dnex, file, default_flow_style=False, sort_keys=False)
+             
         d['output_parameters'] = stream_output
 
         with open(os.path.join(troute_dir, "troute_config.yaml"), 'w') as file:

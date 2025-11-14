@@ -74,6 +74,10 @@ class Driver:
         dsim = d['simulation']
         self.task_type = (dsim.get('task_type', 'control')).lower()
 
+        if "LSTM" in self.formulation:
+            print ("INFO: LSTM formulation -- setting task_type to control ")
+            self.task_type = "control"
+
         self.gage_ids = dsim.get('gage_ids', None)
 
         self.sim_name_suffix = dsim.get('sim_name_suffix') or None

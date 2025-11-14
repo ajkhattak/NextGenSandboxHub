@@ -44,6 +44,7 @@ build_sandbox()
     git submodule update --init
     git submodule update --remote extern/ngen-cal
     git submodule update --remote extern/CIROH_DL_NextGen
+    git submodule update --remote extern/lstm
     
     pip install 'extern/ngen-cal/python/ngen_cal[netcdf]'
     pip install extern/ngen-cal/python/ngen_config_gen
@@ -51,8 +52,15 @@ build_sandbox()
     pip install hydrotools.events
     pip install -e ./extern/ngen_cal_plugins
 
+    # also install lstm
+    pip install -e ./extern/lstm
+    
     deactivate
 
+    ############################################
+    # FORCING
+    ############################################
+    
     VENV_FORCING=~/.venv_forcing
 
     mkdir "$VENV_FORCING"
@@ -65,10 +73,23 @@ build_sandbox()
     # pip install -r extern/CIROH_DL_NextGen/forcing_prep/requirements.txt
     # pip install zarr==2.18.2
     deactivate
+
+    ############################################
+    # LSTM
+    ############################################
+    VENV_LSTM=~/.venv_lstm
+
+    mkdir "$VENV_LSTM"
+    $PYTHON_VERSION -m venv "$VENV_LSTM"
+    source "$VENV_LSTM/bin/activate"
+    
+    pip install -U pip==24.0
+    pip install -e ./extern/lstm
+    deactivate
 }
 
 
 if [ "$BUILD_SANDBOX" == "ON" ]; then
-    echo "Building Python Virtual Environments for Sandbox"
+    echo "Building Python Virtual Environments for NextGen Sandbox"
     build_sandbox
 fi

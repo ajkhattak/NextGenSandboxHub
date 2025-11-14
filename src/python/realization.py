@@ -71,6 +71,16 @@ class RealizationGenerator:
         if 'CASAM' in self.formulation and not os.path.exists(casam_dir):
             print(f"CASAM config files directory does not exist. {casam_dir}")
             sys.exit(0)
+
+        snow17_dir = os.path.join(self.output_dir, "configs", "snow17")
+        if 'SNOW17' in self.formulation and not os.path.exists(snow17_dir):
+            print(f"SNOW17 config files directory does not exist. {snow17_dir}")
+            sys.exit(0)
+
+        lstm_dir = os.path.join(self.output_dir, "configs", "lstm")
+        if 'LSTM' in self.formulation and not os.path.exists(lstm_dir):
+            print(f"LSTM config files directory does not exist. {lstm_dir}")
+            sys.exit(0)
             
     
     def get_lib_files(self):
@@ -419,11 +429,35 @@ class RealizationGenerator:
             params = {
                 "NoahPET(1,double,1,node)": -999.9
             }
+        elif "LSTM" in self.formulation:
+            return block
         else:
             msg = "Formulation not supported yet. " + self.formulation
             sys.exit(msg)
         block["params"]["model_params"] = params
+
         return block
+
+    def get_lstm_block(self):
+        block = {
+            "name": "bmi_python",
+            "params": {
+                "python_type": "lstm.bmi_lstm.bmi_LSTM",
+                "model_type_name": "bmi_LSTM",
+                "main_output_variable": "land_surface_water__runoff_depth",
+                "allow_exceed_end_time": True,
+                "fixed_time_step": False,
+                "uses_forcing_file": False,
+                "init_config": os.path.join(self.config_dir, 'lstm/lstm_config_{{id}}.yaml'),
+                "variables_names_map": {
+                    "atmosphere_water__liquid_equivalent_precipitation_rate": "APCP_surface",
+                    "land_surface_air__temperature": "TMP_2maboveground"
+                }
+            }
+        }
+
+        return block
+
 
     def get_jinjabmi_unit_conversion_block(self):
         block_jinjabmi = {
@@ -546,6 +580,10 @@ class RealizationGenerator:
 
         if ("SFT" in self.formulation):
             modules.append(self.get_sft_block())
+
+        if ("LSTM" in self.formulation):
+            main_output_variable = "land_surface_water__runoff_depth"
+            modules.append(self.get_lstm_block())
             
         #output_variables = ["RAIN_RATE", "Q_OUT", "POTENTIAL_ET", "ACTUAL_ET"]
         #output_header_fields = ["rain_rate", "q_out", "PET", "AET"]
@@ -554,9 +592,14 @@ class RealizationGenerator:
             output_variables = ["Q_OUT"]
         if ("TOPMODEL" in self.formulation):
             output_variables = ["Qout"]
-        output_header_fields = ["q_out"]
+        if ("LSTM" in self.formulation):
+            output_variables = ["land_surface_water__runoff_depth"]#["land_surface_water__runoff_volume_flux"]
 
-        
+        output_header_fields = ["Qout"]
+
+        if (len(main_output_variable) == 0):
+            str_msg = f"main_output_variable at the multi_bmi block level is empty, needs to be an output variable from the models."
+            raise ValueError(str_msg)
         """
         if ("CFE" in self.formulation)  and ("PET" in self.formulation):
             #model_type_name = "CFE"

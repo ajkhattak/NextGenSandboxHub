@@ -9,10 +9,9 @@ import subprocess
 import yaml
 import argparse
 from pathlib import Path
+import sandbox
 
-path = Path(sys.argv[0]).resolve()
-sandbox_dir = path.parent
-
+sandbox_dir = Path(sandbox.__file__).resolve().parent
 
 from src.python import forcing, driver, runner
 
@@ -54,6 +53,7 @@ formulations_supported = [
     "SNOW17,PET,CFE-S",
     "SNOW17,PET,CFE-X",
     "SNOW17,PET,TOPMODEL",
+    "LSTM"
 ]
 
 def Sandbox(args, sandbox_config, calib_config):
