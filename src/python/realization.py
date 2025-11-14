@@ -565,10 +565,13 @@ class RealizationGenerator:
            modules.append(self.get_snow17_block())
            
         if ("TOPMODEL" in self.formulation):
+            main_output_variable = "Qout"
+            output_variables = ["Qout"]
             modules.append(self.get_topmodel_block())
 
         if ("CFE" in self.formulation):
             main_output_variable = "Q_OUT"
+            output_variables = ["Q_OUT"]
             modules.append(self.get_cfe_block())
 
         if ("CASAM" in self.formulation):
@@ -583,24 +586,51 @@ class RealizationGenerator:
 
         if ("LSTM" in self.formulation):
             main_output_variable = "land_surface_water__runoff_depth"
+            output_variables = ["land_surface_water__runoff_depth"]#["land_surface_water__runoff_volume_flux"]
             modules.append(self.get_lstm_block())
             
         #output_variables = ["RAIN_RATE", "Q_OUT", "POTENTIAL_ET", "ACTUAL_ET"]
         #output_header_fields = ["rain_rate", "q_out", "PET", "AET"]
-
-        if ("CFE" in self.formulation):
-            output_variables = ["Q_OUT"]
-        if ("TOPMODEL" in self.formulation):
-            output_variables = ["Qout"]
-        if ("LSTM" in self.formulation):
-            output_variables = ["land_surface_water__runoff_depth"]#["land_surface_water__runoff_volume_flux"]
 
         output_header_fields = ["Qout"]
 
         if (len(main_output_variable) == 0):
             str_msg = f"main_output_variable at the multi_bmi block level is empty, needs to be an output variable from the models."
             raise ValueError(str_msg)
-        """
+        
+        assert len(output_variables) == len(output_header_fields)
+
+        global_block["params"]["model_type_name"] = model_type_name
+        global_block["params"]["main_output_variable"] = main_output_variable
+        global_block["params"]["output_variables"] = output_variables
+        global_block["params"]["output_header_fields"] = output_header_fields
+        global_block["params"]["modules"] = modules
+
+        root["global"]["formulations"] = [global_block]
+
+        with open(self.realization_file, 'w') as outfile:
+            json.dump(root, outfile, indent=4, separators=(", ", ": "), sort_keys=False)
+
+
+
+#############################################################################
+# module for NOAH-OWP-Modular (NOM) block in the nextgen realization file 
+# @param config_dir : input directory of the NOM config files
+# @param model_exe : path to NOM executable
+# Units and different forcing variables names and their mapping
+# Nels script (AORC)         Jason Ducker script    NoahOWP BMI forcing vars names
+# APCP_surface [kg/m2/sec]   <-> RAINRATE [mm/sec] <-> PRCPNONC [mm/sec]
+# DLWRF_surface [W m-2]      <-> LWDOWN [W m-2]    <-> LWDN [W m-2]
+# DSWRF_surface [W m-2]      <-> SWDOWN [W m-2]    <-> SOLDN [W m-2]
+# TMP_2maboveground [K]      <-> T2D [K]           <-> SFCTMP
+# UGRD_10maboveground [m/s]  <-> U2D [m s-1]       <-> UU [m/s]
+# VGRD_10maboveground [m/s]  <-> V2D [m s-1]       <-> VV [m/s]
+ # PRES_surface [Pa]         <-> PSFC [Pa]         <-> SFCPRS [Pa]
+# SPFH_2maboveground [kg/kg] <-> Q2D [kg kg^-1]    <-> Q2 [kg/kg]
+#############################################################################
+
+
+"""
         if ("CFE" in self.formulation)  and ("PET" in self.formulation):
             #model_type_name = "CFE"
             main_output_variable = "Q_OUT"
@@ -676,34 +706,4 @@ class RealizationGenerator:
                                    "soil_storage", "direct_runoff", "giuh_runoff", "deep_gw_to_channel_flux", "soil_to_gw_flux", "q_out",
                                    "infiltration", "soil_moisture_fraction"]
 
-        """
-        assert len(output_variables) == len(output_header_fields)
-
-        global_block["params"]["model_type_name"] = model_type_name
-        global_block["params"]["main_output_variable"] = main_output_variable
-        global_block["params"]["output_variables"] = output_variables
-        global_block["params"]["output_header_fields"] = output_header_fields
-        global_block["params"]["modules"] = modules
-
-        root["global"]["formulations"] = [global_block]
-
-        with open(self.realization_file, 'w') as outfile:
-            json.dump(root, outfile, indent=4, separators=(", ", ": "), sort_keys=False)
-
-
-
-#############################################################################
-# module for NOAH-OWP-Modular (NOM) block in the nextgen realization file 
-# @param config_dir : input directory of the NOM config files
-# @param model_exe : path to NOM executable
-# Units and different forcing variables names and their mapping
-# Nels script (AORC)         Jason Ducker script    NoahOWP BMI forcing vars names
-# APCP_surface [kg/m2/sec]   <-> RAINRATE [mm/sec] <-> PRCPNONC [mm/sec]
-# DLWRF_surface [W m-2]      <-> LWDOWN [W m-2]    <-> LWDN [W m-2]
-# DSWRF_surface [W m-2]      <-> SWDOWN [W m-2]    <-> SOLDN [W m-2]
-# TMP_2maboveground [K]      <-> T2D [K]           <-> SFCTMP
-# UGRD_10maboveground [m/s]  <-> U2D [m s-1]       <-> UU [m/s]
-# VGRD_10maboveground [m/s]  <-> V2D [m s-1]       <-> VV [m/s]
- # PRES_surface [Pa]         <-> PSFC [Pa]         <-> SFCPRS [Pa]
-# SPFH_2maboveground [kg/kg] <-> Q2D [kg kg^-1]    <-> Q2 [kg/kg]
-#############################################################################
+"""

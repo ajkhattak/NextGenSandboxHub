@@ -15,7 +15,6 @@ import re
 import geopandas as gpd
 import csv
 import yaml
-import multiprocessing
 from functools import partial
 import time
 import argparse
@@ -47,7 +46,6 @@ class Driver:
         self.clean         = self.process_clean_input_param(dformul.get('clean', "none"))
         self.verbosity     = dformul.get('verbosity', 0)
         self.num_cpus      = int(dformul.get('np_per_basin', 1))
-        self.basins_in_par = dformul.get('basins_in_par', 1)
         self.schema_type   = dformul.get('schema_type', "noaa-owp")
 
         self.setup_simulation = dformul.get('setup_simulation', True)
@@ -253,7 +251,7 @@ class Driver:
         return basin_ids, num_cats
 
 
-    def main(self, nproc=4):
+    def main(self):
         basins_passed = os.path.join(self.output_dir, "basins_passed.csv")
         file_exists = os.path.exists(basins_passed)
 
@@ -274,11 +272,13 @@ class Driver:
         basin_ids = []
         num_cats = []
 
-        pool = multiprocessing.Pool(processes=nproc)
-
         tuple_list = list(zip(self.gpkg_dirs, self.output_dirs, forcing_files))
-        results = pool.map(self.generate_catchment_files, tuple_list)
-        results = [result for result in results if result is not None]
+
+        results = []
+        for tpl in tuple_list:
+            result = self.generate_catchment_files(tpl)
+            if result is not None:
+                results.append(result)
 
         for result in results:
             basin_ids.extend(result[0])
@@ -304,8 +304,7 @@ class Driver:
         else:
             print("No new basins to add.")
 
-        pool.close()
-        pool.join()
+        
 
         return len(num_cats)
 
@@ -373,7 +372,7 @@ class Driver:
         else:
             self.output_dirs = [self.output_dir / Path(g).name for g in self.gpkg_dirs]
 
-        success_ncats = self.main(nproc=self.basins_in_par)
+        success_ncats = self.main()
         
         end_time = time.time()
         total_time = end_time - start_time

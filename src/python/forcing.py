@@ -2,17 +2,12 @@ import os
 import sys
 import glob
 import yaml
-import multiprocessing
 from pathlib import Path
 import subprocess
 import xarray as xr
-
 import pandas as pd
 import platform
-
-#import main
 import json
-from functools import partial # used for partially applied function which allows to create new functions with arguments
 import time
 
 
@@ -28,33 +23,34 @@ class ForcingProcessor:
     def load_config(self):
         with open(self.config_file, 'r') as file:
             self.config = yaml.safe_load(file)
-        self.sandbox_dir = self.config["sandbox_dir"]
-        self.input_dir = self.config["input_dir"]
-        self.dsim = self.config['formulation']
-        self.verbosity = self.dsim.get('verbosity', 0)
-        self.num_processors_forcing = self.dsim.get("num_processors", 1)
-        self.dforcing = self.config['forcings']
 
-        self.forcing_time = self.dforcing["forcing_time"]
-        self.forcing_format = self.dforcing.get('forcing_format', '.nc')
+        self.sandbox_dir      = self.config["sandbox_dir"]
+        self.input_dir        = self.config["input_dir"]
+        self.dsim             = self.config['formulation']
+        self.verbosity        = self.dsim.get('verbosity', 0)
+        self.dforcing         = self.config['forcings']
+        self.forcing_time     = self.dforcing["forcing_time"]
+        self.forcing_format   = self.dforcing.get('forcing_format', '.nc')
         self.forcing_venv_dir = self.dforcing.get('forcing_venv_dir', os.path.expanduser("~/.venv_forcing"))
 
         start_yr = pd.Timestamp(self.forcing_time['start_time']).year
         end_yr   = pd.Timestamp(self.forcing_time['end_time']).year + 1
 
-        forcing_dir = os.path.join(self.input_dir, "{*}", f'data/forcing/{start_yr}_to_{end_yr}')
+        forcing_dir      = os.path.join(self.input_dir, "{*}", f'data/forcing/{start_yr}_to_{end_yr}')
         self.forcing_dir = self.dforcing.get("forcing_dir", forcing_dir)
 
-    def download_forcing(self, nproc=1):
+    def download_forcing(self):
         if not os.path.exists(self.config_file):
             sys.exit("Sample forcing yaml file does not exist, provided is " + self.config_file)
-        pool = multiprocessing.Pool(processes=nproc)
 
-        results = pool.map(self.forcing_generate_catchment, self.gpkg_dirs)
-        results = [result for result in results if result is not None]
+        failed = False
 
-        pool.close()
-        pool.join()
+        for gpkg in self.gpkg_dirs:
+            result = self.forcing_generate_catchment(gpkg)
+            if result:
+                failed = True
+
+        return failed
 
 
     def forcing_generate_catchment(self, dir):
@@ -144,9 +140,11 @@ class ForcingProcessor:
         if len(nc_file) != 1:
             print("Can't correct the forcing data, either file does not exist or more than one files exist. Files found: ", nc_file)
             return
+
         nc_file = [f for f in nc_file if not "_corrected" in f][0]
         ds = xr.open_dataset(nc_file)
         ds['APCP_surface'].attrs['units'] = 'mm/hr'
+
         for name in ds.data_vars:
             if ds[name].isnull().any():
                 if self.verbosity >= 2:

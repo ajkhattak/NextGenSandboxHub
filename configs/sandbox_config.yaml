@@ -12,7 +12,6 @@ subsetting :
   # Ensure that this gpkg matches the hf_version specified above:
   hf_gpkg_path             : "<path_to>/conus_nextgen.gpkg"  #for example, "<paht_to>/conus_nextgen.gpkg" # input
   dem_output_dir           : "<path_to>/dem" # create `dem` directory yourself # output
-  number_processors        : 1
   # Path to NLCD data for vegetation type (IVGTYP) calculation
   nlcd_data_path           : "<path_to>/Annual_NLCD_LndCov_2021_CU_C1V1.tif"
   calculate_vegetation     : FALSE  # Set to FALSE to skip vegetation calculation
@@ -45,9 +44,7 @@ formulation :
   clean              : ['existing']
   verbosity          : 0
 
-  np_per_basin           : 1         # number of processors for basin partitioning
-  np_per_basin_adaptive  : False     # adaptive - set by the workflow
-  basins_in_par          : 1         # use for both config files and simulations
+  np_per_basin       : 4         # number of processors for basin partitioning
 
 simulation :
   task_type : "<pick_option>" # calibvalid, calibration, validation, restart, control

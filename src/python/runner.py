@@ -10,7 +10,6 @@ import pandas as pd
 import subprocess
 import glob
 import yaml
-import multiprocessing
 import platform
 import json
 from pathlib import Path
@@ -46,12 +45,9 @@ class Runner:
 
             tuple_list = zip(self.indata["gage_id"], self.indata['num_divides'])
             
-            if self.basins_in_par > 1:
-                with multiprocessing.Pool(processes=self.basins_in_par) as pool:
-                    results = pool.map(self.run_ngen_with_calibration, tuple_list)
-            else:
-                for gage_id, num_divides in tuple_list:
-                    self.run_ngen_with_calibration((gage_id, num_divides))
+
+            for gage_id, num_divides in tuple_list:
+                self.run_ngen_with_calibration((gage_id, num_divides))
 
 
     def load_configuration(self):
@@ -66,8 +62,6 @@ class Runner:
         self.ngen_dir      = dformul["ngen_dir"]
         self.formulation   = dformul['models'].upper()
         self.np_per_basin  = int(dformul.get('np_per_basin', 1))
-        self.basins_in_par = int(dformul.get('basins_in_par', 1))
-        self.np_per_basin_adaptive = int(dformul.get('np_per_basin_adaptive', True))
 
         dsim = self.config['simulation']
         self.ngen_cal_type = dsim.get('task_type', 'control')
@@ -131,21 +125,21 @@ class Runner:
 
             gpkg_file = Path(glob.glob(str(i_dir / "data" / "*.gpkg"))[0])
             gpkg_name = gpkg_file.stem
-            np_per_basin_local = self.np_per_basin
+
             file_par = ""
-            if np_per_basin_local > 1:
-                np_per_basin_local, file_par = self.generate_partition_basin_file(ncats, gpkg_file)
+            if self.np_per_basin > 1:
+                file_par = self.generate_partition_basin_file(ncats, gpkg_file)
                 file_par = os.path.join(o_dir, file_par)
 
-            print(f"Running basin {id} on cores {np_per_basin_local} ********", flush=True)
+            print(f"Running basin {id} on cores {self.np_per_basin} ********", flush=True)
             realization = glob.glob(str( o_dir / "configs" / "realization_*.json"))
 
             assert len(realization) == 1
             realization = realization[0]
 
             run_cmd = f'{ngen_exe} {gpkg_file} all {gpkg_file} all {realization}'
-            if np_per_basin_local > 1:
-                run_cmd = f'mpirun -np {np_per_basin_local} {ngen_exe} {gpkg_file} all {gpkg_file} all {realization} {file_par}'
+            if self.np_per_basin > 1:
+                run_cmd = f'mpirun -np {self.np_per_basin} {ngen_exe} {gpkg_file} all {gpkg_file} all {realization} {file_par}'
 
             if self.os_name == "Darwin":
                 run_cmd = f'PYTHONEXECUTABLE=$(which python) {run_cmd}'
@@ -169,13 +163,13 @@ class Runner:
 
         gpkg_file = Path(glob.glob(str(i_dir / "data" / "*.gpkg"))[0])
         gpkg_name = gpkg_file.stem
-        np_per_basin_local = self.np_per_basin
+
         file_par = ""
-        if np_per_basin_local > 1:
-            np_per_basin_local, file_par = self.generate_partition_basin_file(ncats, gpkg_file)
+        if self.np_per_basin > 1:
+            file_par = self.generate_partition_basin_file(ncats, gpkg_file)
             file_par = os.path.join(o_dir, file_par)
 
-        print(f"Running basin {id} on cores {np_per_basin_local} ********", flush=True)
+        print(f"Running basin {id} on cores {self.np_per_basin} ********", flush=True)
 
         if self.ngen_cal_type in ['calibration', 'calibvalid', 'restart']:
             start_time = pd.Timestamp(self.calibration_time['start_time']).strftime("%Y%m%d%H%M")
@@ -198,7 +192,7 @@ class Runner:
                                                          evaluation_time=self.calib_eval_time,
                                                          ngen_cal_basefile=self.config_calib,
                                                          restart_dir=restart_dir,
-                                                         num_proc=np_per_basin_local)
+                                                         num_proc=self.np_per_basin)
             
             ConfigGen.write_calib_input_files()
             
@@ -210,6 +204,7 @@ class Runner:
 
             start_time = pd.Timestamp(self.validation_time['start_time']).strftime("%Y%m%d%H%M")
             troute_output_file = os.path.join("./troute_output_{}.nc".format(start_time))
+
             ConfigGen = configuration.ConfigurationCalib(gpkg_file = gpkg_file,
                                                          output_dir = o_dir,
                                                          ngen_dir = self.ngen_dir,
@@ -221,7 +216,7 @@ class Runner:
                                                          evaluation_time=self.valid_eval_time,
                                                          ngen_cal_basefile=self.config_calib,
                                                          restart_dir=self.restart_dir,
-                                                         num_proc=np_per_basin_local)
+                                                         num_proc=self.np_per_basin)
             
             ConfigGen.write_calib_input_files()
             run_command = f"python {self.sandbox_dir}/src/python/validation.py configs/ngen-cal_valid_config.yaml"
@@ -230,21 +225,14 @@ class Runner:
     
 
     def generate_partition_basin_file(self, ncats, gpkg_file):
-        np_per_basin_local = self.np_per_basin
-        #json_dir = "json"
-
-        if ncats <= np_per_basin_local:
-            np_per_basin_local = ncats
-        elif self.np_per_basin_adaptive:
-            np_per_basin_local = min(int(ncats / np_per_basin_local), 20)
 
         fpar = " "
-        if np_per_basin_local > 1:
+        if self.np_per_basin > 1:
             #fpar = os.path.join(json_dir, f"partitions_{np_per_basin_local}.json")
             #partition = f"{self.ngen_dir}/cmake_build/partitionGenerator {gpkg_file} {gpkg_file} {fpar} {np_per_basin_local} \"\" \"\" "
-            fpar = os.path.join("configs", f"partitions_{np_per_basin_local}.json")
-            partitions = f"python {self.sandbox_dir}/utils/python/local_only_partitions.py {gpkg_file} {np_per_basin_local} {os.getcwd()}/configs"
+            fpar = os.path.join("configs", f"partitions_{self.np_per_basin}.json")
+            partitions = f"python {self.sandbox_dir}/utils/python/local_only_partitions.py {gpkg_file} {self.np_per_basin} {os.getcwd()}/configs"
             result = subprocess.call(partitions, shell=True)
 
-        return np_per_basin_local, fpar
+        return fpar
 

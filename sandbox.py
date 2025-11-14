@@ -74,7 +74,7 @@ def Sandbox(args, sandbox_config, calib_config):
         status          = process_forcing.download_forcing()
 
         if (status):
-            sys.exit("Failed during generating geopackge(s) step...")
+            sys.exit("Failed during downloading forcing data step...")
         else:
             print ("DONE \u2713")
 
