@@ -44,8 +44,8 @@ formulations_supported = [
     "NOM,PET,CFE-X",
     "NOM,TOPMODEL",
     "PET,TOPMODEL",
-    "NOM,LASAM",
-    "PET,LASAM",
+    "NOM,CASAM",
+    "PET,CASAM",
     "NOM,CFE-X,SMP,SFT",
     "NOM,CFE-S,SMP,SFT",
     "NOM,PET,TOPMODEL",
@@ -53,7 +53,8 @@ formulations_supported = [
     "SNOW17,PET,CFE-S",
     "SNOW17,PET,CFE-X",
     "SNOW17,PET,TOPMODEL",
-    "LSTM"
+    "LSTM",
+    "SNOW17,PET,SAC-SMA"
 ]
 
 def Sandbox(args, sandbox_config, calib_config):

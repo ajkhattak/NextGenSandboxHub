@@ -90,7 +90,7 @@ class Generate:
         if "TOPMODEL" in self.formulation:
             ConfigGen.write_topmodel_input_files()
 
-        if "LASAM" in self.formulation:
+        if "CASAM" in self.formulation:
             ConfigGen.write_lasam_input_files()
 
         if "SFT" in self.formulation:
@@ -101,7 +101,10 @@ class Generate:
 
         if "LSTM" in self.formulation:
             ConfigGen.write_lstm_input_files()
-            
+
+        if "SAC-SMA" in self.formulation:
+            ConfigGen.write_sacsma_input_files()
+
         if "SMP" in self.formulation:
             
             if "CFE" in self.formulation:

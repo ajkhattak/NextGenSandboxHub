@@ -82,7 +82,126 @@ class RealizationGenerator:
             print(f"LSTM config files directory does not exist. {lstm_dir}")
             sys.exit(0)
             
-    
+
+    def write_realization_file(self):
+
+        root = {
+            "time": {
+                "start_time": self.simulation_time["start_time"],
+                "end_time": self.simulation_time["end_time"],
+                "output_interval": 3600
+            },
+            "global": {
+                "formulations": "to_be_filled_in",
+                "forcing": {
+                    "file_pattern": ".*{{id}}.*.csv",
+                    "path": self.forcing_dir,
+                    "provider": "CsvPerFeature"
+                }
+            }
+        }
+
+        if self.ngen_cal_type not in ['calibration', 'validation', 'calibvalid', 'restart']:
+            root["output_root"] = os.path.join(self.output_dir, "outputs","div")
+
+        if self.forcing_format == ".nc":
+            root["global"]["forcing"] = {
+                "path": self.forcing_dir,
+                "provider": "NetCDF"
+            }
+
+        if "t-route" in self.formulation.lower():
+            root["routing"] = {
+                "t_route_config_file_with_path": os.path.join(self.config_dir, "troute_config.yaml")
+            }
+
+        global_block = {
+            "name": "bmi_multi",
+            "params": {
+                "name": "bmi_multi",
+                "model_type_name": "",
+                "init_config": "",
+                "allow_exceed_end_time": False,
+                "fixed_time_step": False,
+                "uses_forcing_file": False
+            }
+        }
+
+        model_type_name = ""
+        main_output_variable = ""
+        modules = []
+
+        model_type_name = self.formulation.replace(",","_")
+
+        modules = []
+        if not "SAC-SMA" in self.formulation and not "LSTM" in self.formulation:
+            print ("HERE ", self.formulation)
+            modules = [self.get_sloth_block()]
+
+        output_variables = []
+        output_header_fields = []
+
+        if ("NOM" in self.formulation):
+           modules.append(self.get_noah_owp_modular_block())
+
+        if ("PET" in self.formulation):
+            modules.append(self.get_pet_block(var_names_map=True))
+
+        if ("SNOW17" in self.formulation):
+           modules.append(self.get_snow17_block())
+
+        if ("SAC-SMA" in self.formulation):
+            main_output_variable = "tci"
+            output_variables = ["tci"]
+            modules.append(self.get_sacsma_block())
+           
+        if ("TOPMODEL" in self.formulation):
+            main_output_variable = "Qout"
+            output_variables = ["Qout"]
+            modules.append(self.get_topmodel_block())
+
+        if ("CFE" in self.formulation):
+            main_output_variable = "Q_OUT"
+            output_variables = ["Q_OUT"]
+            modules.append(self.get_cfe_block())
+
+        if ("CASAM" in self.formulation):
+            main_output_variable = "total_discharge"
+            modules.append(self.get_casam_block())
+
+        if ("SMP" in self.formulation):
+            modules.append(self.get_smp_block())
+
+        if ("SFT" in self.formulation):
+            modules.append(self.get_sft_block())
+
+        if ("LSTM" in self.formulation):
+            main_output_variable = "land_surface_water__runoff_depth"
+            output_variables = ["land_surface_water__runoff_depth"]#["land_surface_water__runoff_volume_flux"]
+            modules.append(self.get_lstm_block())
+            
+        #output_variables = ["RAIN_RATE", "Q_OUT", "POTENTIAL_ET", "ACTUAL_ET"]
+        #output_header_fields = ["rain_rate", "q_out", "PET", "AET"]
+
+        output_header_fields = ["Qout"]
+
+        if (len(main_output_variable) == 0):
+            str_msg = f"main_output_variable at the multi_bmi block level is empty, needs to be an output variable from the models."
+            raise ValueError(str_msg)
+        
+        assert len(output_variables) == len(output_header_fields)
+
+        global_block["params"]["model_type_name"] = model_type_name
+        global_block["params"]["main_output_variable"] = main_output_variable
+        global_block["params"]["output_variables"] = output_variables
+        global_block["params"]["output_header_fields"] = output_header_fields
+        global_block["params"]["modules"] = modules
+
+        root["global"]["formulations"] = [global_block]
+
+        with open(self.realization_file, 'w') as outfile:
+            json.dump(root, outfile, indent=4, separators=(", ", ": "), sort_keys=False)
+            
     def get_lib_files(self):
         lib_files = {}
         extern_path = os.path.join(self.ngen_dir, 'extern')
@@ -91,7 +210,8 @@ class RealizationGenerator:
         ext = "lib*.so" if "linux" in platform else "lib*.dylib"
 
         for m in models:
-            if m in ['SoilFreezeThaw', 'cfe', 'SoilMoistureProfiles', 'CASAM', 'sloth', 'evapotranspiration', 'noah-owp-modular', 'topmodel', 'snow17']:
+            if m in ['SoilFreezeThaw', 'cfe', 'SoilMoistureProfiles', 'CASAM', 'sloth', 'evapotranspiration',
+                     'noah-owp-modular', 'topmodel', 'snow17', "sac-sma"]:
                 path_m = os.path.join(os.path.join(extern_path, m), "cmake_build") if m in ['sloth', 'noah-owp-modular', 'topmodel'] else os.path.join(os.path.join(extern_path, m, m), "cmake_build")
                 if os.path.exists(path_m):
                     exe_m = glob.glob(os.path.join(path_m, ext))
@@ -222,6 +342,39 @@ class RealizationGenerator:
                 "precip": "APCP_surface",
                 "tair": "TMP_2maboveground"
             }
+
+        return block
+
+    def get_sacsma_block(self):
+        block = {
+            "name": "bmi_fortran",
+            "params": {
+                "name": "bmi_fortran",
+                "model_type_name": "SacSMA",
+                "main_output_variable": "tci",
+                "library_file": self.lib_files['sac-sma'],
+                "init_config": os.path.join(self.config_dir, 'sacsma/sacsma_config_{{id}}.namelist.input'),
+                "allow_exceed_end_time": True,
+                "fixed_time_step": False,
+                "uses_forcing_file": False,
+                "variables_names_map": {
+                    "precip": "atmosphere_water__liquid_equivalent_precipitation_rate",
+                    "tair": "land_surface_air__temperature",
+                    "pet" : "water_potential_evaporation_flux"
+                }
+            }
+        }
+
+        # AORC names (details at the end of file)
+        if (self.domain == "conus"):
+            block['params']['variables_names_map'] = {
+                "precip": "APCP_surface",
+                "tair": "TMP_2maboveground",
+                "pet" : "water_potential_evaporation_flux"
+            }
+
+        if "SNOW17" in self.formulation:
+            block["params"]["variables_names_map"]["precip"] = "raim"
 
         return block
     
@@ -432,7 +585,7 @@ class RealizationGenerator:
         elif "LSTM" in self.formulation:
             return block
         else:
-            msg = "Formulation not supported yet. " + self.formulation
+            msg = "SLoTH model not setup for this formulation yet: " + self.formulation
             sys.exit(msg)
         block["params"]["model_params"] = params
 
@@ -500,116 +653,6 @@ class RealizationGenerator:
 
         return [block_jinjabmi, block_unit_conversion]
 
-    def write_realization_file(self):
-
-        root = {
-            "time": {
-                "start_time": self.simulation_time["start_time"],
-                "end_time": self.simulation_time["end_time"],
-                "output_interval": 3600
-            },
-            "global": {
-                "formulations": "to_be_filled_in",
-                "forcing": {
-                    "file_pattern": ".*{{id}}.*.csv",
-                    "path": self.forcing_dir,
-                    "provider": "CsvPerFeature"
-                }
-            }
-        }
-
-        if self.ngen_cal_type not in ['calibration', 'validation', 'calibvalid', 'restart']:
-            root["output_root"] = os.path.join(self.output_dir, "outputs","div")
-
-        if self.forcing_format == ".nc":
-            root["global"]["forcing"] = {
-                "path": self.forcing_dir,
-                "provider": "NetCDF"
-            }
-
-        if "t-route" in self.formulation.lower():
-            root["routing"] = {
-                "t_route_config_file_with_path": os.path.join(self.config_dir, "troute_config.yaml")
-            }
-
-        global_block = {
-            "name": "bmi_multi",
-            "params": {
-                "name": "bmi_multi",
-                "model_type_name": "",
-                "init_config": "",
-                "allow_exceed_end_time": False,
-                "fixed_time_step": False,
-                "uses_forcing_file": False
-            }
-        }
-
-        model_type_name = ""
-        main_output_variable = ""
-        modules = []
-
-        model_type_name = self.formulation.replace(",","_")
-
-        modules = [self.get_sloth_block()]
-
-        output_variables = []
-        output_header_fields = []
-
-        if ("NOM" in self.formulation):
-           modules.append(self.get_noah_owp_modular_block())
-
-        if ("PET" in self.formulation):
-            modules.append(self.get_pet_block(var_names_map=True))
-
-        if ("SNOW17" in self.formulation):
-           modules.append(self.get_snow17_block())
-           
-        if ("TOPMODEL" in self.formulation):
-            main_output_variable = "Qout"
-            output_variables = ["Qout"]
-            modules.append(self.get_topmodel_block())
-
-        if ("CFE" in self.formulation):
-            main_output_variable = "Q_OUT"
-            output_variables = ["Q_OUT"]
-            modules.append(self.get_cfe_block())
-
-        if ("CASAM" in self.formulation):
-            main_output_variable = "total_discharge"
-            modules.append(self.get_casam_block())
-
-        if ("SMP" in self.formulation):
-            modules.append(self.get_smp_block())
-
-        if ("SFT" in self.formulation):
-            modules.append(self.get_sft_block())
-
-        if ("LSTM" in self.formulation):
-            main_output_variable = "land_surface_water__runoff_depth"
-            output_variables = ["land_surface_water__runoff_depth"]#["land_surface_water__runoff_volume_flux"]
-            modules.append(self.get_lstm_block())
-            
-        #output_variables = ["RAIN_RATE", "Q_OUT", "POTENTIAL_ET", "ACTUAL_ET"]
-        #output_header_fields = ["rain_rate", "q_out", "PET", "AET"]
-
-        output_header_fields = ["Qout"]
-
-        if (len(main_output_variable) == 0):
-            str_msg = f"main_output_variable at the multi_bmi block level is empty, needs to be an output variable from the models."
-            raise ValueError(str_msg)
-        
-        assert len(output_variables) == len(output_header_fields)
-
-        global_block["params"]["model_type_name"] = model_type_name
-        global_block["params"]["main_output_variable"] = main_output_variable
-        global_block["params"]["output_variables"] = output_variables
-        global_block["params"]["output_header_fields"] = output_header_fields
-        global_block["params"]["modules"] = modules
-
-        root["global"]["formulations"] = [global_block]
-
-        with open(self.realization_file, 'w') as outfile:
-            json.dump(root, outfile, indent=4, separators=(", ", ": "), sort_keys=False)
 
 
 

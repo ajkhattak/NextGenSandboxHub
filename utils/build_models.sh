@@ -130,7 +130,7 @@ build_models()
 
     export builddir="cmake_build"
 
-    for model in noah-owp-modularx cfex evapotranspirationx SoilFreezeThawx SoilMoistureProfilesx CASAM snow17; do
+    for model in noah-owp-modular cfe evapotranspiration SoilFreezeThaw SoilMoistureProfiles CASAM snow17 sac-sma; do
 	rm -rf extern/$model/${builddir}
 	if [ "$model" == "noah-owp-modular" ]; then
 	    git submodule update --remote extern/${model}/${model}
@@ -182,6 +182,25 @@ build_models()
 	    cp -r ./extern/iso_c_fortran_bmi "extern/${model}/"
 
 	    cmake -B "${dest_dir}/${builddir}" -S "$dest_dir" -DCMAKE_BUILD_TYPE=Release
+	    make -C "${dest_dir}/${builddir}"
+	fi
+
+	if [ "$model" == "sac-sma" ]; then
+	    repo_url="https://github.com/NGWPC/sac-sma"
+	    dest_dir="extern/${model}/${model}"
+
+	    # Check if repo directory exists
+	    if [ -d "$dest_dir/.git" ]; then
+		echo "Repository already exists — updating..."
+		git -C "$dest_dir" pull --ff-only
+	    else
+		echo "Cloning repository..."
+		git clone "$repo_url" "$dest_dir"
+	    fi
+
+	    cp "${dest_dir}/ngen_files/sacbmi.pc.in" "${dest_dir}/ngen_files/CMakeLists.txt" "extern/${model}"
+
+	    cmake -B "${dest_dir}/${builddir}" -S "extern/${model}" -DCMAKE_BUILD_TYPE=Release
 	    make -C "${dest_dir}/${builddir}"
 	fi
 
