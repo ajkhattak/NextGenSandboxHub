@@ -49,7 +49,7 @@ formulations_supported = [
     "NOM,CFE-X,SMP,SFT",
     "NOM,CFE-S,SMP,SFT",
     "NOM,PET,TOPMODEL",
-    "NOM,LASAM,SMP,SFT",
+    "NOM,CASAM,SMP,SFT",
     "SNOW17,PET,CFE-S",
     "SNOW17,PET,CFE-X",
     "SNOW17,PET,TOPMODEL",

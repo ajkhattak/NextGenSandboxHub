@@ -36,16 +36,16 @@ class Driver:
         with open(self.sandbox_config, 'r') as file:
             d = yaml.safe_load(file)
 
-        self.sandbox_dir  = d["sandbox_dir"]
-        self.input_dir    = d["input_dir"]
-        self.output_dir   = Path(d["output_dir"])
+        self.sandbox_dir  = d['general'].get('sandbox_dir') #d["sandbox_dir"]
+        self.input_dir    = d['general'].get('input_dir') #d["input_dir"]
+        self.output_dir   = Path(d['general'].get('output_dir')) #d["output_dir"])
 
         dformul = d['formulation']
         self.ngen_dir      = dformul["ngen_dir"]
         self.formulation   = dformul['models'].upper()
         self.clean         = self.process_clean_input_param(dformul.get('clean', "none"))
         self.verbosity     = dformul.get('verbosity', 0)
-        self.num_cpus      = int(dformul.get('np_per_basin', 1))
+        self.num_cpus      = int(dformul.get('num_procs', 1))
         self.schema_type   = dformul.get('schema_type', "noaa-owp")
 
         self.setup_simulation = dformul.get('setup_simulation', True)

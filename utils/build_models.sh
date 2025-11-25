@@ -74,7 +74,7 @@ fi
 build_ngen()
 {
     pushd $NGEN_DIR
-
+    export builddir="cmake_build"
     rm -rf ${builddir}
     cmake -DCMAKE_BUILD_TYPE=Release \
 	  -DNGEN_WITH_BMI_FORTRAN=ON \

@@ -54,14 +54,14 @@ class Runner:
         with open(self.config_workflow, 'r') as file:
             self.config = yaml.safe_load(file)
 
-        self.sandbox_dir = self.config["sandbox_dir"]
-        self.input_dir = self.config["input_dir"]
-        self.output_dir = Path(self.config["output_dir"])
+        self.sandbox_dir  = self.config['general'].get('sandbox_dir')
+        self.input_dir    = self.config['general'].get('input_dir')
+        self.output_dir   = Path(self.config['general'].get('output_dir'))
 
         dformul = self.config['formulation']
         self.ngen_dir      = dformul["ngen_dir"]
         self.formulation   = dformul['models'].upper()
-        self.np_per_basin  = int(dformul.get('np_per_basin', 1))
+        self.np_per_basin  = int(dformul.get('num_procs', 1))
 
         dsim = self.config['simulation']
         self.ngen_cal_type = dsim.get('task_type', 'control')

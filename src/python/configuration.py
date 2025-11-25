@@ -810,10 +810,11 @@ class ConfigurationGenerator:
             d = yaml.safe_load(file)
 
         # get the terminal nexus id
-        gdf_net = gpd.read_file(self.gpkg_file, layer="network")
+        gdf_net = gpd.read_file(self.gpkg_file, layer="flowpath-attributes")
         gpkg_id = gpkg_name.split("_")[1]
-        mask    = gdf_net["hl_uri"].str.contains(gpkg_id, na=False)
-        terminal_nexus_id = gdf_net.loc[mask, "toid"].iloc[0]
+        mask    = gdf_net["gage"].str.contains(gpkg_id, na=False)
+
+        terminal_nexus_id = gdf_net.loc[mask, "gage_nex_id"].iloc[0]
         
         d['network_topology_parameters']['supernetwork_parameters']['geo_file_path'] = self.gpkg_file
         d['network_topology_parameters']['waterbody_parameters']['level_pool']['level_pool_waterbody_parameter_file_path'] = self.gpkg_file

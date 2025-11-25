@@ -63,7 +63,7 @@ def generate_config_files_for_gage(gage_id, generate=True):
 
     sandbox_cfg["output_dir"] = str(output_dir / dir_name[index])
 
-    sandbox_cfg["formulation"]["np_per_basin"] = num_cpus
+    sandbox_cfg["formulation"]["num_procs"] = num_cpus
     sandbox_cfg["formulation"]["models"] = models[index]
     sandbox_cfg["simulation"]["gage_ids"] = [gage_id]
 

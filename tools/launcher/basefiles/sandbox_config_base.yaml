@@ -1,12 +1,14 @@
-# make sure to install yaml package using install.packages("yaml") if not installed already
+# Sandbox configuration sample file
 
-sandbox_dir  : "/home/Ahmad.Jan.Khattak/Code/NextGenSandboxHub"
-input_dir     : "/scratch4/NCEPDEV/ohd/Ahmad.Jan.Khattak/Core/projects/nwm_v4_bm/input_conus/input_20250902"
-output_dir    : "/scratch4/NCEPDEV/ohd/Ahmad.Jan.Khattak/Core/projects/nwm_v4_bm/output_conus_bm_v2.3"
+general:
+  sandbox_dir  : "/home/Ahmad.Jan.Khattak/Code/NextGenSandboxHub"
+  input_dir     : "/scratch4/NCEPDEV/ohd/Ahmad.Jan.Khattak/Core/projects/nwm_v4_bm/input_conus/input_20250902"
+  output_dir    : "/scratch4/NCEPDEV/ohd/Ahmad.Jan.Khattak/Core/projects/nwm_v4_bm/output_conus_bm_v2.3"
 
 
 ########################################################################
 # Subset a basin using hydrofabric; see src/R/main.R for further details
+# make sure to install yaml package using install.packages("yaml") if not installed already
 subsetting :
   hf_version               : "2.2" # Only enter version number, e.g. "2.2" or "2.1.1"
   # Ensure that this gpkg matches the hf_version specified above:
@@ -21,11 +23,11 @@ subsetting :
       gage_ids     : "01105000" #for instance, ["01105000"]
     use_gage_file :
       use_gage_file : FALSE
-      gage_file     : "/Users/laurenbolotin/Lauren/benchmark/benchmark2.0_final/rfc_ids_clean_conus.csv"
+      gage_file     : "<path_to>/basin_ids_file.csv"
       column_name   : "USGS.ID"
     use_gpkg :
       use_gpkg  : FALSE
-      gpkg_dir  : "/Users/ahmadjan/Core/SimulationsData/projects/ngen-bm/test/gpkgs"
+      gpkg_dir  : "<path_to>/gpkgs"
       pattern   :  "hf_v211_"
 
 ########################################################################
@@ -41,9 +43,7 @@ formulation :
   clean              : ['existing']
   verbosity          : 0
 
-  np_per_basin           : <*>         # number of processors for basin partitioning
-  np_per_basin_adaptive  : False     # adaptive - set by the workflow
-  basins_in_par          : 1         # use for both config files and simulations
+  num_procs           : <*>         # number of processors for basin partitioning
 
 simulation :
   task_type : "calibration" # calibvalid, calibration, validation, restart, control

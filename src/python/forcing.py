@@ -15,7 +15,7 @@ class ForcingProcessor:
     def __init__(self, config_file):
         self.config_file = config_file
         self.load_config()
-        self.output_dir = Path(self.config['output_dir'])
+
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         self.get_gpkg_dirs()
@@ -24,8 +24,9 @@ class ForcingProcessor:
         with open(self.config_file, 'r') as file:
             self.config = yaml.safe_load(file)
 
-        self.sandbox_dir      = self.config["sandbox_dir"]
-        self.input_dir        = self.config["input_dir"]
+        self.sandbox_dir      = self.config['general'].get('sandbox_dir') #d["sandbox_dir"]
+        self.input_dir        = self.config['general'].get('input_dir') #d["input_dir"]
+        self.output_dir       = Path(self.config['general'].get('output_dir')) #d["output_dir"])
         self.dsim             = self.config['formulation']
         self.verbosity        = self.dsim.get('verbosity', 0)
         self.dforcing         = self.config['forcings']

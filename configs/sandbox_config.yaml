@@ -1,58 +1,64 @@
-# make sure to install yaml package using install.packages("yaml") if not installed already
+# Sandbox configuration sample file
+#
 
-sandbox_dir  : "<path_to_sandbox_dir>/NextGenSandboxHub"
-input_dir     : "<path_to_input_directory>"  # user-specified
-output_dir    : "<path_to_output_directory>" # user-specified
+general:
+  sandbox_dir  : "<path_to_sandbox_dir>/NextGenSandboxHub" #------------- Path to NextGenSandboxHub base directory
+  input_dir    : "<path_to_input_directory>"  #-------------------------- user-specified input directory (all geopackage are stored to this dir)
+  output_dir   : "<path_to_output_directory>" #-------------------------- user-specified output directory (all simulation outputs are stored here)
 
 
 ########################################################################
 # Subset a basin using hydrofabric; see src/R/main.R for further details
+# make sure to install yaml package using install.packages("yaml") if not installed already
 subsetting :
-  hf_version               : "2.2" # Only enter version number, e.g. "2.2" or "2.1.1"
+  hf_version               : "2.2" #------------------------------------- Only enter version number, e.g. "2.2" or "2.1.1"
   # Ensure that this gpkg matches the hf_version specified above:
-  hf_gpkg_path             : "<path_to>/conus_nextgen.gpkg"  #for example, "<paht_to>/conus_nextgen.gpkg" # input
-  dem_output_dir           : "<path_to>/dem" # create `dem` directory yourself # output
+  hf_gpkg_path             : "<path_to>/conus_nextgen.gpkg"  #------------ For example, "<paht_to>/conus_nextgen.gpkg" # input
+  dem_output_dir           : "<path_to>/dem" #---------------------------- User-created `dem` directory # output
+  dem_input_file           : "<path_to>/dem.vrt" #------------------------ Set to local dem.vrt file, if not available leave it empty # (OPTIONAL)
   # Path to NLCD data for vegetation type (IVGTYP) calculation
-  nlcd_data_path           : "<path_to>/Annual_NLCD_LndCov_2021_CU_C1V1.tif"
-  calculate_vegetation     : FALSE  # Set to FALSE to skip vegetation calculation
+  nlcd_data_path           : "<path_to>/Annual_NLCD_LndCov_2021_CU_C1V1.tif" # OPTIONAL
+  calculate_vegetation     : FALSE  #---------------------------------------- Set to FALSE to skip vegetation calculation # OPTIONAL
 
   # Note: only gage_ids that fall within the domain of the hydrofabric listed above will be subsetted
   options :
     use_gage_id :
-      use_gage_id  : TRUE
-      gage_ids     : "01105000" #for instance, ["01105000"]
+      use_gage_id  : TRUE #----------------------------------------------- TRUE or FALSE
+      gage_ids     : "01105000" #----------------------------------------- List of gage IDs, for instance, ["01105000","08070500"]
     use_gage_file :
-      use_gage_file : FALSE
-      gage_file     : "/Users/laurenbolotin/Lauren/benchmark/benchmark2.0_final/rfc_ids_clean_conus.csv"
-      column_name   : "USGS.ID"
+      use_gage_file : FALSE  #-------------------------------------------- TRUE or FALSE
+      gage_file     : "<path_to_basin_ids_file>/basin_ids_file.csv" #----- Path to CSV file with column (set column name below) of basin gage IDs
+      column_name   : "USGS.ID" #----------------------------------------- Name of column of gage IDs
     use_gpkg :
-      use_gpkg  : FALSE
-      gpkg_dir  : "/Users/ahmadjan/Core/SimulationsData/projects/ngen-bm/test/gpkgs"
-      pattern   :  "hf_v211_"
+      use_gpkg  : FALSE  #------------------------------------------------ TRUE or FALSE
+      gpkg_dir  : "<path_to_gpkgs_dir>" #--------------------------------- Path to base directory for all (already downloaed) geopackages
+      pattern   :  "gage_" #---------------------------------------------- Pattern of names, e.g., gage_<*> or hf_<*>
 
 ########################################################################
 #forcing data is stored under <input_dir>/gage_id/data/forcing
 forcings : 
-  forcing_format     : ".nc"
-  forcing_time       : {"start_time" : "2016-10-01 00:00:00", "end_time" : "2017-09-30 23:00:00"}
-  domain             : "conus"        # options = ["conus", "HI", "PR", 'AK']
+  forcing_format    : ".nc" #-------------------------------------------- Format .nc or .csv (recommended option .nc)
+  forcing_time      : {"start_time" : "2016-10-01 00:00:00", "end_time" : "2017-09-30 23:00:00"} #---------- Time (must cover the simulation times)
+  domain            : "conus"        #------------------------------------ options = ["conus", "HI", "PR", 'AK']
+
 ########################################################################
 formulation :
-  ngen_dir           : "<path_to_ngen_dir>" # for instance, /Users/ajkhattak/codes/ngen_repo/ngen"
-  models             : "NOM, CFE, T-route"
+  ngen_dir          : "<path_to_ngen_dir>" #------------------------------- Path to NextGen base directory. For instance, /Users/X/Codes/ngen_repo/ngen"
+  models            : "PET, CFE, T-route"  #------------------------------- Name of the formulation. Run "sandbox -h" to see a complete list of supported formulations
 
-  clean              : ['existing']
-  verbosity          : 0
+  clean             : ['existing'] #--------------------------------------- Clean existing config and realization files (does not delete simulation data)
+  verbosity         : 0            #--------------------------------------- Verbosity levels (Set to 0 recommended unless debugging)
 
-  np_per_basin       : 4         # number of processors for basin partitioning
+  num_procs         : 4            #--------------------------------------- Number of processors for basin partitioning
 
 simulation :
-  task_type : "<pick_option>" # calibvalid, calibration, validation, restart, control
-  gage_ids    :  "01105000"   # gage id, list of ids; if Null, basin_passed.csv file is loaded
-  sim_name_suffix  :  "pet_cfe" # user specified name; the directory wil be, e.g., 01105000_pet_cfe
-  calibration_time : {"start_time" : "2016-10-01 00:00:00", "end_time" : "2021-09-30 23:00:00"}
-  calib_eval_time  : {"start_time" : "2017-10-01 00:00:00", "end_time" : "2021-09-30 23:00:00"}
-  validation_time  : {"start_time" : "2010-11-22 14:00:00", "end_time" : "2010-12-23 02:00:00"}
-  valid_eval_time  : {"start_time" : "2010-11-23 14:00:00", "end_time" : "2010-12-23 02:00:00"}
-  restart_dir      : "<path_to_restart_dir>/{*}/202410042024_ngen_qaiklwj0_worker/"
+  task_type        : "<pick_option>" #------------------------------------- Supported options: calibvalid, calibration, validation, restart, control
+  gage_ids         :  "01105000"   #--------------------------------------- Provide a gage id or list of ids; if Null, basin_passed.csv file is loaded
+  sim_name_suffix  :  "pet_cfe" #------------------------------------------ User specified name appended to the gage_id. For example, 01105000_pet_cfe
+  #simulation_time : {"start_time" : "2015-10-01 00:00:00", "end_time" : "2020-09-30 23:00:00"} # only needed when task_type is control
+  calibration_time : {"start_time" : "2016-10-01 00:00:00", "end_time" : "2021-09-30 23:00:00"} # Entire simulation period for calibration; including spinup period
+  calib_eval_time  : {"start_time" : "2017-10-01 00:00:00", "end_time" : "2021-09-30 23:00:00"} # Evalaution period for calibration (excluding spinup period)
+  validation_time  : {"start_time" : "2010-11-22 14:00:00", "end_time" : "2010-12-23 02:00:00"} # Entire simulation period for validation; including spinup period
+  valid_eval_time  : {"start_time" : "2010-11-23 14:00:00", "end_time" : "2010-12-23 02:00:00"} # Evalaution period for validation (excluding spinup period)
+  restart_dir      : "<path_to_restart_dir>/{*}/202410042024_ngen_qaiklwj0_worker/" #----------- Restart experiment from the best iteration
   
