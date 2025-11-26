@@ -2,7 +2,7 @@
 The Next-Generation Water Resources Modeling Framework ([NextGen](https://github.com/NOAA-OWP/ngen)), developed by the NOAA's Office of Water Prediction is a language- and model-agnostic framework, which allows to run a mosaic of surface and subsurface models in a single basin comprised of 10s-100s sub-catchments. 
 
 ### Schematic 
-A schematic of the NextGenSandboxHub Workflow can be found [here](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/doc/schematic.md)
+A conceptual workflow diagram of the NextGenSandboxHub is available [here](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/doc/schematic.md)
 
 ### Configuration
 
@@ -10,3 +10,6 @@ Detailed instructions for installing, configuring, and running NGSandboxHub for 
 
 ### Currently Supported Formulations:
 For the most up-to-date list of supported formulations, run sandbox -h. A complete list is also available in the [FORMULATIONS](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/FORMULATIONS.md)
+
+### Sandbox Launcher
+The sandbox launcher enables a single command to automatically run multiple hydrologic formulations across many gages, manage calibration, restarts, validation, and submit all jobs efficiently on HPC systems. For more details see [launcher](https://github.com/ajkhattak/NextGenSandboxHub/tree/main/tools/launcher)
