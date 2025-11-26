@@ -10,6 +10,7 @@ import glob
 import numpy as np
 import geopandas as gpd
 import yaml
+import argparse
 
 # ===========================  Inputs ==========================================
 
@@ -170,11 +171,34 @@ def get_num_cpus(exp_info_dir, gage_id):
     return int(d["num_cpus"])
 
 
+def check_validation_exists(exp_info_dir, gage_id):
+    """
+    Return True if validation output already exists for this gage.
+    """
+
+    info_file = exp_info_dir / f"info_{gage_id}.yml"
+    if not info_file.exists():
+        return False  # Validation doesn't exist
+
+    with open(info_file, "r") as f:
+        d = yaml.safe_load(f)
+
+    # Validation output lives in output_sim_obs/
+    validation_file = glob.glob(
+        str(Path(d["output_dir"]) / "*_worker" / "output_sim_obs" / "sim_obs_validation.csv")
+    )
+
+    if validation_file:
+        print(f"INFO: [{gage_id}] Validation output found — skipping validation run.")
+        return True
+
+    return False
+
 # ====================== SLURM Submission ======================
 
 def run_experiment(model_name, model_dir, gage_id, exp_config_dir, exp_info_dir, current_iter):
     """
-    Submit the calibration or restart job.
+    Submit the calibration/validation or restart job.
     """
 
     sandbox_main = exp_config_dir / gage_id / f"sandbox_config_{gage_id}.yaml"
@@ -202,17 +226,47 @@ def run_experiment(model_name, model_dir, gage_id, exp_config_dir, exp_info_dir,
         "launcher/submit_gage.slurm"
     ]
 
+    # # Skip submission if validation exists — job is fully complete
+    validation_exists = check_validation_exists(exp_config_dir, gage_id)
+    
+    if validation_exists:
+        return
+
     print(f"[{gage_id}] Submitting: {' '.join(cmd)}")
     subprocess.run(cmd)
 
 
+# ====================== Check Experiments Status ======================
+def check_status():
+    """
+    Print calibration/validation runs status for all gages and all models.
+    """
+
+    print("\n=== STATUS REPORT (no jobs submitted) ===\n")
+
+    for gage_id in mapping.keys():
+        models_for_gage = get_models_for_gage(gage_id)
+
+        for model_name in models_for_gage:
+            model_dir      = model_name_to_dir(model_name)
+            exp_info_dir   = output_dir / model_dir / base_sandbox_cfg["sandbox_launcher"]["exp_info_dir"]
+            exp_config_dir = output_dir / model_dir / "configs"
+
+            current_iter = get_current_iteration(exp_info_dir, gage_id)
+            max_iter     = get_max_iter(exp_config_dir, gage_id)
+
+            validation_exists = check_validation_exists(exp_config_dir, gage_id)
+            valid_flag = "YES" if validation_exists else "NO"
+
+            print(f"[{gage_id}, {model_name}] Status: {current_iter}/{max_iter}, Validation Exists = {valid_flag} ")
+
+    print("\n=== STATUS REPORT COMPLETE ===\n")
 
 # ==============================================================================
-# MAIN LOOP: all models x all gages
+# Main function loops over all models x all gages
 # ==============================================================================
-def main():
-    print(f"\n=== Sandbox Launcher Started @ {datetime.now()} ===")
-
+def runner():
+    
     running_processes = {}
 
     for gage_id in mapping.keys():
@@ -254,6 +308,26 @@ def main():
     print("\n=== Launcher Finished ===\n")
 
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-status",
+                        action="store_true",
+                        help="Print calibration/validation status for all gages and models without submitting jobs."
+                        )
+    return parser.parse_args()
+
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    
+    print(f"\n=== Sandbox Launcher Started @ {datetime.now()} ===")
+
+    # STATUS MODE
+    if args.status:
+        check_status()
+        return
+
+    # ---------------------------------------
+    # NORMAL EXECUTION MODE
+    # ---------------------------------------
+    runner()
 
