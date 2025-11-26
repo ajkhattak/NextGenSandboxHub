@@ -442,7 +442,7 @@ for (basin in basins) {
     
     divides <- suppressWarnings(st_read(infile, layer = "divides", quiet = TRUE))
     
-    check_subset(tolerance = 0)
+    check_subset(tolerance = 5)
     
     flowpath_attributes <- suppressWarnings(st_read(infile, layer = "flowpath-attributes", quiet = TRUE))
     

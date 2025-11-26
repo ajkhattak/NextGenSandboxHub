@@ -32,7 +32,7 @@ BUILD_TROUTE=OFF    # Build after MODELS
 
 HF_VERSION=2.2     # provide hydrofabric version
 
-NGEN_DIR=/Users/ahmadjankhattak/Code/ngen/ngen
+NGEN_DIR=~/Lauren/ngen_NGSH/ngen
 
 # Check if ngen directory exists
 if [ ! -d "$NGEN_DIR" ]; then
@@ -74,9 +74,11 @@ fi
 build_ngen()
 {
     pushd $NGEN_DIR
-
+	export builddir="cmake_build"
     rm -rf ${builddir}
+
     cmake -DCMAKE_BUILD_TYPE=Release \
+	  -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
 	  -DNGEN_WITH_BMI_FORTRAN=ON \
 	  -DNGEN_WITH_NETCDF=ON \
 	  -DNGEN_WITH_SQLITE=ON \

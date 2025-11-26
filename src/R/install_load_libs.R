@@ -39,6 +39,9 @@ if(!requireNamespace("AOI", quietly=TRUE))
 if(!requireNamespace("hfsubsetR", quietly=TRUE))
   remotes::install_github("owp-spatial/hfsubsetR")
 
+if(!requireNamespace("hfsubset", quietly=TRUE))
+  remotes::install_github("lynker-spatial/hfsubset")
+
 if(!requireNamespace("sf", quietly=TRUE)) 
   install.packages("sf")
 

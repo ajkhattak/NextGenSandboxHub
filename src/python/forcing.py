@@ -31,6 +31,7 @@ class ForcingProcessor:
         self.dforcing         = self.config['forcings']
         self.forcing_time     = self.dforcing["forcing_time"]
         self.forcing_format   = self.dforcing.get('forcing_format', '.nc')
+        # self.forcing_venv_dir = '/Users/laurenbolotin/anaconda3/envs/ngsh_forcing'
         self.forcing_venv_dir = self.dforcing.get('forcing_venv_dir', os.path.expanduser("~/.venv_forcing"))
 
         start_yr = pd.Timestamp(self.forcing_time['start_time']).year

@@ -324,13 +324,28 @@ RunDriver <- function(gage_id = NULL,
                                 type = 'nextgen',
                                 overwrite = TRUE)
         } else{ # If the gage is in CONUS, query using hl_uri
-          hfsubsetR::get_subset(hl_uri = glue("gages-{gage_id}"),
-                                outfile = outfile,
-                                gpkg = hf_gpkg,
-                                hf_version = hf_version,
-                                lyrs = layers,
-                                type = 'nextgen',
-                                overwrite = TRUE)
+          # hfsubsetR::get_subset(hl_uri = glue("gages-{gage_id}"),
+          #                       outfile = outfile,
+          #                       gpkg = hf_gpkg,
+          #                       hf_version = hf_version,
+          #                       lyrs = layers,
+          #                       type = 'nextgen',
+          #                       overwrite = TRUE)
+          print('PRINTING PATH TO HF GPKG')
+          print(hf_gpkg)
+          print('PRINTING GAGE ID')
+          print(gage_id)
+          subset<- hfsubset::hfsubset(hl_reference = glue("nwis-{gage_id}"),
+                            lyrs = layers,
+                            src = hf_gpkg)
+          # Rename the divide_attributes layer to divide-attributes for consistency
+          sf::st_write(subset$`divide_attributes`, outfile, layer = "divide-attributes", append = FALSE, delete_dsn = TRUE)
+          # Do the same for flowpath_attributes
+          sf::st_write(subset$`flowpath_attributes`, outfile, layer = "flowpath-attributes", append = TRUE)
+          sf::st_write(subset$divides, outfile, layer = "divides", append = TRUE)
+          sf::st_write(subset$flowpaths, outfile, layer = "flowpaths", append = TRUE)
+          sf::st_write(subset$network, outfile, layer = "network", append = TRUE)
+          sf::st_write(subset$nexus, outfile, layer = "nexus", append = TRUE) 
         }
       } else if (hf_version == "2.1.1") {
         layers = c("divides", "flowlines", "network", "nexus",

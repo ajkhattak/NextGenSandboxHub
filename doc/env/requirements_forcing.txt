@@ -19,6 +19,7 @@ donfig==0.8.1.post1
 exactextract==0.2.0
 frozenlist==1.5.0
 fsspec==2025.2.0
+GDAL==3.9.2
 geopandas==1.0.1
 idna==3.10
 importlib_metadata==8.6.1

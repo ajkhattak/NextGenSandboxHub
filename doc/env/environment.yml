@@ -1,0 +1,24 @@
+name: ngsh_forcing
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - geopandas
+  - rasterio
+  - pyproj
+  - pyogrio
+  - netcdf4
+  - xarray
+  - pandas
+  - shapely
+  - rioxarray
+  - exactextract
+  - dask
+  - fsspec
+  - s3fs
+  - pyarrow
+  - yaml
+  - pip
+  - pip:
+      - crc32c
+      - propcache
