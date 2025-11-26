@@ -1,0 +1,41 @@
+formulations:
+  formulations_1:
+    - "PET, CFE-S, T-route"
+    - "PET, CFE-X, T-route"
+    - "PET, TopModel, T-route"
+
+  formulations_2:
+    - "NOM, CFE-S, T-route"
+    - "NOM, CFE-X, T-route"
+
+mapping:
+  "02299950":
+    - formulations_1
+    - formulations_2
+    
+  "08070500":
+    - formulations_1
+    - formulations_2
+    
+  "03574500":
+    - formulations_1
+    - formulations_2
+
+  
+  "04231000":
+    - formulations_2
+
+  "03366500":
+    - formulations_2
+
+  "04282000":
+    - formulations_2
+
+  "05061000":
+    - formulations_2
+
+  "09504420":
+    - formulations_2
+
+  "11264500":
+    - formulations_2

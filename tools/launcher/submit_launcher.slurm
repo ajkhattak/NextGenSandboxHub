@@ -1,17 +1,16 @@
 #!/bin/bash
 
-###SBATCH --nodes=1
-###SBATCH --ntasks-per-node=1
 #SBATCH --nodes=1
-#SBATCH --ntasks=1
+#SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
-#SBATCH --time=08:00:00
+#SBATCH --time=01:00:00
 #SBATCH --job-name=sandbox_launcher
 #SBATCH --account=ohd
 #SBATCH --error=log/launcher_%j.err
 #SBATCH --output=log/launcher_%j.out
 ##SBATCH --partition=ursa
 #SBATCH --mem=2G
+#SBATCH --requeue
 ##SBATCH --exclusive
 
 
@@ -29,5 +28,5 @@ echo "Running on $(hostname) at $(date)"
 echo "SLURM_JOB_ID: $SLURM_JOB_ID"
 
 #module load python/3.11  # if needed on your HPC
-echo "[run_launcher.slurm] Resubmitting sandbox_launcher.py"
+echo "[submit_launcher.slurm] (Re)Submitting sandbox_launcher.py"
 python launcher/sandbox_launcher.py

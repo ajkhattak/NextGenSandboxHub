@@ -9,131 +9,137 @@ import pandas as pd
 import glob
 import numpy as np
 import geopandas as gpd
+import yaml
 
 # ===========================  Inputs ==========================================
-gage_ids_non_snowy = ["02299950", "08070500", "03574500"]
-#gage_ids_snowy = ["04231000", "03366500", "04282000"] # snowy
-#gage_ids_snow_dom = ["05061000","06218500","09504420","11264500"] #snow-dom
 
-models = ["PET, CFE-S, T-route", "PET, CFE-X, T-route", "PET, TopModel, T-route"]
-dir_name = ["pet_cfes_v2", "pet_cfex_v2"]
-gage_ids = gage_ids_non_snowy
-
-
-#gage_ids = gage_ids_non_snowy + gage_ids_snowy + gage_ids_snow_dom
-#gage_ids = gage_ids_snowy + gage_ids_snow_dom
-
-#models = ["NOM, CFE-S, T-route", "NOM, CFE-X, T-route"]
-#dir_name = ["nom_cfes_v2", "nom_cfex_v2"]
-
-task_type = "validation"
-
-index = 1
-sandbox_config_file = "/scratch4/NCEPDEV/ohd/Ahmad.Jan.Khattak/Core/projects/nwm_v4_bm/configs/sandbox_config_base.yaml"
-calib_config_file   = "/scratch4/NCEPDEV/ohd/Ahmad.Jan.Khattak/Core/projects/nwm_v4_bm/configs/calib_config_base.yaml"
+sandbox_config_file = "/Users/ahmadjankhattak/Code/workflows/NextGenSandboxHub/tools/launcher/basefiles/sandbox_config_base.yaml"
+calib_config_file   = "/Users/ahmadjankhattak/Code/workflows/NextGenSandboxHub/tools/launcher/basefiles/calib_config_base.yaml"
+map_config_file     = "/Users/ahmadjankhattak/Code/workflows/NextGenSandboxHub/tools/launcher/models_gages_map.yaml"
 
 use_slurm = True
 
+# ==============================================================================
+# Load configuration files
+# ==============================================================================
 with open(sandbox_config_file, "r") as f:
-    sandbox_config = yaml.safe_load(f)
-    output_dir = Path(sandbox_config["output_dir"])
-    input_dir = Path(sandbox_config["input_dir"])
-    exp_info_dir = output_dir / dir_name[index] / Path(sandbox_config["sandbox_launcher"]["exp_info_dir"])
-    exp_config_dir = output_dir / dir_name[index] / "configs"
+    base_sandbox_cfg = yaml.safe_load(f)
+
+output_dir = Path(base_sandbox_cfg["general"]["output_dir"])
+input_dir  = Path(base_sandbox_cfg["general"]["input_dir"])
+
+
+with open(map_config_file) as f:
+    map_cfg = yaml.safe_load(f)
+
+formulations = map_cfg["formulations"]
+mapping      = map_cfg["mapping"]
+
+
+# ====================== Moels & Gages Mapper  ======================
+
+def get_models_for_gage(gage_id):
+    """
+    Return all models for a given gage as a flat list.
+    """
+    gage_formulations = mapping[gage_id]
+    models = []
+    for fg in gage_formulations:
+        models.extend(formulations[fg])
+
+    return models
+
+
+def model_name_to_dir(model_name):
+    """
+    Convert model string to a safe directory name (remove T-route, commas, etc.).
+    """
+    name = model_name.replace("T-route", "")
+    name = name.replace(",", "")
+    name = name.strip()
+    name = name.replace(" ", "_")
+    return name.lower()
 
 # ==================================== ==========================================
 
 # === Generate config per gage ===
-def generate_config_files_for_gage(gage_id, generate=True):
+def generate_config_files_for_gage(model_name, model_dir, gage_id, exp_config_dir, exp_info_dir):
+    """Create sandbox + calibration configs for a single model + single gage."""
+
     # === Read base YAML once ===
     with open(sandbox_config_file, "r") as f:
-        sandbox_config = yaml.safe_load(f)
+        sandbox_cfg = yaml.safe_load(f)
 
     with open(calib_config_file, "r") as f:
-        calib_config = yaml.safe_load(f)
+        calib_cfg = yaml.safe_load(f)
 
     sandbox_cfg = sandbox_config.copy()
 
+    # --- Determine CPU count based on number of divides ---
     gpkg_path = glob.glob(str(input_dir / f"{gage_id}/data/*.gpkg"))
     div       = gpd.read_file(gpkg_path[0], layer='divides')
+    num_cpus  = int(np.ceil(len(div) / 20))
 
-    # Count the number of features (divides)
-    num_divides = len(div)
-    num_cpus = int(np.ceil(num_divides / 20))
-
-    sandbox_cfg["output_dir"] = str(output_dir / dir_name[index])
-
+    sandbox_cfg["general"]["output_dir"]    = str(output_dir / model_dir)
     sandbox_cfg["formulation"]["num_procs"] = num_cpus
-    sandbox_cfg["formulation"]["models"] = models[index]
-    sandbox_cfg["simulation"]["gage_ids"] = [gage_id]
+    sandbox_cfg["formulation"]["models"]    = models[index]
+    sandbox_cfg["simulation"]["gage_ids"]   = [gage_id]
 
-    os.makedirs(Path(exp_config_dir) / gage_id , exist_ok=True)
-    os.makedirs(exp_info_dir, exist_ok=True)
+    # Create directories
+    (exp_config_dir / gage_id).mkdir(parents=True, exist_ok=True)
+    exp_info_dir.mkdir(parents=True, exist_ok=True)
 
-    sandbox_cfg_ofile = exp_config_dir / gage_id / f"sandbox_config_{gage_id}.yaml"
-    sandbox_cfg_ofile_valid = exp_config_dir / gage_id / f"sandbox_config_{gage_id}_validation.yaml"
-    
-    with open(sandbox_cfg_ofile, "w") as out_f:
-        yaml.dump(sandbox_cfg, out_f, default_flow_style=False,sort_keys=False)
+    sandbox_main  = exp_config_dir / gage_id / f"sandbox_config_{gage_id}.yaml"
+    sandbox_val   = exp_config_dir / gage_id / f"sandbox_config_{gage_id}_validation.yaml"
+    calib_main    = exp_config_dir / gage_id / f"calib_config_{gage_id}.yaml"
+    calib_restart = exp_config_dir / gage_id / f"calib_config_{gage_id}_restart.yaml"
 
-    # calib config files
-    calib_cfg = calib_config.copy()
+    # Write sandbox main
+    with open(sandbox_main, "w") as f:
+        yaml.dump(sandbox_cfg, f, default_flow_style=False, sort_keys=False)
 
-    calib_cfg_ofile = exp_config_dir / gage_id /f"calib_config_{gage_id}.yaml"
-    calib_cfg_ofile_restart = exp_config_dir / gage_id / f"calib_config_{gage_id}_restart.yaml"
+    # Write sandbox validation
+    sandbox_val_cfg = sandbox_cfg.copy()
+    sandbox_val_cfg["simulation"]["task_type"] = "validation"
+    with open(sandbox_val, "w") as f:
+        yaml.dump(sandbox_val_cfg, f, default_flow_style=False, sort_keys=False)
 
-    # Write to YAML
-    with open(calib_cfg_ofile, "w") as out_f:
-        yaml.dump(calib_cfg, out_f, default_flow_style=False,sort_keys=False)
+    # Write calib main
+    with open(calib_main, "w") as f:
+        yaml.dump(calib_cfg, f, default_flow_style=False, sort_keys=False)
 
-    # Write to YAML
-    calib_cfg['general']['restart'] = True
-    with open(calib_cfg_ofile_restart, "w") as out_f:
-        yaml.dump(calib_cfg, out_f, default_flow_style=False,sort_keys=False)
+    # Write calib restart
+    calib_restart_cfg = calib_cfg.copy()
+    calib_restart_cfg["general"]["restart"] = True
+    with open(calib_restart, "w") as f:
+        yaml.dump(calib_restart_cfg, f, default_flow_style=False, sort_keys=False)
 
-    # Write to YAML (validation file)
-    sandbox_cfg_valid = sandbox_cfg.copy()
-    sandbox_cfg_valid['simulation']['task_type'] = "validation"
-    with open(sandbox_cfg_ofile_valid, "w") as out_f:
-        yaml.dump(sandbox_cfg_valid, out_f, default_flow_style=False,sort_keys=False)
-
-    if generate:
-        subprocess.run([
-            "sandbox",
-            "-conf",
-            "-i", sandbox_cfg_ofile,
-            "-j", calib_cfg_ofile
-        ])
+    # Run sandbox -conf to generate exp_info.yml
+    subprocess.run(["sandbox", "-conf", "-i", sandbox_main, "-j", calib_main])
 
 
-def get_max_iter_for_gage(gage_id):
-    DEFAULT_MAX_ITER = -1
+def get_max_iter(exp_config_dir, gage_id):
+    """
+    Read the calibration config to determine the total number of iterations.
+    """
+    f = exp_config_dir / gage_id / f"calib_config_{gage_id}.yaml"
 
-    calib_cfg_file = exp_config_dir / gage_id / f"calib_config_{gage_id}.yaml"
+    if not f.exists():
+        return 0
 
-    if calib_cfg_file.exists():
-        with open(calib_cfg_file, "r") as f:
-            cfg = yaml.safe_load(f)
-        return cfg.get("general", {}).get("iterations", DEFAULT_MAX_ITER)
-    return DEFAULT_MAX_ITER
+    with open(f, "r") as fp:
+        cfg = yaml.safe_load(fp)
 
-
-
-# Total wallclock time in seconds (e.g., 8 hours = 28800)
-TOTAL_WALLCLOCK = 240 #8 * 60 * 60
-
-# Time before limit to trigger resubmission (e.g., 2 minutes)
-BUFFER_TIME = 2 * 60
-
-start_time = time.time()
-end_time = start_time + TOTAL_WALLCLOCK - BUFFER_TIME
+    return cfg["general"]["iterations"]
 
 
-def get_current_iteration(gage_id):
-    info_file = Path(f"{exp_info_dir}/info_{gage_id}.yml")
+def get_current_iteration(exp_info_dir, gage_id):
+
+    info_file = exp_info_dir / f"info_{gage_id}.yml"
 
     if not info_file.exists():
         return 0
+
     with open(info_file, 'r') as file:
         d = yaml.safe_load(file)
 
@@ -148,151 +154,105 @@ def get_current_iteration(gage_id):
 
     return current_iter
 
-def get_num_cpus(gage_id):
-    info_file = Path(f"{exp_info_dir}/info_{gage_id}.yml")
-    with open(info_file, 'r') as file:
+
+def get_num_cpus(exp_info_dir, gage_id):
+    """
+    Extract num_cpus from the info file generated during sandbox -conf.
+    """
+    info_file = exp_info_dir / f"info_{gage_id}.yml"
+
+    if not info_file.exists():
+        return 1
+    
+    with open(info_file, "r") as file:
         d = yaml.safe_load(file)
-    
-    return int(d['num_cpus'])
 
-def run_experiment(gage_id, current_iter, use_slurm=False):
-    sb_cfg_file = str(exp_config_dir / gage_id / f"sandbox_config_{gage_id}.yaml")
-    calib_cfg_file = str(exp_config_dir / gage_id / f"calib_config_{gage_id}.yaml")
+    return int(d["num_cpus"])
 
-    if current_iter > 0:
-        calib_cfg_file = str(exp_config_dir / gage_id / f"calib_config_{gage_id}_restart.yaml")
-    
-    num_cpus = get_num_cpus(gage_id)
-    job_name = f"{dir_name[index]}_{gage_id}"
-    
-    if use_slurm:
-        cmd = [
-            "sbatch", f"--cpus-per-task={num_cpus}", f"--ntasks-per-node={num_cpus}",
-            f"--job-name={job_name}",
-            "--export=ALL,SANDBOX_FILE=" + sb_cfg_file + ",CALIB_FILE=" + calib_cfg_file,
-            "launcher/submit_gage.slurm"
-        ]
-        print(f"[{gage_id}] Submitting via SLURM: {' '.join(cmd)}")
-        subprocess.run(cmd)
-        return None  # No process handle returned when using SLURM
-    else:
-        cmd = ["sandbox", "-run", "-i", sb_cfg_file, "-j", calib_cfg_file]
-        print(f"[{gage_id}] Running locally: {' '.join(cmd)}")
-        return subprocess.Popen(cmd)
 
-def run_validation_experiment(gage_id, current_iter, use_slurm=False):
-    sb_cfg_file = str(exp_config_dir / gage_id / f"sandbox_config_{gage_id}_validation.yaml")
-    calib_cfg_file = str(exp_config_dir / gage_id / f"calib_config_{gage_id}.yaml")
-    if current_iter == 0:
-        print ("current iteration must be greater than 0 for validation run")
-        return
+# ====================== SLURM Submission ======================
 
-    num_cpus = get_num_cpus(gage_id)
-    job_name = f"{dir_name[index]}_{gage_id}"
+def run_experiment(model_name, model_dir, gage_id, exp_config_dir, exp_info_dir, current_iter):
+    """
+    Submit the calibration or restart job.
+    """
 
-    if use_slurm:
-        cmd = [
-            "sbatch", f"--cpus-per-task={num_cpus}", f"--ntasks-per-node={num_cpus}",
-            f"--job-name={job_name}",
-            "--export=ALL,SANDBOX_FILE=" + sb_cfg_file + ",CALIB_FILE=" + calib_cfg_file,
-            "launcher/submit_gage.slurm"
-        ]
-        print(f"[{gage_id}] Submitting validaiton run via SLURM: {' '.join(cmd)}")
-        subprocess.run(cmd)
-        return None  # No process handle returned when using SLURM
-    else:
-        cmd = ["sandbox", "-run", "-i", sb_cfg_file, "-j", calib_cfg_file]
-        print(f"[{gage_id}] Running locally: {' '.join(cmd)}")
-        return subprocess.Popen(cmd)
+    sandbox_main = exp_config_dir / gage_id / f"sandbox_config_{gage_id}.yaml"
+    sandbox_val  = exp_config_dir / gage_id / f"sandbox_config_{gage_id}_validation.yaml"
 
+    calib_main    = exp_config_dir / gage_id / f"calib_config_{gage_id}.yaml"
+    calib_restart = exp_config_dir / gage_id / f"calib_config_{gage_id}_restart.yaml"
+
+    calib_file = calib_main if current_iter == 0 else calib_restart
+
+    max_iter    = get_max_iter(exp_config_dir, gage_id)
+    sb_cfg_file = str(sandbox_main) if current_iter < max_iter else str(sandbox_val)
+
+    num_cpus = get_num_cpus(exp_info_dir, gage_id)
+    job_name = f"{model_dir}_{gage_id}"
+
+    cmd = [
+        "sbatch",
+        f"--cpus-per-task={num_cpus}",
+        f"--ntasks-per-node={num_cpus}",
+        f"--job-name={job_name}",
+        "--export=ALL,"
+        f"SANDBOX_FILE={sb_cfg_file},"
+        f"CALIB_FILE={calib_file}",
+        "launcher/submit_gage.slurm"
+    ]
+
+    print(f"[{gage_id}] Submitting: {' '.join(cmd)}")
+    subprocess.run(cmd)
+
+
+
+# ==============================================================================
+# MAIN LOOP: all models x all gages
+# ==============================================================================
 def main():
-
-    print(f"\n=== Sandbox Launcher Started @ {datetime.now().strftime('%F %T')} ===")
+    print(f"\n=== Sandbox Launcher Started @ {datetime.now()} ===")
 
     running_processes = {}
-    incomplete_gages = []
 
-    # === Launch jobs for gages below MAX_ITER ===
-    for gage_id in gage_ids:
-        current_iter = get_current_iteration(gage_id)
-        
-        if current_iter == 0:
-            print(f"[{gage_id}] First run — generating config files...")
+    for gage_id in mapping.keys():
 
-            generate_config_files_for_gage(gage_id, generate=True)
+        print(f"\n###############################")
+        print(f"###  Processing Gage: {gage_id}")
+        print(f"###############################\n")
 
-            if not exp_info_dir.exists():
-                raise ValueError("sandbox_launcher is True, but exp_info_dir does not exist...")
+        models_for_gage = get_models_for_gage(gage_id)
 
-        else:
-            print(f"[{gage_id}] Skipping config generation (already started)")
+        for m_idx, model_name in enumerate(models_for_gage):
 
-        max_iter = get_max_iter_for_gage(gage_id)
-        #return
-        if current_iter < max_iter:
-            incomplete_gages.append(gage_id)
-            proc = run_experiment(gage_id, current_iter, use_slurm)
-            running_processes[gage_id] = proc
-        else:
-            print(f"[{gage_id}] Already completed ({current_iter}/{max_iter})")
-
-        if task_type == "validation" and current_iter >= max_iter:
-            print ("[{gage_id}] Validation Run ")
-            proc = run_validation_experiment(gage_id, current_iter, use_slurm)
-
+            print(f"\n--- Model {m_idx+1}/{len(models_for_gage)} | {model_name} ---")
             
-    if not running_processes:
-        print("\nAll gages already completed. Nothing to run.")
-        return
+            model_dir = model_name_to_dir(model_name)
+    
+            print(f"\n======================")
+            print(f"Running Model {model_index+1}/{len(models)}: {model_name}")
+            print(f"======================\n")
 
-    if not use_slurm:
-        # === Wait for wallclock to expire or jobs to finish ===
-        while time.time() < end_time and any(proc.poll() is None for proc in running_processes.values()):
-            time.sleep(10)
+            exp_info_dir   = output_dir / model_dir / base_sandbox_cfg["sandbox_launcher"]["exp_info_dir"]
+            exp_config_dir = output_dir / model_dir / "configs"
 
-        # === wallclock max time reached? Kill remaining jobs ===
-        if time.time() >= end_time:
-            print("\n Wallclock limit reached — terminating remaining processes...")
-            for gage_id, proc in running_processes.items():
-                if proc.poll() is None:
-                    print(f"[{gage_id}] Terminating...")
-                    #proc.terminate()
-                    #time.sleep(5)
-                    try:
-                        proc.wait(timeout=10)
-                        proc.terminate()
-                    except subprocess.TimeoutExpired:
-                        print(f"[{gage_id}] Didn't terminate in time. Killing...")
-                        proc.kill()
-                        proc.wait()
-            running_processes.clear()
+            current_iter = get_current_iteration(exp_info_dir, gage_id)
+            max_iter     = get_max_iter(exp_config_dir, gage_id)
 
-    # === Check progress and resubmit if needed ===
-    still_incomplete = []
-    for gage_id in gage_ids:
-        final_iter = get_current_iteration(gage_id)
-        print(f"[{gage_id}] Iteration: {final_iter}/{max_iter}")
-        if final_iter < max_iter:
-            still_incomplete.append(gage_id)
+            if current_iter == 0:
+                print(f"[{gage_id}] First time setup — generating configs...")
+                generate_config_files_for_gage(model_name, model_dir, gage_id, exp_config_dir, exp_info_dir)
 
-    if still_incomplete:
-        print(f"\nResubmitting sandbox_launcher.py via sbatch for: {still_incomplete}")
-        elapsed_time = time.time() - start_time
-        if elapsed_time < 120:
-           print(f"\nLess than 2 minutes since launch ({elapsed_time:.1f}s). Skipping resubmission to avoid duplicate job bug.")
-           return
 
-        if use_slurm:
-            print ("Before submit_launcher.slurm")
-            subprocess.run(["sbatch", "launcher/submit_launcher.slurm"])
-        else:
-            # For local testing
-            os.execvp("python", ["python", "sandbox_launcher.py"])
+            if current_iter <= max_iter:
+                run_experiment(model_index, gage_id, exp_config_dir, exp_info_dir, current_iter)
+            else:
+                print(f"[{gage_id}] Completed iterations ({current_iter}/{max_iter})")
 
-    else:
-        print("\nAll gages completed maximum iterations. Done.")
+        print(f"\n--- Finished Model: {model_name} ---\n")
 
-    print(f"\n=== Launcher Finished at {datetime.now().strftime('%F %T')} ===")
+    print("\n=== Launcher Finished ===\n")
+
 
 if __name__ == "__main__":
     main()
