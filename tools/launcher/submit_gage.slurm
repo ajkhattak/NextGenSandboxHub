@@ -2,7 +2,7 @@
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --time=08:00:00
+#SBATCH --time=00:04:00
 #SBATCH --job-name=gage
 #SBATCH --account=ohd
 #SBATCH --error=log/gage_%j.err

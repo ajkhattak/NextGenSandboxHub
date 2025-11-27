@@ -268,13 +268,26 @@ def check_status():
     print("-" * len(header))
     print("======================== STATUS REPORT COMPLETE ==========================")
 
+# For requeue-ing launcher via slrum
+def launcher_exit(incomplete_exists):
+    wallclock_min = int(os.getenv("LAUNCHER_WALLCLOCK", "60"))
+    buffer = 30 # seconds
+    max_runtime_sec = wallclock_min * 60 - buffer
+    if incomplete_exists:
+        print("[INFO] Incomplete gages/models detected — requesting SLURM requeue.")
+        time.sleep(max_runtime_sec)
+        sys.exit(99)
+    else:
+        print("[INFO] All work complete — exiting normally.")
+        sys.exit(0)
+
 
 # ==============================================================================
 # Main function loops over all models x all gages
 # ==============================================================================
 def runner():
     
-    running_processes = {}
+    incomplete_exists = False
 
     for gage_id in mapping.keys():
 
@@ -294,11 +307,17 @@ def runner():
 
             current_iter = get_current_iteration(exp_info_dir, gage_id)
             max_iter     = get_max_iter(exp_config_dir, gage_id)
-
+            
             if current_iter == 0:
                 print(f"[{gage_id}] First time setup — generating configs...")
                 generate_config_files_for_gage(model_name, model_dir, gage_id, exp_config_dir, exp_info_dir)
 
+            # check validation status
+            validation_exists = check_validation_exists(exp_info_dir, gage_id)
+
+            # check if this gage/model is incomplete
+            if (current_iter < max_iter) or (not validation_exists):
+                incomplete_exists = True
 
             if current_iter <= max_iter:
                 run_experiment(model_name, model_dir, gage_id, exp_config_dir, exp_info_dir, current_iter)
@@ -309,7 +328,10 @@ def runner():
 
     print("\n=== Launcher Finished ===\n")
 
-
+    
+    # Exit with special code: 99 = request SLURM requeue
+    launcher_exit(incomplete_exists)
+    
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-status",
