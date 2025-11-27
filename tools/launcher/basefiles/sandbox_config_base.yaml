@@ -46,7 +46,7 @@ formulation :
   num_procs           : <*>         # number of processors for basin partitioning
 
 simulation :
-  task_type : "calibration" # calibvalid, calibration, validation, restart, control
+  task_type : "calibvalid" # calibvalid, calibration, validation, restart, control
   gage_ids   :  <*> #"10011500"
   #simulation_time : {"start_time" : "2015-10-01 00:00:00", "end_time" : "2020-09-30 23:00:00"}
   calibration_time : {"start_time" : "2015-10-01 00:00:00", "end_time" : "2020-09-30 23:00:00"}

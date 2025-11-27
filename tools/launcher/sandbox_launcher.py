@@ -1,5 +1,5 @@
 import subprocess
-import os
+import os, sys
 import json
 import time
 import yaml
@@ -14,9 +14,9 @@ import argparse
 
 # ===========================  Inputs ==========================================
 
-sandbox_config_file = "/Users/ahmadjankhattak/Code/workflows/NextGenSandboxHub/tools/launcher/basefiles/sandbox_config_base.yaml"
-calib_config_file   = "/Users/ahmadjankhattak/Code/workflows/NextGenSandboxHub/tools/launcher/basefiles/calib_config_base.yaml"
-map_config_file     = "/Users/ahmadjankhattak/Code/workflows/NextGenSandboxHub/tools/launcher/models_gages_map.yaml"
+sandbox_config_file = "/scratch4/NCEPDEV/ohd/Ahmad.Jan.Khattak/Core/projects/nwm_v4_bm/launcher/basefiles/sandbox_config_base.yaml"
+calib_config_file   = "/scratch4/NCEPDEV/ohd/Ahmad.Jan.Khattak/Core/projects/nwm_v4_bm/launcher/basefiles/calib_config_base.yaml"
+map_config_file     = "/scratch4/NCEPDEV/ohd/Ahmad.Jan.Khattak/Core/projects/nwm_v4_bm/launcher/models_gages_map.yaml"
 
 use_slurm = True
 
@@ -69,10 +69,10 @@ def generate_config_files_for_gage(model_name, model_dir, gage_id, exp_config_di
 
     # === Read base YAML once ===
     with open(sandbox_config_file, "r") as f:
-        sandbox_cfg = yaml.safe_load(f)
+        sandbox_config = yaml.safe_load(f)
 
     with open(calib_config_file, "r") as f:
-        calib_cfg = yaml.safe_load(f)
+        calib_config = yaml.safe_load(f)
 
     sandbox_cfg = sandbox_config.copy()
 
@@ -83,7 +83,7 @@ def generate_config_files_for_gage(model_name, model_dir, gage_id, exp_config_di
 
     sandbox_cfg["general"]["output_dir"]    = str(output_dir / model_dir)
     sandbox_cfg["formulation"]["num_procs"] = num_cpus
-    sandbox_cfg["formulation"]["models"]    = models[index]
+    sandbox_cfg["formulation"]["models"]    = model_name
     sandbox_cfg["simulation"]["gage_ids"]   = [gage_id]
 
     # Create directories
@@ -107,10 +107,10 @@ def generate_config_files_for_gage(model_name, model_dir, gage_id, exp_config_di
 
     # Write calib main
     with open(calib_main, "w") as f:
-        yaml.dump(calib_cfg, f, default_flow_style=False, sort_keys=False)
+        yaml.dump(calib_config, f, default_flow_style=False, sort_keys=False)
 
     # Write calib restart
-    calib_restart_cfg = calib_cfg.copy()
+    calib_restart_cfg = calib_config.copy()
     calib_restart_cfg["general"]["restart"] = True
     with open(calib_restart, "w") as f:
         yaml.dump(calib_restart_cfg, f, default_flow_style=False, sort_keys=False)
@@ -134,7 +134,7 @@ def get_max_iter(exp_config_dir, gage_id):
     return cfg["general"]["iterations"]
 
 
-def get_current_iteration(exp_info_dir, gage_id):
+def get_current_iteration(exp_info_dir, gage_id, status=False):
 
     info_file = exp_info_dir / f"info_{gage_id}.yml"
 
@@ -147,11 +147,12 @@ def get_current_iteration(exp_info_dir, gage_id):
     iter_file = glob.glob(str(Path(d["output_dir"]) / "*_worker" / "best_params.txt"))
     
     if not iter_file:
-        print(f"INFO: [{gage_id}] No best_params.txt found — assuming iteration 0")
+        if not status:
+            print(f"INFO: [{gage_id}] No best_params.txt found — assuming iteration 0")
         return 0
 
     iter_params = pd.read_csv(iter_file[0], header=None)
-    current_iter = int(iter_params.values[0].item()) + 1 # add one as the iteration in the best_params.txt shows the last completed iteration
+    current_iter = int(iter_params.values[0].item()) #+ 1 # add one as the iteration in the best_params.txt shows the last completed iteration
 
     return current_iter
 
@@ -171,12 +172,13 @@ def get_num_cpus(exp_info_dir, gage_id):
     return int(d["num_cpus"])
 
 
-def check_validation_exists(exp_info_dir, gage_id):
+def check_validation_exists(exp_info_dir, gage_id, status=False):
     """
     Return True if validation output already exists for this gage.
     """
 
     info_file = exp_info_dir / f"info_{gage_id}.yml"
+
     if not info_file.exists():
         return False  # Validation doesn't exist
 
@@ -189,9 +191,10 @@ def check_validation_exists(exp_info_dir, gage_id):
     )
 
     if validation_file:
-        print(f"INFO: [{gage_id}] Validation output found — skipping validation run.")
+        if not status:
+            print(f"INFO: [{gage_id}] Validation output found — skipping validation run.")
         return True
-
+    
     return False
 
 # ====================== SLURM Submission ======================
@@ -227,7 +230,7 @@ def run_experiment(model_name, model_dir, gage_id, exp_config_dir, exp_info_dir,
     ]
 
     # # Skip submission if validation exists — job is fully complete
-    validation_exists = check_validation_exists(exp_config_dir, gage_id)
+    validation_exists = check_validation_exists(exp_info_dir, gage_id)
     
     if validation_exists:
         return
@@ -242,8 +245,11 @@ def check_status():
     Print calibration/validation runs status for all gages and all models.
     """
 
-    print("\n=== STATUS REPORT (no jobs submitted) ===\n")
-
+    print("\n============================ STATUS REPORT ==============================")
+    # Table header
+    header = f"{'Gage':<12} {'Formulation':<30} {'Calib (cur/max)':<18} {'Validation':<4}"
+    print(header)
+    print("-" * len(header))
     for gage_id in mapping.keys():
         models_for_gage = get_models_for_gage(gage_id)
 
@@ -252,15 +258,16 @@ def check_status():
             exp_info_dir   = output_dir / model_dir / base_sandbox_cfg["sandbox_launcher"]["exp_info_dir"]
             exp_config_dir = output_dir / model_dir / "configs"
 
-            current_iter = get_current_iteration(exp_info_dir, gage_id)
+            current_iter = get_current_iteration(exp_info_dir, gage_id, status=True)
             max_iter     = get_max_iter(exp_config_dir, gage_id)
 
-            validation_exists = check_validation_exists(exp_config_dir, gage_id)
+            validation_exists = check_validation_exists(exp_info_dir, gage_id, status=True)
             valid_flag = "YES" if validation_exists else "NO"
+            print(f"{gage_id:<12} {model_name:<30} {f'{current_iter}/{max_iter}':<18} {valid_flag:<4}")
 
-            print(f"[{gage_id}, {model_name}] Status: {current_iter}/{max_iter}, Validation Exists = {valid_flag} ")
+    print("-" * len(header))
+    print("======================== STATUS REPORT COMPLETE ==========================")
 
-    print("\n=== STATUS REPORT COMPLETE ===\n")
 
 # ==============================================================================
 # Main function loops over all models x all gages
@@ -271,9 +278,8 @@ def runner():
 
     for gage_id in mapping.keys():
 
-        print(f"\n###############################")
+        print(f"--------------------------------")
         print(f"###  Processing Gage: {gage_id}")
-        print(f"###############################\n")
 
         models_for_gage = get_models_for_gage(gage_id)
 
@@ -283,10 +289,6 @@ def runner():
             
             model_dir = model_name_to_dir(model_name)
     
-            print(f"\n======================")
-            print(f"Running Model {model_index+1}/{len(models)}: {model_name}")
-            print(f"======================\n")
-
             exp_info_dir   = output_dir / model_dir / base_sandbox_cfg["sandbox_launcher"]["exp_info_dir"]
             exp_config_dir = output_dir / model_dir / "configs"
 
@@ -299,7 +301,7 @@ def runner():
 
 
             if current_iter <= max_iter:
-                run_experiment(model_index, gage_id, exp_config_dir, exp_info_dir, current_iter)
+                run_experiment(model_name, model_dir, gage_id, exp_config_dir, exp_info_dir, current_iter)
             else:
                 print(f"[{gage_id}] Completed iterations ({current_iter}/{max_iter})")
 
@@ -324,7 +326,8 @@ if __name__ == "__main__":
     # STATUS MODE
     if args.status:
         check_status()
-        return
+        sys.exit(0)
+
 
     # ---------------------------------------
     # NORMAL EXECUTION MODE
