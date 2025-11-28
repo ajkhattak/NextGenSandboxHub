@@ -135,7 +135,6 @@ class RealizationGenerator:
 
         modules = []
         if not "SAC-SMA" in self.formulation and not "LSTM" in self.formulation:
-            print ("HERE ", self.formulation)
             modules = [self.get_sloth_block()]
 
         output_variables = []

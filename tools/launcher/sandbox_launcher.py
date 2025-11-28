@@ -199,7 +199,8 @@ def check_validation_exists(exp_info_dir, gage_id, status=False):
 
 # ====================== SLURM Submission ======================
 
-def run_experiment(model_name, model_dir, gage_id, exp_config_dir, exp_info_dir, current_iter):
+def run_experiment(model_name, model_dir, gage_id, exp_config_dir, exp_info_dir,
+                   current_iter, delay_seconds):
     """
     Submit the calibration/validation or restart job.
     """
@@ -225,7 +226,8 @@ def run_experiment(model_name, model_dir, gage_id, exp_config_dir, exp_info_dir,
         f"--job-name={job_name}",
         "--export=ALL,"
         f"SANDBOX_FILE={sb_cfg_file},"
-        f"CALIB_FILE={calib_file}",
+        f"CALIB_FILE={calib_file},"
+        f"START_DELAY={delay_seconds}",
         "launcher/submit_gage.slurm"
     ]
 
@@ -319,8 +321,12 @@ def runner():
             if (current_iter < max_iter) or (not validation_exists):
                 incomplete_exists = True
 
+            # to avoid race for reading .nc forcing file. 5 seconds per mode, adjust as needed
+            delay_seconds = m_idx * 5
+
             if current_iter <= max_iter:
-                run_experiment(model_name, model_dir, gage_id, exp_config_dir, exp_info_dir, current_iter)
+                run_experiment(model_name, model_dir, gage_id, exp_config_dir, exp_info_dir,
+                               current_iter, delay_seconds)
             else:
                 print(f"[{gage_id}] Completed iterations ({current_iter}/{max_iter})")
 
