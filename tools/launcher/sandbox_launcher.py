@@ -11,6 +11,7 @@ import numpy as np
 import geopandas as gpd
 import yaml
 import argparse
+import getpass
 
 # ===========================  Inputs ==========================================
 
@@ -199,25 +200,24 @@ def check_validation_exists(exp_info_dir, gage_id, status=False):
 
 # ====================== SLURM Submission ======================
 
-def run_experiment(model_name, model_dir, gage_id, exp_config_dir, exp_info_dir,
-                   current_iter, delay_seconds):
+def run_experiment(model_name, model_dir, gage_id, job_name, exp_config_dir,
+                   exp_info_dir, current_iter, delay_seconds):
     """
     Submit the calibration/validation or restart job.
     """
 
-    sandbox_main = exp_config_dir / gage_id / f"sandbox_config_{gage_id}.yaml"
-    sandbox_val  = exp_config_dir / gage_id / f"sandbox_config_{gage_id}_validation.yaml"
+    sandbox_main  = exp_config_dir / gage_id / f"sandbox_config_{gage_id}.yaml"
+    sandbox_val   = exp_config_dir / gage_id / f"sandbox_config_{gage_id}_validation.yaml"
 
     calib_main    = exp_config_dir / gage_id / f"calib_config_{gage_id}.yaml"
     calib_restart = exp_config_dir / gage_id / f"calib_config_{gage_id}_restart.yaml"
 
-    calib_file = calib_main if current_iter == 0 else calib_restart
+    calib_file    = calib_main if current_iter == 0 else calib_restart
 
-    max_iter    = get_max_iter(exp_config_dir, gage_id)
-    sb_cfg_file = str(sandbox_main) if current_iter < max_iter else str(sandbox_val)
+    max_iter      = get_max_iter(exp_config_dir, gage_id)
+    sb_cfg_file   = str(sandbox_main) if current_iter < max_iter else str(sandbox_val)
 
-    num_cpus = get_num_cpus(exp_info_dir, gage_id)
-    job_name = f"{model_dir}_{gage_id}"
+    num_cpus      = get_num_cpus(exp_info_dir, gage_id)
 
     cmd = [
         "sbatch",
@@ -283,6 +283,44 @@ def launcher_exit(incomplete_exists):
         print("[INFO] All work complete — exiting normally.")
         sys.exit(0)
 
+def is_experiment_complete(gage_id, model_dir):
+    """
+    Check if a given model/gage experiment has already completed.
+    Returns True if current iteration >= max iteration AND validation exists.
+    """
+
+    exp_info_dir   = output_dir / model_dir / base_sandbox_cfg["sandbox_launcher"]["exp_info_dir"]
+    exp_config_dir = output_dir / model_dir / "configs"
+
+    # Get current and max iterations
+    current_iter = get_current_iteration(exp_info_dir, gage_id, status=True)
+    max_iter     = get_max_iter(exp_config_dir, gage_id)
+
+    # Check if validation exists
+    validation_exists = check_validation_exists(exp_info_dir, gage_id, status=True)
+
+    # Consider experiment complete if all iterations are done AND validation exists
+    if current_iter >= max_iter and validation_exists:
+        return True
+    else:
+        return False
+
+
+def get_running_slurm_jobs():
+    """
+    Returns a set of job names currently running or pending for the given user.
+    """
+    user = getpass.getuser()
+    
+    cmd = ["squeue", "-u", user, "-h", "-o", "%j", "-t", "R,PD"]
+    try:
+        output = subprocess.check_output(cmd, text=True)
+        job_names = set(line.strip() for line in output.splitlines() if line.strip())
+        return job_names
+    except subprocess.CalledProcessError as e:
+        print("Error fetching Slurm jobs:", e)
+        return set()
+
 
 # ==============================================================================
 # Main function loops over all models x all gages
@@ -290,6 +328,9 @@ def launcher_exit(incomplete_exists):
 def runner():
     
     incomplete_exists = False
+
+    # Get all currently running/pending Slurm job names
+    running_jobs = get_running_slurm_jobs()
 
     for gage_id in mapping.keys():
 
@@ -303,7 +344,18 @@ def runner():
             print(f"\n--- Model {m_idx+1}/{len(models_for_gage)} | {model_name} ---")
             
             model_dir = model_name_to_dir(model_name)
-    
+            job_name = f"{model_dir}_{gage_id}"
+
+            # Skip if job is already complete
+            if is_experiment_complete(gage_id, model_dir):
+                print(f"[{gage_id}] Experiment '{job_name}' already completed. Skipping...")
+                continue
+            
+            # Skip if job is already running/pending
+            if job_name in running_jobs:
+                print(f"[{gage_id}] Job '{job_name}' is already running or pending. Skipping...")
+                continue
+
             exp_info_dir   = output_dir / model_dir / base_sandbox_cfg["sandbox_launcher"]["exp_info_dir"]
             exp_config_dir = output_dir / model_dir / "configs"
 
@@ -314,21 +366,16 @@ def runner():
                 print(f"[{gage_id}] First time setup — generating configs...")
                 generate_config_files_for_gage(model_name, model_dir, gage_id, exp_config_dir, exp_info_dir)
 
-            # check validation status
-            validation_exists = check_validation_exists(exp_info_dir, gage_id)
-
-            # check if this gage/model is incomplete
-            if (current_iter < max_iter) or (not validation_exists):
-                incomplete_exists = True
+            # if made it to this point, the experiment needs to be checked for resubmission
+            incomplete_exists = True
 
             # to avoid race for reading .nc forcing file. 5 seconds per mode, adjust as needed
             delay_seconds = m_idx * 5
 
-            if current_iter <= max_iter:
-                run_experiment(model_name, model_dir, gage_id, exp_config_dir, exp_info_dir,
-                               current_iter, delay_seconds)
-            else:
-                print(f"[{gage_id}] Completed iterations ({current_iter}/{max_iter})")
+            run_experiment(model_name, model_dir, gage_id, job_name,
+                           exp_config_dir, exp_info_dir, current_iter,
+                           delay_seconds)
+
 
         print(f"\n--- Finished Model: {model_name} ---\n")
 
@@ -356,9 +403,6 @@ if __name__ == "__main__":
         check_status()
         sys.exit(0)
 
-
-    # ---------------------------------------
     # NORMAL EXECUTION MODE
-    # ---------------------------------------
     runner()
 
