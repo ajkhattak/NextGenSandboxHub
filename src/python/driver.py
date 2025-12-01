@@ -226,15 +226,15 @@ class Driver:
 
         # Call generate files
         driver_ = generate.Generate(sandbox_dir = self.sandbox_dir,
-                                    gpkg_file = gpkg_dir,
+                                    gpkg_file   = gpkg_dir,
                                     forcing_dir = f_dir,
-                                    ngen_dir = self.ngen_dir,
-                                    sim_time = self.simulation_time,
+                                    ngen_dir    = self.ngen_dir,
+                                    sim_time    = self.simulation_time,
                                     formulation = self.formulation,
-                                    formulation_supported = self.formulations_supported,
-                                    output_dir = o_dir,
+                                    formulations_supported = self.formulations_supported,
+                                    output_dir     = o_dir,
                                     forcing_format = self.forcing_format,
-                                    ngen_cal_type = self.task_type,
+                                    ngen_cal_type  = self.task_type,
                                     schema = self.schema_type,
                                     domain = self.domain)
 

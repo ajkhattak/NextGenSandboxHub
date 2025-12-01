@@ -36,26 +36,27 @@ def CheckSandboxVENV():
 
 
 formulations_supported = [
-    "NOM,CFE-S",
-    "PET,CFE-S",
-    "NOM,PET,CFE-S",
-    "NOM,CFE-X",
-    "PET,CFE-X",
-    "NOM,PET,CFE-X",
-    "NOM,TOPMODEL",
-    "PET,TOPMODEL",
-    "NOM,CASAM",
-    "PET,CASAM",
-    "NOM,CFE-X,SMP,SFT",
-    "NOM,CFE-S,SMP,SFT",
-    "NOM,PET,TOPMODEL",
-    "NOM,CASAM,SMP,SFT",
-    "SNOW17,PET,CFE-S",
-    "SNOW17,PET,CFE-X",
-    "SNOW17,PET,TOPMODEL",
-    "LSTM",
-    "SNOW17,PET,SAC-SMA"
+    "NOM,CFE-S,T-ROUTE",
+    "PET,CFE-S,T-ROUTE",
+    "NOM,PET,CFE-S,T-ROUTE",
+    "NOM,CFE-X,T-ROUTE",
+    "PET,CFE-X,T-ROUTE",
+    "NOM,PET,CFE-X,T-ROUTE",
+    "NOM,TOPMODEL,T-ROUTE",
+    "PET,TOPMODEL,T-ROUTE",
+    "NOM,CASAM,T-ROUTE",
+    "PET,CASAM,T-ROUTE",
+    "NOM,CFE-X,SMP,SFT,T-ROUTE",
+    "NOM,CFE-S,SMP,SFT,T-ROUTE",
+    "NOM,PET,TOPMODEL,T-ROUTE",
+    "NOM,CASAM,SMP,SFT,T-ROUTE",
+    "SNOW17,PET,CFE-S,T-ROUTE",
+    "SNOW17,PET,CFE-X,T-ROUTE",
+    "SNOW17,PET,TOPMODEL,T-ROUTE",
+    "LSTM,T-ROUTE",
+    "SNOW17,PET,SAC-SMA,T-ROUTE"
 ]
+
 
 def Sandbox(args, sandbox_config, calib_config):
     
@@ -115,6 +116,7 @@ def main():
         args = parser.parse_args()
     except SystemExit:
         print("Formulations supported:\n" + "\n".join(formulations_supported))
+        print("[INFO]: Formulations that omit T-ROUTE are allowed (e.g., PET, CFE-S), as it is appended automatically; however, all other formulation components must be specified exactly as supported.")
         sys.exit(0)
 
     if (args.sandbox_infile):

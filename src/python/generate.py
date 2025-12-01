@@ -19,7 +19,7 @@ from src.python import realization
 
 class Generate:
     def __init__(self, sandbox_dir, gpkg_file, forcing_dir, ngen_dir,
-                 sim_time, formulation, formulation_supported, output_dir,
+                 sim_time, formulation, formulations_supported, output_dir,
                  forcing_format, ngen_cal_type, schema, domain):
         
         self.sandbox_dir = sandbox_dir
@@ -33,8 +33,8 @@ class Generate:
 
         self.simulation_time = sim_time
         self.formulation_in  = formulation.replace(" ", "") # remove space if any
-        self.forcing_format = forcing_format
-        self.ngen_cal_type  = ngen_cal_type
+        self.forcing_format  = forcing_format
+        self.ngen_cal_type   = ngen_cal_type
 
         
         if not os.path.exists(self.gpkg_file):
@@ -43,16 +43,22 @@ class Generate:
         if not os.path.exists(self.forcing_dir):
             sys.exit(f'The forcing directory does not exist: ', self.forcing_dir)
 
-        self.formulation_supported = formulation_supported
+        self.formulations_supported = formulations_supported
+        formulation_in_lower       = self.formulation_in.lower()
 
-        if "T-route" in self.formulation_in or "t-route" in self.formulation_in or "T-ROUTE" in self.formulation_in:
-            self.formulation_supported_w_troute = [f'{model},T-ROUTE' for model in self.formulation_supported]
-
-        if self.formulation_in in self.formulation_supported or self.formulation_in in self.formulation_supported_w_troute:
-            self.formulation = self.formulation_in
+        # Check if T-ROUTE is present (case-insensitive)
+        has_troute = "t-route" in formulation_in_lower
+        print ("BB ", has_troute, formulation_in_lower)
+        formulation_test = formulation_in_lower if has_troute else f"{self.formulation_in},T-ROUTE"
+        print ("BB2 ", formulation_test)
+        if formulation_test.upper() in formulations_supported:
+            self.formulation = formulation_test.upper()
         else:
-            str_msg = f"Invalid model option provided or formulation currently not supported: {self.formulation_in}"
-            raise ValueError(str_msg)
+            raise ValueError(
+                f"\nUnsupported formulation: {self.formulation_in} \n"
+                f"Supported: {self.formulations_supported} \n"
+                "[INFO]: Formulations that omit T-ROUTE are allowed, as it is appended automatically; however, all other formulation components must be specified exactly as supported."
+            )
 
         if self.verbosity >= 3:
             print("*******************************************")
@@ -64,15 +70,15 @@ class Generate:
             print("*******************************************")
 
         ConfigGen = configuration.ConfigurationGenerator(sandbox_dir = self.sandbox_dir,
-                                                         gpkg_file = self.gpkg_file,
+                                                         gpkg_file   = self.gpkg_file,
                                                          forcing_dir = self.forcing_dir,
-                                                         output_dir = self.output_dir,
-                                                         ngen_dir = self.ngen_dir,
+                                                         output_dir  = self.output_dir,
+                                                         ngen_dir    = self.ngen_dir,
                                                          formulation = self.formulation,
                                                          simulation_time = self.simulation_time,
-                                                         verbosity = 1,
+                                                         verbosity     = 1,
                                                          ngen_cal_type = self.ngen_cal_type,
-                                                         schema_type = self.schema)
+                                                         schema_type   = self.schema)
 
         if self.verbosity >= 3:
             print("Running (from driver.py): \n ", generate_realization_file)
@@ -111,8 +117,8 @@ class Generate:
                 ConfigGen.write_smp_input_files(cfe_coupled=True, lasam_coupled=False)
             elif "LASAM" in self.formulation:
                 ConfigGen.write_smp_input_files(cfe_coupled=False, lasam_coupled=True)
-            
-        if "T-route" in self.formulation_in or "t-route" in self.formulation_in or "T-ROUTE" in self.formulation_in:
+
+        if "t-route" in self.formulation.lower():
             ConfigGen.write_troute_input_files()
         
         result = False

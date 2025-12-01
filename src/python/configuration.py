@@ -33,17 +33,15 @@ class ConfigurationGenerator:
                  ngen_dir, formulation, simulation_time,
                  verbosity, ngen_cal_type, schema_type = None):
         self.sandbox_dir = sandbox_dir
-        self.gpkg_file = gpkg_file
+        self.gpkg_file   = gpkg_file
         self.forcing_dir = forcing_dir
-        self.output_dir = output_dir
-        self.ngen_dir = ngen_dir
+        self.output_dir  = output_dir
+        self.ngen_dir    = ngen_dir
         self.formulation = formulation
         self.simulation_time = simulation_time
-        self.verbosity = verbosity
-        #self.json_dir = json_dir
-        #self.sim_output_dir = sim_output_dir
-        self.ngen_cal_type = ngen_cal_type
-        self.schema_type = schema_type
+        self.verbosity       = verbosity
+        self.ngen_cal_type   = ngen_cal_type
+        self.schema_type     = schema_type
 
 
         with open(os.path.join(self.sandbox_dir, "configs/basefiles", "custom.yaml"), 'r') as file:
