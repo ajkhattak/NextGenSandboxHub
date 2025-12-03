@@ -1,6 +1,6 @@
 # Getting Started with NextGen Sandbox: Build, Configure, and Run
 
-Detailed instructions on how to install, configure, and get the NGSandboxHub running.
+Detailed instructions on how to install, configure, and get the NextGenSandboxHub running.
 
 ### <ins>  Step 1. Build Sandbox Workflow
   1. Clone the repository (if not already done):
