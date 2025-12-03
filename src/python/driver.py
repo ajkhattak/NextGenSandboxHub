@@ -36,12 +36,12 @@ class Driver:
         with open(self.sandbox_config, 'r') as file:
             d = yaml.safe_load(file)
 
-        self.sandbox_dir  = d['general'].get('sandbox_dir') #d["sandbox_dir"]
-        self.input_dir    = d['general'].get('input_dir') #d["input_dir"]
-        self.output_dir   = Path(d['general'].get('output_dir')) #d["output_dir"])
+        self.sandbox_dir  = d['general'].get('sandbox_dir')
+        self.input_dir    = d['general'].get('input_dir')
+        self.output_dir   = Path(d['general'].get('output_dir'))
 
         dformul = d['formulation']
-        self.ngen_dir      = dformul["ngen_dir"]
+        self.ngen_dir      = dformul.get('ngen_dir', os.path.join(self.sandbox_dir,"extern/ngen"))
         self.formulation   = dformul['models'].upper()
         self.clean         = self.process_clean_input_param(dformul.get('clean', "none"))
         self.verbosity     = dformul.get('verbosity', 0)

@@ -63,7 +63,7 @@ class Runner:
         self.output_dir   = Path(self.config['general'].get('output_dir'))
 
         dformul = self.config['formulation']
-        self.ngen_dir     = dformul["ngen_dir"]
+        self.ngen_dir     =  dformul.get('ngen_dir', os.path.join(self.sandbox_dir,"extern/ngen"))
         self.formulation  = dformul['models'].upper()
         self.num_procs    = int(dformul.get('num_procs', 1))
 

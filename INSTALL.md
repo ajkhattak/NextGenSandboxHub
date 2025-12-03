@@ -4,7 +4,6 @@ Detailed instructions on how to install, configure, and get the NGSandboxHub run
 
 ### <ins>  Step 1. Build Sanbox Workflow
   - `git clone https://github.com/ajkhattak/NextGenSandboxHub && cd NextGenSandboxHub`
-  - `git submodule update --init`
   - `./utils/build_sandbox.sh`
 
 NOTE: The script installs a python env named `.venv_sandbox_py3.11` (see utils/build_sandbox.sh [here](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/build_sandbox.sh#L18)). This environment MUST be activated before performing any of the following steps.

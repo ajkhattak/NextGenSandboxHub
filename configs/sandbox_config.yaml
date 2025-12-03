@@ -43,7 +43,7 @@ forcings :
 
 ########################################################################
 formulation :
-  ngen_dir          : "<path_to_ngen_dir>" #------------------------------- Path to NextGen base directory. For instance, /Users/X/Codes/ngen_repo/ngen"
+  #ngen_dir         : "<path_to_ngen_dir>" #------------------------------- OPTIONAL: Path to NextGen base directory. For instance, <path_to_ngen>/ngen. Defaults is <path_to_sandbox>/extern/ngen
   models            : "PET, CFE, T-route"  #------------------------------- Name of the formulation. Run "sandbox -h" to see a complete list of supported formulations
 
   clean             : ['existing'] #--------------------------------------- Clean existing config and realization files (does not delete simulation data)

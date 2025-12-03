@@ -18,6 +18,7 @@ import json
 import argparse
 import shutil
 import json
+from pathlib import Path
 
 class RealizationGenerator:
     def __init__(self, ngen_dir, forcing_dir,  output_dir, formulation,
@@ -35,7 +36,7 @@ class RealizationGenerator:
         self.ngen_cal_type   = ngen_cal_type
         self.lib_files       = self.get_lib_files()
         self.domain          = domain.lower()
-        
+
         realization_name = self.formulation.replace(",","_").lower()
         self.realization_file = os.path.join(self.output_dir,"configs",f"realization_{realization_name}.json")
         
@@ -203,23 +204,38 @@ class RealizationGenerator:
             
     def get_lib_files(self):
         lib_files = {}
-        extern_path = os.path.join(self.ngen_dir, 'extern')
-        models = os.listdir(extern_path)
-        platform = sys.platform
-        ext = "lib*.so" if "linux" in platform else "lib*.dylib"
+        extern_path = Path(self.ngen_dir) / "extern"
 
-        for m in models:
-            if m in ['SoilFreezeThaw', 'cfe', 'SoilMoistureProfiles', 'CASAM', 'sloth', 'evapotranspiration',
-                     'noah-owp-modular', 'topmodel', 'snow17', "sac-sma"]:
-                path_m = os.path.join(os.path.join(extern_path, m), "cmake_build") if m in ['sloth', 'noah-owp-modular', 'topmodel'] else os.path.join(os.path.join(extern_path, m, m), "cmake_build")
-                if os.path.exists(path_m):
-                    exe_m = glob.glob(os.path.join(path_m, ext))
-                    if exe_m:
-                        exe_m = exe_m[0].split('extern')
-                        exe_m = exe_m[1].split('.')
-                        lib_files[m] = os.path.join(self.ngen_dir, 'extern' + str(exe_m[0]))
-                    else:
-                        lib_files[m] = ""
+        # Determine library extension
+        ext = "lib*.so" if sys.platform.startswith("linux") else "lib*.dylib"
+
+        model_names = [
+            'SoilFreezeThaw', 'cfe', 'SoilMoistureProfiles', 'CASAM', 'sloth',
+            'evapotranspiration', 'noah-owp-modular', 'topmodel', 'snow17', 'sac-sma'
+        ]
+
+        for m in model_names:
+            model_base = extern_path / m
+            
+            # Build location differs for some models
+            if m in ['sloth', 'noah-owp-modular', 'topmodel']:
+                build_dir = model_base / "cmake_build"
+            else:
+                build_dir = model_base / m / "cmake_build"
+
+            if build_dir.exists():
+                matches = glob.glob(str(build_dir / ext))
+
+                # Sort so unversioned library comes first, for example: libsftbmi.dylib before libsftbmi.1.0.0.dylib
+                matches = sorted(matches, key=lambda x: len(os.path.basename(x)))
+
+                if matches:
+                    lib_files[m] = os.path.splitext(matches[0])[0]   # just store the full path to the .so/.dylib file
+                else:
+                    lib_files[m] = ""
+            else:
+                lib_files[m] = ""
+            
         return lib_files
 
     def get_pet_block(self, var_names_map=False):

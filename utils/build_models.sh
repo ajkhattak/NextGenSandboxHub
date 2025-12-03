@@ -2,22 +2,7 @@
 # Author      : Ahmad Jan Khattak [ahmad.jan.khattak@noaa.gov | September 10, 2024]
 # Contributor : Sifan A. Koriche [sakoriche@ua.edu | December 18, 2024]
 
-# If running on AWS EC2 instance, run setup_ec2.sh before bulding models to setup the EC2 instance
-
-# Step 1: Clone NextGen
-#         - git clone https://github.com/NOAA-OWP/ngen && cd ngen
-#         - git submodule update --init --recursive
-# Step 2: Setup bash file
-#         - Refer to the instructions here: (utils/setup_ec2.sh, line 23)
-#         - For a quick reference: set the following environment variables in your bash file
-#           export CC=/usr/local/opt/gcc@11/bin/gcc-11
-#           export CXX=/usr/local/opt/gcc@11/bin/g++-11
-#           export FC=/usr/local/opt/gcc@11/bin/gfortran-11
-#           export F90=${FC}  # Alias for Fortran compiler
-#           export CFORT=${FC}  # Alias for Fortran compiler
-#           export NETCDF_ROOT=/usr/local/opt/netcdf-fortran
-#           export PATH="/usr/local/opt/gcc@11/bin:$PATH"
-		    
+# NOTE : See build instructions utils/setup_hpc.sh
 
 ###############################################################
 # Set build options below. Turn ON or OFF as needed.
@@ -32,16 +17,16 @@ BUILD_TROUTE=OFF    # Build after MODELS
 
 HF_VERSION=2.2     # provide hydrofabric version
 
-NGEN_DIR=/Users/ahmadjankhattak/Code/ngen/ngen
+NGEN_DIR=./extern/ngen   # Default ngen path. You may set this to any ngen repository - just clone the repo and point this variable to it.
 
 # Check if ngen directory exists
 if [ ! -d "$NGEN_DIR" ]; then
     echo "Error: ngen directory does not exist: $NGEN_DIR"
     exit 1
 fi
-
+echo $NGEN_DIR
 # Check if it's a git repository
-if [ ! -d "$NGEN_DIR/.git" ]; then
+if [ ! -d "$NGEN_DIR/.git" ] && [ ! -f "$NGEN_DIR/.git" ]; then
     echo "Error: ngen directory exists but is not a Git repository: $NGEN_DIR"
     exit 1
 fi
@@ -74,10 +59,13 @@ fi
 build_ngen()
 {
     pushd $NGEN_DIR
+    git submodule update --init --recursive
+
     export builddir="cmake_build"
     rm -rf ${builddir}
     cmake -DCMAKE_BUILD_TYPE=Release \
 	  -DNGEN_WITH_BMI_FORTRAN=ON \
+	  -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
 	  -DNGEN_WITH_NETCDF=ON \
 	  -DNGEN_WITH_SQLITE=ON \
 	  -DNGEN_WITH_ROUTING=ON \
