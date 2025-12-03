@@ -1,4 +1,4 @@
-# Installation instructions
+# Getting Started with NextGen Sandbox: Build, Configure, and Run
 
 Detailed instructions on how to install, configure, and get the NGSandboxHub running.
 
