@@ -2,11 +2,20 @@
 
 Detailed instructions on how to install, configure, and get the NGSandboxHub running.
 
-### <ins>  Step 1. Build Sanbox Workflow
-  - `git clone https://github.com/ajkhattak/NextGenSandboxHub && cd NextGenSandboxHub`
-  - `./utils/build_sandbox.sh`
+### <ins>  Step 1. Build Sandbox Workflow
+  1. Clone the repository (if not already done):
+     ```
+     git clone https://github.com/ajkhattak/NextGenSandboxHub && cd NextGenSandboxHub
+     ```
+  2. Ensure Python 3.11 is available:
+     - Local machine: check Python version.
+     - HPC system: load a compatible Python module, e.g., Python ≥ 3.11. For an example HPC setup, see [setup_hpc.sh](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/setup_hpc.sh)
+  3. Build the Sandbox workflow:
+     ```
+     ./utils/build_sandbox.sh
+     ```
 
-NOTE: The script installs a python env named `.venv_sandbox_py3.11` (see utils/build_sandbox.sh [here](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/build_sandbox.sh#L18)). This environment MUST be activated before performing any of the following steps.
+>**NOTE:** The script installs a python env named `.venv_sandbox_py3.11` (see utils/build_sandbox.sh [here](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/build_sandbox.sh#L18)). This environment MUST be activated before performing any of the following steps.
   
 ### <ins>  Step 2. Hydrofabric Installation
 Ensure R and Rtools are already installed before proceeding. There are two ways to install the required packages:
@@ -41,11 +50,11 @@ The workflow uses [CIROH_DL_NextGen](https://github.com/ajkhattak/CIROH_DL_NextG
    sandbox -forc
 ```
 
-====================================================================================
-### Note: Steps 5 and 6 require both the ngen and models builds. Please follow the instructions in the [build_models](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/build_models.sh) script to build ngen and models.
-====================================================================================
+>===============================================================================
+>### Note: Steps 5 and 6 require both the ngen and models builds. Please follow the instructions in the [build_models](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/build_models.sh) script to build ngen and models.
+>================================================================================
 
-Note: The sandbox workflow assumes that [ngen](https://github.com/NOAA-OWP/ngen) and models including [t-route](https://github.com/NOAA-OWP/t-route) have been built in the Python virtual environment created in Step 1.
+> **Note:** The sandbox workflow assumes that [ngen](https://github.com/NOAA-OWP/ngen) and models including [t-route](https://github.com/NOAA-OWP/t-route) have been built in the Python virtual environment created in Step 1.
 
 ### <ins>  Step 5. Generate Configuration and Realization Files
 Setup the sandbox config file [here](configs/sandbox_config.yaml), especially the `formulation` and `simulation` blocks, then run:
