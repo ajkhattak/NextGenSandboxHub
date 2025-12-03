@@ -4,9 +4,9 @@ The Next-Generation Water Resources Modeling Framework ([NextGen](https://github
 ### Schematic 
 A conceptual workflow diagram of the NextGenSandboxHub is available [here](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/doc/schematic.md)
 
-### Configuration
+### Getting Started with NextGen Sandbox
 
-Detailed instructions for installing, configuring, and running NGSandboxHub for calibration and validation experiments are available in the [INSTALL guide](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/INSTALL.md) 
+Detailed instructions for building, configuring, and running NextGenSandboxHub for calibration and validation experiments are available in the [INSTALL guide](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/INSTALL.md) 
 
 ### Currently Supported Formulations:
 For the most up-to-date list of supported formulations, run sandbox -h. A complete list is also available in the [FORMULATIONS](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/FORMULATIONS.md)
