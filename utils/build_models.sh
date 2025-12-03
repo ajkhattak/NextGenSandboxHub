@@ -2,7 +2,7 @@
 # Author      : Ahmad Jan Khattak [ahmad.jan.khattak@noaa.gov | September 10, 2024]
 # Contributor : Sifan A. Koriche [sakoriche@ua.edu | December 18, 2024]
 
-# NOTE : See build instructions utils/setup_hpc.sh
+# NOTE : See utils/setup_hpc.sh to load the required modules and setup the env for building ngen and models
 
 ###############################################################
 # Set build options below. Turn ON or OFF as needed.
@@ -12,7 +12,7 @@
 #   3. T-ROUTE
 
 BUILD_NGEN=OFF      # Required first
-BUILD_MODELS=ON    # Build after NGEN
+BUILD_MODELS=ON     # Build after NGEN
 BUILD_TROUTE=OFF    # Build after MODELS
 
 HF_VERSION=2.2     # provide hydrofabric version
