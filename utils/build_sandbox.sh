@@ -2,43 +2,37 @@
 # Author : Ahmad Jan Khattak [ahmad.jan.khattak@noaa.gov | September 10, 2024]
 # Contributor : Sifan A. Koriche [sakoriche@ua.edu | December 18, 2024]
 
-# If running on AWS EC2 instance, run setup_ec2.sh before bulding models to setup the EC2 instance
-
-# Clone NextGenSandboxHub and NextGen GitHub repositories
-# Step 1: Clone NextGenSandboxHub
-#         - git clone https://github.com/ajkhattak/NextGenSandboxHub && cd NextGenSandboxHub
-# Step 2: Setup bash file
-#         - Refer to the instructions here: (utils/setup_ec2.sh, line 23)
+# Clone NextGenSandboxHub repository
+# git clone https://github.com/ajkhattak/NextGenSandboxHub && cd NextGenSandboxHub
+# Run: ./utils/build_sandbox.sh
 
 ###############################################################
 
 BUILD_SANDBOX=ON
 # if it is desired to change the virtual env name, it will require one more change to
 # the sandbox.py file (update the env name there as well)
-VENV_SANDBOX=~/.venv_sandbox_py3.11
+VENV_SANDBOX=./.venv/venv_sandbox_py3.11
+VENV_FORCING=./.venv/venv_forcing
+PYTHON_VERSION="python3.11"
 
 #####################################################
 
 
 build_sandbox()
-{
-
-    PYTHON_VERSION="python3.11"
-    
+{    
     # Check if python3.11 is available
     if ! command -v $PYTHON_VERSION &>/dev/null; then
         echo "ErrorMsg: $PYTHON_VERSION is not installed or not in your PATH."
         return 1
     fi
     
-    echo "Creating virtual python environment for ngen ($VENV_SANDBOX)"
-    mkdir "$VENV_SANDBOX"
+    echo "Creating virtual python environment for sandbox ($VENV_SANDBOX)"
+    mkdir -p "$VENV_SANDBOX"
     $PYTHON_VERSION -m venv "$VENV_SANDBOX"
     source "$VENV_SANDBOX/bin/activate"
+
+    pip install -U pip==24.0 "setuptools>=64.0,<69.0" wheel
     
-    pip install -U pip==24.0
-    
-    #pip install -r ./utils/requirements.txt
     pip install -e .
 
     git submodule update --init
@@ -54,16 +48,15 @@ build_sandbox()
 
     # also install lstm
     pip install -e ./extern/lstm
-    
+
+    echo "Virtual Python Environment Created ($VENV_SANDBOX)"
     deactivate
 
     ############################################
     # FORCING
     ############################################
-    
-    VENV_FORCING=~/.venv_forcing
-
-    mkdir "$VENV_FORCING"
+    echo "Creating virtual python environment for forcing downloader ($VENV_FORCING)"
+    mkdir -p "$VENV_FORCING"
     $PYTHON_VERSION -m venv "$VENV_FORCING"
     source "$VENV_FORCING/bin/activate"
     
@@ -77,15 +70,15 @@ build_sandbox()
     ############################################
     # LSTM
     ############################################
-    VENV_LSTM=~/.venv_lstm
+    #VENV_LSTM=~/.venv_lstm
 
-    mkdir "$VENV_LSTM"
-    $PYTHON_VERSION -m venv "$VENV_LSTM"
-    source "$VENV_LSTM/bin/activate"
+    #mkdir "$VENV_LSTM"
+    #$PYTHON_VERSION -m venv "$VENV_LSTM"
+    #source "$VENV_LSTM/bin/activate"
     
-    pip install -U pip==24.0
-    pip install -e ./extern/lstm
-    deactivate
+    #pip install -U pip==24.0
+    #pip install -e ./extern/lstm
+    #deactivate
 }
 
 

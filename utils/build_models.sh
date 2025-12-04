@@ -24,7 +24,9 @@ if [ ! -d "$NGEN_DIR" ]; then
     echo "Error: ngen directory does not exist: $NGEN_DIR"
     exit 1
 fi
-echo $NGEN_DIR
+
+echo "NextGen source code directory: " $NGEN_DIR
+
 # Check if it's a git repository
 if [ ! -d "$NGEN_DIR/.git" ] && [ ! -f "$NGEN_DIR/.git" ]; then
     echo "Error: ngen directory exists but is not a Git repository: $NGEN_DIR"
@@ -42,13 +44,16 @@ else
     exit 1
 fi
 
-# Expand the tilde (~) to full path
-VENV_SANDBOX=$(eval echo "$VENV_SANDBOX")
+# Expand ~ and/or convert to absolute path
+SANDBOX_ENV=$(realpath "$VENV_SANDBOX" 2>/dev/null)
 
-if [ "$VIRTUAL_ENV" != "$VENV_SANDBOX" ]; then
+# Convert VIRTUAL_ENV to absolute path too
+CURRENT_ENV=$(realpath "$VIRTUAL_ENV" 2>/dev/null)
+
+if [ "$CURRENT_ENV" != "$SANDBOX_ENV" ]; then
     echo "Error: This script must be run inside the sandbox environment:"
-    echo "Expected: $VENV_SANDBOX"
-    echo "Current : ${VIRTUAL_ENV:-<none>}"
+    echo "Expected: $SANDBOX_ENV"
+    echo "Current : ${CURRENT_ENV:-<none>}"
     exit 1
 fi
 ###############################################################
@@ -99,6 +104,22 @@ build_troute()
 
     ##hot patch nc config to nf config
     #sed -i 's/nc-config/nf-config/g' src/kernel/reservoir/makefile
+    MAKEFILE_PATH="src/kernel/reservoir/makefile"
+    
+    # Only patch on Linux
+    if [ "$(uname)" = "Linux" ]; then
+	# Check if nf-config is available
+	if command -v nf-config &>/dev/null; then
+            NETCDF_FORTRAN_CONFIG="nf-config"
+	else
+            echo "Error: nf-config not found on Linux."
+            exit 1
+	fi
+
+        echo "Patching $MAKEFILE_PATH to use $NETCDF_FORTRAN_CONFIG..."
+        sed -i "s/nc-config/$NETCDF_FORTRAN_CONFIG/g" "$MAKEFILE_PATH"
+
+    fi
 
     if [[ "$(uname)" == "Darwin" ]]; then
 	NETCDF=$(brew --prefix netcdf-fortran)/include LIBRARY_PATH=$(brew --prefix gcc)/lib/gcc/current/:$(brew --prefix)/lib:$LIBRARY_PATH FC=$FC CC=$CC F90=$FC ./compiler.sh no-e
