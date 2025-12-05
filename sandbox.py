@@ -17,7 +17,7 @@ from src.python import forcing, driver, runner
 
 
 def CheckSandboxVENV():
-    VENV_SANDBOX = Path.home() / ".venv_sandbox_py3.11"
+    VENV_SANDBOX = sandbox_dir / ".venv" / "venv_sandbox_py3.11"
 
     # Check if the virtual environment exists
     if not VENV_SANDBOX.exists():

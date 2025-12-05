@@ -37,8 +37,8 @@ setup <-function() {
   
   inputs = yaml.load_file(infile_config)
 
-  sandbox_dir      <<- inputs$sandbox_dir
-  input_dir        <<- inputs$input_dir
+  sandbox_dir      <<- inputs$general$sandbox_dir
+  input_dir        <<- inputs$general$input_dir
   reinstall_hydrofabric <<- inputs$gpkg_model_params$reinstall_hydrofabric
   reinstall_arrow   <<- inputs$gpkg_model_params$reinstall_arrow
 
