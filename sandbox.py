@@ -21,7 +21,7 @@ def CheckSandboxVENV():
 
     # Check if the virtual environment exists
     if not VENV_SANDBOX.exists():
-        print(f"Error: NextGen virtual environment {VENV_SANDBOX} not found under home directory...")
+        print(f"Error: NextGen virtual environment {VENV_SANDBOX} not found under directory: {sandbox_dir}/.venv")
         sys.exit(1)
 
 

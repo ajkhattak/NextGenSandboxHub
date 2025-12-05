@@ -1,6 +1,6 @@
 ############################################################################################
-# Author  : Ahmad Jan
-# Contact : ahmad.jan@noaa.gov
+# Author  : Ahmad Jan Khattak
+# Contact : ahmad.jan.khattak@noaa.gov
 # Date    : October 11, 2023 
 ############################################################################################
 
@@ -48,9 +48,9 @@ class Generate:
 
         # Check if T-ROUTE is present (case-insensitive)
         has_troute = "t-route" in formulation_in_lower
-        print ("BB ", has_troute, formulation_in_lower)
+
         formulation_test = formulation_in_lower if has_troute else f"{self.formulation_in},T-ROUTE"
-        print ("BB2 ", formulation_test)
+
         if formulation_test.upper() in formulations_supported:
             self.formulation = formulation_test.upper()
         else:
@@ -142,10 +142,6 @@ class Generate:
 
         RealGen.write_realization_file()
 
-        #if result:
-        #    sys.exit("realization file could not be generated, check the options provided!")
-        #else:
-        #    print("************* DONE (Baseline realization file successfully generated!) ************** ")
                 
     class colors:
         BLUE = '\33[34m'
