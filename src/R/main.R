@@ -73,8 +73,8 @@ Setup <-function() {
 
   inputs = yaml.load_file(infile_config)
 
-  sandbox_dir   <<- inputs$sandbox_dir
-  output_dir    <<- inputs$input_dir
+  sandbox_dir   <<- inputs$general$sandbox_dir
+  output_dir    <<- inputs$general$input_dir
   hf_version    <<- inputs$subsetting$hf_version
   hf_gpkg_path  <<- inputs$subsetting$hf_gpkg_path
   nproc         <<- inputs$subsetting$number_processors
