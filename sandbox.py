@@ -16,6 +16,7 @@ sandbox_dir = Path(sandbox.__file__).resolve().parent
 from src.python import forcing, driver, runner
 
 
+
 def CheckSandboxVENV():
     VENV_SANDBOX = sandbox_dir / ".venv" / "venv_sandbox_py3.11"
 
@@ -62,7 +63,7 @@ def Sandbox(args, sandbox_config, calib_config):
     
     if (args.subset):
         print ("Generating geopackages...")
-        subset_basin = f"Rscript {sandbox_dir}/src/R/main.R {sandbox_config}"
+        subset_basin = f"Rscript {sandbox_dir}/src/R/main.R {sandbox_config} {sandbox_dir}"
         status = subprocess.call(subset_basin,shell=True)
 
         if (status):
@@ -72,7 +73,7 @@ def Sandbox(args, sandbox_config, calib_config):
 
     if (args.forc):
         print ("Generating forcing data...")
-        process_forcing = forcing.ForcingProcessor(sandbox_config)
+        process_forcing = forcing.ForcingProcessor(sandbox_dir, sandbox_config)
         status          = process_forcing.download_forcing()
 
         if (status):
@@ -82,7 +83,7 @@ def Sandbox(args, sandbox_config, calib_config):
 
     if (args.conf):
         print ("Generating config files...")
-        _driver = driver.Driver(sandbox_config, formulations_supported)
+        _driver = driver.Driver(sandbox_dir, sandbox_config, formulations_supported)
         status  = _driver.run()
 
         if (status):
@@ -93,7 +94,7 @@ def Sandbox(args, sandbox_config, calib_config):
     if (args.run):
         print ("Calling Runner...")
 
-        _runner = runner.Runner(sandbox_config, calib_config)
+        _runner = runner.Runner(sandbox_dir, sandbox_config, calib_config)
         status  = _runner.run()
 
         if (status):

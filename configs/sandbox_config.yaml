@@ -2,9 +2,8 @@
 #
 
 general:
-  sandbox_dir  : "<path_to_sandbox_dir>/NextGenSandboxHub" #------------- Path to NextGenSandboxHub base directory
-  input_dir    : "<path_to_input_directory>"  #-------------------------- user-specified input directory (all geopackage are stored to this dir)
-  output_dir   : "<path_to_output_directory>" #-------------------------- user-specified output directory (all simulation outputs are stored here)
+  input_dir  : "<path_to_input_directory>"  #-------------------------- user-specified input directory (all geopackage are stored to this dir)
+  output_dir : "<path_to_output_directory>" #-------------------------- user-specified output directory (all simulation outputs are stored here)
 
 
 ########################################################################
@@ -24,7 +23,7 @@ subsetting :
   options :
     use_gage_id :
       use_gage_id  : TRUE #----------------------------------------------- TRUE or FALSE
-      gage_ids     : "01105000" #----------------------------------------- List of gage IDs, for instance, ["01105000","08070500"]
+      gage_ids     : "08020700" #----------------------------------------- List of gage IDs, for instance, ["01105000","08070500"]
     use_gage_file :
       use_gage_file : FALSE  #-------------------------------------------- TRUE or FALSE
       gage_file     : "<path_to_basin_ids_file>/basin_ids_file.csv" #----- Path to CSV file with column (set column name below) of basin gage IDs
@@ -53,7 +52,7 @@ formulation :
 
 simulation :
   task_type        : "<pick_option>" #------------------------------------- Supported options: calibvalid, calibration, validation, restart, control
-  gage_ids         :  "01105000"   #--------------------------------------- Provide a gage id or list of ids; if Null, basin_passed.csv file is loaded
+  gage_ids         :  "08020700"   #--------------------------------------- Provide a gage id or list of ids; if Null, basin_passed.csv file is loaded
   sim_name_suffix  :  "pet_cfe" #------------------------------------------ User specified name appended to the gage_id. For example, 01105000_pet_cfe
   #simulation_time : {"start_time" : "2015-10-01 00:00:00", "end_time" : "2020-09-30 23:00:00"} # only needed when task_type is control
   calibration_time : {"start_time" : "2016-10-01 00:00:00", "end_time" : "2021-09-30 23:00:00"} # Entire simulation period for calibration; including spinup period

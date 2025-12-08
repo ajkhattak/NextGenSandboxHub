@@ -12,7 +12,8 @@ import time
 
 
 class ForcingProcessor:
-    def __init__(self, config_file):
+    def __init__(self, sandbox_dir, config_file):
+        self.sandbox_dir = Path(sandbox_dir)
         self.config_file = config_file
         self.load_config()
 
@@ -24,15 +25,13 @@ class ForcingProcessor:
         with open(self.config_file, 'r') as file:
             self.config = yaml.safe_load(file)
 
-        self.sandbox_dir      = self.config['general'].get('sandbox_dir') #d["sandbox_dir"]
-        self.input_dir        = self.config['general'].get('input_dir') #d["input_dir"]
-        self.output_dir       = Path(self.config['general'].get('output_dir')) #d["output_dir"])
+        self.input_dir        = self.config['general'].get('input_dir')
+        self.output_dir       = Path(self.config['general'].get('output_dir'))
         self.dsim             = self.config['formulation']
         self.verbosity        = self.dsim.get('verbosity', 0)
         self.dforcing         = self.config['forcings']
         self.forcing_time     = self.dforcing["forcing_time"]
         self.forcing_format   = self.dforcing.get('forcing_format', '.nc')
-        #self.forcing_venv_dir = self.dforcing.get('forcing_venv_dir', os.path.expanduser("~/.venv_forcing"))
         self.forcing_venv_dir = self.dforcing.get('forcing_venv_dir', os.path.join(self.sandbox_dir, ".venv", "venv_forcing"))
 
         start_yr = pd.Timestamp(self.forcing_time['start_time']).year

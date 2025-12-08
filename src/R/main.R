@@ -56,13 +56,16 @@ Sys.setenv("AWS_NO_SIGN_REQUEST" = "YES")
 
 Setup <-function() {
 
-  if (length(args) == 1) {
-    infile_config = args
+  if (length(args) == 2) {
+    infile_config <- args[1]
+    sandbox_dir   <<- args[2]
     print (paste0("Config file provided: ", infile_config))
-  } else if (length(args) > 1) {
-    stop("Please provide only one argument (input.yaml).")
+  } else if (length(args) > 2) {
+    stop("Usage: RScript main.R input.yaml sandbox_dir")
   } else {
-    infile_config <- "<path_to_sandboxhub>/configs/sandbox_config.yaml"
+    sandbox_dir   <<- "<path_to_sandboxhub>"
+    infile_config <-  "<path_to_sandboxhub>/configs/sandbox_config.yaml"
+
   } 
 
   if (!file.exists(infile_config)) {
@@ -73,7 +76,6 @@ Setup <-function() {
 
   inputs = yaml.load_file(infile_config)
 
-  sandbox_dir   <<- inputs$general$sandbox_dir
   output_dir    <<- inputs$general$input_dir
   hf_version    <<- inputs$subsetting$hf_version
   hf_gpkg_path  <<- inputs$subsetting$hf_gpkg_path

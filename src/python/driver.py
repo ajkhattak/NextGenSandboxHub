@@ -25,9 +25,10 @@ from src.python import helper
 from src.python import generate
 
 class Driver:
-    def __init__(self, infile, formulations_supported):
+    def __init__(self, sandbox_dir, infile, formulations_supported):
         self.colors = helper.colors()
 
+        self.sandbox_dir  = Path(sandbox_dir)
         self.sandbox_config = infile
         self.formulations_supported = formulations_supported
         self.load_config()
@@ -36,7 +37,6 @@ class Driver:
         with open(self.sandbox_config, 'r') as file:
             d = yaml.safe_load(file)
 
-        self.sandbox_dir  = d['general'].get('sandbox_dir')
         self.input_dir    = d['general'].get('input_dir')
         self.output_dir   = Path(d['general'].get('output_dir'))
 
@@ -340,7 +340,7 @@ class Driver:
                 )
             ]
 
-        assert self.gpkg_dirs, f"No .gpkg files found in the data directory under {self.input_dir}."
+        assert self.gpkg_dirs, f"Geopackage file(s) missing for gage(s) {gage_ids} in directory {self.input_dir}"
 
 
     def run(self):
