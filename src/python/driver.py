@@ -39,9 +39,9 @@ class Driver:
 
         self.input_dir    = d['general'].get('input_dir')
         self.output_dir   = Path(d['general'].get('output_dir'))
-
+        
         dformul = d['formulation']
-        self.ngen_dir      = dformul.get('ngen_dir', os.path.join(self.sandbox_dir,"extern/ngen"))
+        self.ngen_dir      = Path(os.environ.get("NGEN_DIR"))
         self.formulation   = dformul['models'].upper()
         self.clean         = self.process_clean_input_param(dformul.get('clean', "none"))
         self.verbosity     = dformul.get('verbosity', 0)

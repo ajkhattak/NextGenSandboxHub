@@ -64,7 +64,7 @@ class Runner:
         self.output_dir   = Path(self.config['general'].get('output_dir'))
 
         dformul = self.config['formulation']
-        self.ngen_dir     =  dformul.get('ngen_dir', os.path.join(self.sandbox_dir,"extern/ngen"))
+        self.ngen_dir     = Path(os.environ.get("NGEN_DIR"))
         self.formulation  = dformul['models'].upper()
         self.num_procs    = int(dformul.get('num_procs', 1))
 
@@ -140,7 +140,7 @@ class Runner:
             # defaults to serial run no-mpi mode
             run_cmd = f'{ngen_exe} {gpkg_file} all {gpkg_file} all {realization}'
 
-            if mpirun_exists:
+            if self.mpirun_exists:
                 # mpirun exists so run with MPI
 
                 if self.num_procs > 1:

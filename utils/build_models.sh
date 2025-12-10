@@ -13,36 +13,13 @@
 
 BUILD_NGEN=OFF      # Required first
 BUILD_MODELS=ON     # Build after NGEN
-BUILD_TROUTE=OFF    # Build after MODELS
+BUILD_TROUTE=ON    # Build after MODELS
 
 HF_VERSION=2.2     # provide hydrofabric version
 
-NGEN_DIR=./extern/ngen   # Default ngen path. You may set this to any ngen repository - just clone the repo and point this variable to it.
-
-# Check if ngen directory exists
-if [ ! -d "$NGEN_DIR" ]; then
-    echo "Error: ngen directory does not exist: $NGEN_DIR"
-    exit 1
-fi
-
-echo "NextGen source code directory: " $NGEN_DIR
-
-# Check if it's a git repository
-if [ ! -d "$NGEN_DIR/.git" ] && [ ! -f "$NGEN_DIR/.git" ]; then
-    echo "Error: ngen directory exists but is not a Git repository: $NGEN_DIR"
-    exit 1
-fi
-
-
 ###############################################################
 # Check if current active venv matches the sandbox venv
-sandbox_config="./utils/build_sandbox.sh"
-if [ -f "$sandbox_config" ]; then
-    VENV_SANDBOX=$(grep -E '^VENV_SANDBOX=' "$sandbox_config" | head -n1 | cut -d'=' -f2-)
-else
-    echo "Error: Config file not found: $config_file"
-    exit 1
-fi
+VENV_SANDBOX="$SANDBOX_BUILD_DIR/venv/venv_sandbox_py3.11"
 
 # Expand ~ and/or convert to absolute path
 SANDBOX_ENV=$(realpath "$VENV_SANDBOX" 2>/dev/null)
@@ -63,7 +40,9 @@ fi
 
 build_ngen()
 {
-    pushd $NGEN_DIR
+    pushd $SANDBOX_BUILD_DIR
+    git clone https://github.com/NOAA-OWP/ngen
+    cd ngen
     git submodule update --init --recursive
 
     export builddir="cmake_build"
@@ -84,7 +63,7 @@ build_ngen()
 
     #make -j8 -C ${builddir}
     # run the following if ran into tests timeout issues
-    cmake --build cmake_build --target ngen -j8
+    cmake --build ${builddir} --target ngen -j8
     popd
 }
 

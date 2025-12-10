@@ -65,3 +65,11 @@ echo
 echo "python3.11 path check:"
 echo "  ${PYTHON_INSTALL_DIR}/bin/python3.11 --version"
 echo "------------------------------------"
+
+echo "Checking if sqlite3 module works..."
+SQLITE_VERSION=$("${PYTHON_INSTALL_DIR}/bin/python3.11" -c "import sqlite3; print(sqlite3.sqlite_version)")
+if [ -n "$SQLITE_VERSION" ]; then
+    echo "sqlite3 is working! SQLite version: $SQLITE_VERSION"
+else
+    echo "ERROR: seems like _sqlite3 is not correctly installed. Maybe Python configure didn't find SQLite."
+fi

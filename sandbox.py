@@ -15,16 +15,15 @@ sandbox_dir = Path(sandbox.__file__).resolve().parent
 
 from src.python import forcing, driver, runner
 
-
+sandbox_build_dir = Path(os.environ.get("SANDBOX_BUILD_DIR"))
 
 def CheckSandboxVENV():
-    VENV_SANDBOX = sandbox_dir / ".venv" / "venv_sandbox_py3.11"
+    VENV_SANDBOX = sandbox_build_dir / "venv" / "venv_sandbox_py3.11"
 
     # Check if the virtual environment exists
     if not VENV_SANDBOX.exists():
         print(f"Error: NextGen virtual environment {VENV_SANDBOX} not found under directory: {sandbox_dir}/.venv")
         sys.exit(1)
-
 
     # Check if the script is running inside that required environment
     VENV_ACTIVE = Path(sys.prefix)

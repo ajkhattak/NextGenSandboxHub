@@ -9,14 +9,50 @@
 ###############################################################
 
 BUILD_SANDBOX=ON
-# if it is desired to change the virtual env name, it will require one more change to
-# the sandbox.py file (update the env name there as well)
-VENV_SANDBOX=./.venv/venv_sandbox_py3.11
-VENV_FORCING=./.venv/venv_forcing
+
+BASH_FILE="$HOME/.bash_profile"  # <- change this to your local settings
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+echo "Script directory: $SCRIPT_DIR"
+
+SANDBOX_DIR="$(dirname "$SCRIPT_DIR")"
+echo "Sandbox directory: $SANDBOX_DIR"
+
+SANDBOX_BUILD_DIR="$(dirname "$SANDBOX_DIR")/sandbox_build"
+NGEN_DIR="$SANDBOX_BUILD_DIR/ngen"
+
+mkdir -p "$SANDBOX_BUILD_DIR"
+echo "Sandbox build directory: $SANDBOX_BUILD_DIR"
+
+VENV_SANDBOX="$SANDBOX_BUILD_DIR/venv/venv_sandbox_py3.11"
+VENV_FORCING="$SANDBOX_BUILD_DIR/venv/venv_forcing"
 PYTHON_VERSION="python3.11"
 
-#####################################################
+add_export() {
+    local var_name=$1
+    local var_value=$2
+    local file=$3
 
+    # line we want to add
+    local line="export ${var_name}='${var_value}'"
+
+    # check if it already exists
+    if ! grep -Fxq "$line" "$file"; then
+        echo "$line" >> "$file"
+    fi
+}
+
+add_export "SANDBOX_DIR" "$SANDBOX_DIR" "$BASH_FILE"
+add_export "SANDBOX_BUILD_DIR" "$SANDBOX_BUILD_DIR" "$BASH_FILE"
+add_export "NGEN_DIR" "$NGEN_DIR" "$BASH_FILE"
+add_export "SANDBOX_VENV" "$VENV_SANDBOX/bin/activate" "$BASH_FILE"
+
+
+# reload the updated bash profile
+source "$BASH_FILE"
+
+
+#####################################################
 
 build_sandbox()
 {    
