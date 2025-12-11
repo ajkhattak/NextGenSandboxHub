@@ -25,14 +25,24 @@ def CheckSandboxVENV():
         print(f"Error: NextGen virtual environment {VENV_SANDBOX} not found under directory: {sandbox_dir}/.venv")
         sys.exit(1)
 
-    # Check if the script is running inside that required environment
-    VENV_ACTIVE = Path(sys.prefix)
-    if VENV_ACTIVE.resolve() != VENV_SANDBOX.resolve():
-        print(f"Warning: sandbox.py is not running in the expected Python virtual environment.")
-        print(f"Expected: {VENV_SANDBOX}")
-        print(f"Active:   {VENV_ACTIVE}")
+    # Detect active Python environment
+    VENV_ACTIVE  = Path(sys.prefix)
+    CONDA_ACTIVE = os.environ.get("CONDA_PREFIX")
 
+    # Resolve paths to handle symlinks
+    expected = VENV_SANDBOX.resolve()
+    active   = VENV_ACTIVE.resolve()
+    conda_active = Path(CONDA_ACTIVE).resolve() if CONDA_ACTIVE else None
+
+    # Check if either venv or conda env matches
+    if not (active.samefile(expected) or (conda_active and conda_active.samefile(expected))):
+        print("Error: sandbox is not running in the expected Python virtual environment.")
+        print(f"Expected: {VENV_SANDBOX}")
+        print(f"Active sys.prefix: {VENV_ACTIVE}")
+        if CONDA_ACTIVE:
+            print(f"Active CONDA_PREFIX: {CONDA_ACTIVE}")
         sys.exit(1)
+
 
 
 formulations_supported = [

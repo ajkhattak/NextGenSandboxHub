@@ -11,7 +11,6 @@ requires-python = ">=3.11"
 authors = [{ name = "Ahmad Jan Khattak", email = "ajkhattak@gmail.com" }]
 
 dependencies = [
-    "pip>=24.0",
     "numpy~=1.0",
     "setuptools>=64.0,<69.0",
     "pandas>=1.1.5,<=2.2.0",

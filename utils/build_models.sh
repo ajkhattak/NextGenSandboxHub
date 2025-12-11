@@ -13,7 +13,7 @@
 
 BUILD_NGEN=OFF      # Required first
 BUILD_MODELS=ON     # Build after NGEN
-BUILD_TROUTE=ON    # Build after MODELS
+BUILD_TROUTE=OFF    # Build after MODELS
 
 HF_VERSION=2.2     # provide hydrofabric version
 
@@ -24,8 +24,15 @@ VENV_SANDBOX="$SANDBOX_BUILD_DIR/venv/venv_sandbox_py3.11"
 # Expand ~ and/or convert to absolute path
 SANDBOX_ENV=$(realpath "$VENV_SANDBOX" 2>/dev/null)
 
-# Convert VIRTUAL_ENV to absolute path too
-CURRENT_ENV=$(realpath "$VIRTUAL_ENV" 2>/dev/null)
+
+# Determine current active environment
+if [ -n "$VIRTUAL_ENV" ]; then
+    CURRENT_ENV=$(realpath "$VIRTUAL_ENV" 2>/dev/null)
+elif [ -n "$CONDA_PREFIX" ]; then
+    CURRENT_ENV=$(realpath "$CONDA_PREFIX" 2>/dev/null)
+else
+    CURRENT_ENV=""
+fi
 
 if [ "$CURRENT_ENV" != "$SANDBOX_ENV" ]; then
     echo "Error: This script must be run inside the sandbox environment:"
@@ -33,6 +40,7 @@ if [ "$CURRENT_ENV" != "$SANDBOX_ENV" ]; then
     echo "Current : ${CURRENT_ENV:-<none>}"
     exit 1
 fi
+
 ###############################################################
 
 
@@ -220,6 +228,3 @@ fi
 #    #pip install "git+https://github.com/aaraney/ngen-cal@forcing-hotfix#egg=ngen_cal&subdirectory=python/ngen_cal"
 #    #cd ${wkdir}
 #fi
-
-
-
