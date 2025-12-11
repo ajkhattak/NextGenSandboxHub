@@ -1,0 +1,54 @@
+# Sandbox configuration sample file
+#
+
+general:
+  input_dir  : "/scratch4/NCEPDEV/ohd/Ahmad.Jan.Khattak/Code/NextGenSandboxHub/test/data"  
+  output_dir : "/scratch4/NCEPDEV/ohd/Ahmad.Jan.Khattak/Code/NextGenSandboxHub/test" 
+
+# make sure to install yaml package using install.packages("yaml") if not installed already
+subsetting :
+  hf_version               : "2.2" 
+  hf_gpkg_path             : "<path_to>/conus_nextgen.gpkg"  
+  dem_output_dir           : "<path_to>/dem" 
+  dem_input_file           : "<path_to>/dem.vrt"
+
+  # Note: only gage_ids that fall within the domain of the hydrofabric listed above will be subsetted
+  options :
+    use_gage_id :
+      use_gage_id  : TRUE #----------------------------------------------- TRUE or FALSE
+      gage_ids     : "01308000" #----------------------------------------- List of gage IDs, for instance, ["01105000","08070500"]
+    use_gage_file :
+      use_gage_file : FALSE  #-------------------------------------------- TRUE or FALSE
+      gage_file     : "<path_to_basin_ids_file>/basin_ids_file.csv" #----- Path to CSV file with column (set column name below) of basin gage IDs
+      column_name   : "USGS.ID" #----------------------------------------- Name of column of gage IDs
+    use_gpkg :
+      use_gpkg  : FALSE  #------------------------------------------------ TRUE or FALSE
+      gpkg_dir  : "<path_to_gpkgs_dir>" #--------------------------------- Path to base directory for all (already downloaed) geopackages
+      pattern   :  "gage_" #---------------------------------------------- Pattern of names, e.g., gage_<*> or hf_<*>
+
+########################################################################
+#forcing data is stored under <input_dir>/gage_id/data/forcing
+forcings : 
+  forcing_format    : ".nc" #-------------------------------------------- Format .nc or .csv (recommended option .nc)
+  forcing_time      : {"start_time" : "2016-10-01 00:00:00", "end_time" : "2016-11-30 23:00:00"} #---------- Time (must cover the simulation times)
+  domain            : "conus"        #------------------------------------ options = ["conus", "HI", "PR", 'AK']
+
+########################################################################
+formulation :
+  models            : "PET, CFE-S, T-route"
+  clean             : ['existing'] 
+  verbosity         : 0            
+
+  num_procs         : 1
+
+simulation :
+  task_type        : "control" 
+  gage_ids         :  "01308000" 
+  sim_name_suffix  :  "pet_cfe" 
+  simulation_time : {"start_time" : "2016-10-01 00:00:00", "end_time" : "2016-10-02 23:00:00"} # only needed when task_type is control
+  calibration_time : {"start_time" : "2016-10-01 00:00:00", "end_time" : "2021-09-30 23:00:00"} # Entire simulation period for calibration; including spinup period
+  calib_eval_time  : {"start_time" : "2017-10-01 00:00:00", "end_time" : "2021-09-30 23:00:00"} # Evalaution period for calibration (excluding spinup period)
+  validation_time  : {"start_time" : "2010-11-22 14:00:00", "end_time" : "2010-12-23 02:00:00"} # Entire simulation period for validation; including spinup period
+  valid_eval_time  : {"start_time" : "2010-11-23 14:00:00", "end_time" : "2010-12-23 02:00:00"} # Evalaution period for validation (excluding spinup period)
+  restart_dir      : "<path_to_restart_dir>/{*}/202410042024_ngen_qaiklwj0_worker/" #----------- Restart experiment from the best iteration
+
