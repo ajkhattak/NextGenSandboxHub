@@ -48,9 +48,6 @@ class Driver:
         self.num_cpus      = int(dformul.get('num_procs', 1))
         self.schema_type   = dformul.get('schema_type', "noaa-owp")
 
-        self.setup_simulation = dformul.get('setup_simulation', True)
-        self.rename_existing_simulation = dformul.get('rename_existing_simulation', "")
-
         # Forcing block
         dforcing = d['forcings']
 
@@ -217,12 +214,8 @@ class Driver:
         gpkg_dir = os.path.join(i_dir, gpkg_dir)
 
         helper.create_clean_dirs(output_dir=o_dir,
-                                 setup_simulation=self.setup_simulation,
-                                 rename_existing_simulation=self.rename_existing_simulation,
+                                 task_type=self.task_type,
                                  clean=self.clean)
-
-        if not self.setup_simulation:
-            return
 
         # Call generate files
         driver_ = generate.Generate(sandbox_dir = self.sandbox_dir,

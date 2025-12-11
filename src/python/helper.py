@@ -1,23 +1,15 @@
 import os
 import shutil
 
+# called in driver.py
 class colors:
     GREEN = '\033[92m'
     RED   = '\033[91m'
     END   = '\033[0m'
 
 def create_clean_dirs(output_dir,
-                      setup_simulation = True,
-                      rename_existing_simulation = "",
+                      task_type,
                       clean = ["none"]):
-
-    if (isinstance(rename_existing_simulation, str) and rename_existing_simulation != ""):
-        subdirs  = os.listdir(output_dir)
-        os.mkdir(rename_existing_simulation)
-        for d in subdirs:
-            if (d in ["configs", "outputs"]):
-                shutil.move(d, rename_existing_simulation)
-
     
     if (clean == ["all"]):
         subdirs  = os.listdir(output_dir)
@@ -44,20 +36,21 @@ def create_clean_dirs(output_dir,
                 except:
                     os.remove(d)
 
-    if (setup_simulation):
-        subdirs  = os.listdir(output_dir)
-        for d in subdirs:
-            if (d in ["configs", "outputs"]):
-                try:
-                    shutil.rmtree(d)
-                except:
-                    os.remove(d)
-        
-        os.mkdir("configs")
+   
+    subdirs  = os.listdir(output_dir)
+
+    for d in subdirs:
+        if (d in ["configs", "outputs"]):
+            try:
+                shutil.rmtree(d)
+            except:
+                os.remove(d)
+
+    os.mkdir("configs")
+    if task_type == 'control':
         os.makedirs("outputs/div")
         os.makedirs("outputs/troute")
-        os.makedirs("outputs/troute_parq")
+        #os.makedirs("outputs/troute_parq")
     
     if (os.path.isdir("dem")):
         shutil.rmtree("dem")
-    
