@@ -2,15 +2,15 @@
 #
 
 general:
-  input_dir  : "/scratch4/NCEPDEV/ohd/Ahmad.Jan.Khattak/Code/NextGenSandboxHub/test/data"  
-  output_dir : "/scratch4/NCEPDEV/ohd/Ahmad.Jan.Khattak/Code/NextGenSandboxHub/test" 
+  input_dir  : "./input/data"  
+  output_dir : "./output" 
 
 # make sure to install yaml package using install.packages("yaml") if not installed already
 subsetting :
   hf_version               : "2.2" 
   hf_gpkg_path             : "<path_to>/conus_nextgen.gpkg"  
   dem_output_dir           : "<path_to>/dem" 
-  dem_input_file           : "<path_to>/dem.vrt"
+  #dem_input_file           : "<path_to>/dem.vrt"
 
   # Note: only gage_ids that fall within the domain of the hydrofabric listed above will be subsetted
   options :

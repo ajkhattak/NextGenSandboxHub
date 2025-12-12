@@ -82,3 +82,12 @@ basin_workflow/ngen_cal_plugins/build
 .Rproj.user
 .Rhistory
 .Rproj
+
+#unit test
+# Ignore everything in test/
+test/*
+
+# Except .py, .yaml, .gpkg files
+!test/**/*.py
+!test/**/*.yaml
+!test/**/*.gpkg
