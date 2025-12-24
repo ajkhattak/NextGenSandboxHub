@@ -64,8 +64,7 @@ Setup <-function() {
     stop("Usage: RScript main.R input.yaml sandbox_dir")
   } else {
     sandbox_dir   <<- "<path_to_sandboxhub>"
-    infile_config <-  "<path_to_sandboxhub>/configs/sandbox_config.yaml"
-
+    infile_config <- "<path_to_sandboxhub>/configs/sandbox_config.yaml"
   } 
 
   if (!file.exists(infile_config)) {
@@ -167,9 +166,17 @@ if (use_gage_id == TRUE || use_gage_file == TRUE) {
   
   
 } else if (use_gpkg == TRUE) {
-
-  gage_files = list.files(gpkg_dir, full.names = TRUE, pattern = pattern)
   
+  gage_files = list.files(gpkg_dir, full.names = TRUE, pattern = pattern)
+  if (dir.exists(gpkg_dir)) {
+    gage_files <- list.files(gpkg_dir, full.names = TRUE, pattern = pattern)
+  } else if (file.exists(gpkg_dir)) {
+    # gpkg_dir is actually a file
+    gage_files <- gpkg_dir
+  } else {
+    stop("gpkg_dir does not exist")
+  }
+ print (glue("GPKG: ", gpkg_dir))
   DriverGivenGPKG(gage_files = gage_files, 
                   gpkg_dir   = gpkg_dir, 
                   output_dir = output_dir,

@@ -135,46 +135,12 @@ DriverGivenGPKG <- function(gage_files,
   
   stopifnot(length(gage_files) >=1)
   
-  # create directory to stored catchment geopackage in case of errors or missing data
-  #failed_dir = "failed_cats"
-  
   failed_dir <- glue("{output_dir}/basins_failed")
+  
   if (dir.exists(failed_dir)) {
     unlink(failed_dir, recursive = TRUE)
   }
   dir.create(failed_dir, recursive = TRUE, showWarnings = FALSE)
-  
-  # if (nproc > parallel::detectCores()) {
-  #   nproc = parallel::detectCores() - 1
-  # }
-  
-  # make a cluster of multicores
-  # cl <- parallel::makeCluster(nproc)
-  # on.exit(parallel::stopCluster(cl))  # this ensures the cluster is stopped on exit
-
-  # Export all environment variables and functions here, so all worker/nodes have access to them
-#   clusterExport(cl, varlist = c(functions_lst, 
-#                                 "libraries_lst", 
-#                                 "output_dir", 
-#                                 "failed_dir",
-#                                 "gpkg_dir",
-#                                 "as_sqlite",
-# 				                        "compute_divide_attributes",
-#                                 "dem_output_dir",
-# 				                        "dem_input_file"),
-#                 envir = environment())
-  
-  #evaluate an expression on in the global environment each node of the cluster; here loading packages
-  # clusterEvalQ(cl, {
-  #   libraries_lst <- get("libraries_lst", environment())
-  #   for (pkg in libraries_lst) {
-  #     suppressPackageStartupMessages(library(pkg, character.only = TRUE))
-  #   }
-  # })
-  
-  
-  # Initialize and call pb (progress bar)
-  #cats_failed <- pblapply(X = gage_files, FUN = process_gpkg, cl = cl, failed_dir)
   
   cats_failed <- lapply(X = gage_files, FUN = ProcessGPKG, failed_dir)
   setwd(output_dir)
@@ -186,24 +152,14 @@ ProcessGPKG <- function(gfile, failed_dir) {
   
   print ("PROCESS GPKG FUNCTION")
 
-  # vector contains ID of basins that failed for some reason
+  # vector containing IDs of failed (for some reason) basins
   cats_failed <- numeric(0)
-
-  # uncomment for debugging, it puts screen outputs to a file
-  #log_file <- file("output.log", open = "wt")
-  #sink(log_file, type = "output")
-
-  #id <- as.integer(sub(".*_(.*?)\\..*", "\\1", gfile))
-  id <- sub(".*_(.*?)\\..*", "\\1", gfile)
+  
+  id <- sub(".*_(.*?)\\..*", "\\1", basename(gfile))
   
   if (is.na(id)) {
-     id <- 11111
+     id <- 11111111
   }
-  
-  # check if gage ID is missing a leading zero, does not happens most of the times, but good to check
-  #if (as.integer(nchar(id)/2) %% 2 == 1) {
-  #  id <- paste(0,id, sep = "")
-  #  }
 
   cat_dir = glue("{output_dir}/{id}")
   dir.create(cat_dir, recursive = TRUE, showWarnings = FALSE)
@@ -223,7 +179,6 @@ ProcessGPKG <- function(gfile, failed_dir) {
   tryCatch({
     cat ("Processing catchment: ", id, "\n")
 
-    #local_gpkg_file = gfile # point to original file
     gpkg_name = basename(gfile)
 
     local_gpkg_file = glue("{cat_dir}/data/{gpkg_name}")
@@ -256,9 +211,6 @@ ProcessGPKG <- function(gfile, failed_dir) {
   else {
     cat ("Cat passed:", id, "\n")
   }
-  
-  #sink(type = "output")
-  #close(log_file)
   
   return(cats_failed)
 
@@ -352,16 +304,28 @@ RunDriver <- function(gage_id = NULL,
     
   } else { 
     outfile <- loc_gpkg_file
-    }
+  }
 
   # check if the divide-attributes layer has the same number of rows as the divides layer
   if (!compute_divide_attributes) {
-    check_divs <- st_read(outfile, layer = 'divides')
+    check_divs  <- st_read(outfile, layer = 'divides')
     check_attrs <- st_read(outfile, layer = 'divide-attributes')
-    if (!nrow(check_divs) == nrow(check_attrs)) {
+    
+    id_col <- "divide_id"
+    
+    missing_in_attrs <- setdiff(check_divs[[id_col]], check_attrs[[id_col]])
+    
+    missing_in_divs <- setdiff(check_attrs[[id_col]], check_divs[[id_col]])
+    
+    if (length(missing_in_attrs) > 0 || length(missing_in_divs) > 0) {
+      print("Mismatched rows detected:")
       print(glue("DIVIDES HAS {nrow(check_divs)} ROWS BUT DIVIDE-ATTRIBUTES HAS {nrow(check_attrs)}!!"))
+      
+      print(glue("IDs in divides but not in divide-attributes: {toString(missing_in_attrs)}"))
+      print(glue("IDs in divide-attributes but not in divides: {toString(missing_in_divs)}"))
       stop()
     }
+
   }
  
   ## Stop if .gpkg does not exist
@@ -371,9 +335,6 @@ RunDriver <- function(gage_id = NULL,
     stop()
     }
 
-  #div <- read_sf(outfile, 'divides')
-  #nexus <- read_sf(outfile, 'nexus')
-  #streams <- read_sf(outfile, 'flowlines')
 
   ########################## MODELS' ATTRIBUTES ##################################
   # STEP #4: Add models' attributes
