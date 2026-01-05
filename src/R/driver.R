@@ -17,40 +17,6 @@ DriverGivenGageIDs <- function(gage_ids,
   print ("DRIVER GIVEN GAGE ID")
 
   dir.create(glue("{output_dir}/basins_failed"), recursive = TRUE, showWarnings = FALSE)
-  
-  # if (nproc > parallel::detectCores()) {
-  #   nproc = parallel::detectCores() - 1
-  # }
-
-  # make a cluster of multicores
-  # cl <- parallel::makeCluster(nproc)
-  # on.exit(parallel::stopCluster(cl))  # this ensures the cluster is stopped on exit
-  
-  # Export all environment variables and functions here, so all worker/nodes have access to them
-  # clusterExport(cl, varlist = c(functions_lst,
-  #                               "libraries_lst",
-  #                               "output_dir",
-  #                               "failed_dir",
-  #                               "dem_output_dir",
-  #                               "dem_input_file",
-  #                               "compute_divide_attributes",
-  #                               ),
-  #               envir = environment())
-  
-  #evaluate an expression on in the global environment each node of the cluster; here loading packages
-  # clusterEvalQ(cl, {
-  #   libraries_lst <- get("libraries_lst", environment())
-  #   for (pkg in libraries_lst) {
-  #     suppressPackageStartupMessages(library(pkg, character.only = TRUE))
-  #   }
-  # })
-  
-  
-  # Initialize and call pb (progress bar)
-  
-  # cats_failed <- pblapply(X = gage_ids, FUN = process_catchment_id, cl = cl, failed_dir)
-
-  # stopCluster(cl)
 
   lapply(X = gage_ids, FUN = ProcessCatchmentID)
   
@@ -66,10 +32,6 @@ DriverGivenGageIDs <- function(gage_ids,
 ProcessCatchmentID <- function(id) {
   
   print ("PROCESS CATCHMENT ID FUNCTION")
-  
-  # uncomment for debugging, it puts screen outputs to a file
-  #log_file <- file("output.log", open = "wt")
-  #sink(log_file, type = "output")
   
   cat_dir = glue("{output_dir}/{id}")
   dir.create(cat_dir, recursive = TRUE, showWarnings = FALSE)
@@ -114,9 +76,7 @@ ProcessCatchmentID <- function(id) {
   else {
     cat ("Basin Passed:", id, "\n")
   }
-  
-  #sink(type = "output")
-  #close(log_file)
+
 }
 
 ############################ DRIVER_GIVEN_GPKG #################################
@@ -133,7 +93,7 @@ DriverGivenGPKG <- function(gage_files,
   
   print ("DRIVER GIVEN GEOPACKAGE FUNCTION")
   
-  stopifnot(length(gage_files) >=1)
+  stopifnot(length(gage_files) >= 1)
   
   failed_dir <- glue("{output_dir}/basins_failed")
   
@@ -360,7 +320,7 @@ RunDriver <- function(gage_id = NULL,
   ############################### GENERATE TWI ##################################
   # STEP #5: Generate TWI and width function and write to the geopackage
   # Note: The default distribution = 'quantiles'
-  
+
   start.time <- Sys.time()
   GetDEM(div_infile = outfile, dem_input_file, dem_output_dir)
 

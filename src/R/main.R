@@ -63,14 +63,14 @@ Setup <-function() {
   } else if (length(args) > 2) {
     stop("Usage: RScript main.R input.yaml sandbox_dir")
   } else {
-    sandbox_dir   <<- "<path_to_sandboxhub>"
-    infile_config <- "<path_to_sandboxhub>/configs/sandbox_config.yaml"
+    sandbox_dir   <<-  "<path_to_sandboxhub>"
+    infile_config <-   "<path_to_sandboxhub>/configs/sandbox_config.yaml"
   } 
 
   if (!file.exists(infile_config)) {
     print(paste0("input config file does not exist, provided: ", infile_config))
     print ("Note: if running from RStudio, make sure infile_config points is set propely (line 54 in the main.R).")
-    return(1)
+    stop()
   }
 
   inputs = yaml.load_file(infile_config)
