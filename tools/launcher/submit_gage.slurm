@@ -16,15 +16,21 @@
 echo "Allocated CPUs: $SLURM_CPUS_PER_TASK"
 # === Load modules or activate your environment ===
 
-module load cmake/3.30.2
 module load openmpi/4.1.6
-module load gcc/12.4.0
 module load netcdf-fortran/4.6.1
-module load sqlite/3.46.0
-module load udunits/2.2.28
+module load cmake/3.30.2
+module load sqlite
+module load udunits
 
-source /home/Ahmad.Jan.Khattak/.venv_sandbox_py3.11/bin/activate
+#SANDBOX_PACKAGE_PATH=$(python -c "import sandbox, os; print(os.path.dirname(sandbox.__file__))")
+#source "${SANDBOX_PACKAGE_PATH}/.venv/venv_sandbox_py3.11/bin/activate"
+unset PYTHONPATH
+source /scratch4/NCEPDEV/ohd/Ahmad.Jan.Khattak/Code/NextGenSandboxHub/.venv/venv_sandbox_py3.11/bin/activate
 
+# Debug info
+echo "Python executable: $(which python)"
+python -c "import numpy; print('NumPy version:', numpy.__version__)"
+python -c "import sqlite3; print('sqlite3 version:', sqlite3.sqlite_version)"
 
 echo "Running gage simulation..."
 echo "SANDBOX_FILE = $SANDBOX_FILE"
@@ -35,7 +41,6 @@ if [[ -n "$START_DELAY" ]]; then
     echo "Applying model-index startup delay: ${START_DELAY}s"
     sleep $START_DELAY
 fi
-
-# === Run your Python simulation ===
-#python /home/Ahmad.Jan.Khattak/Code/NextGenSandboxHub/sandbox.py -run -i "$SANDBOX_FILE" -j "$CALIB_FILE"
+python -c "import numpy; print('NumPy version:', numpy.__version__)"
+# === Run sandbox ===
 sandbox -run -i "$SANDBOX_FILE" -j "$CALIB_FILE"

@@ -146,7 +146,7 @@ def get_current_iteration(exp_info_dir, gage_id, status=False):
         d = yaml.safe_load(file)
 
     iter_file = glob.glob(str(Path(d["output_dir"]) / "*_worker" / "best_params.txt"))
-    
+
     if not iter_file:
         if not status:
             print(f"INFO: [{gage_id}] No best_params.txt found — assuming iteration 0")
@@ -166,7 +166,7 @@ def get_num_cpus(exp_info_dir, gage_id):
 
     if not info_file.exists():
         return 1
-    
+
     with open(info_file, "r") as file:
         d = yaml.safe_load(file)
 
@@ -195,7 +195,7 @@ def check_validation_exists(exp_info_dir, gage_id, status=False):
         if not status:
             print(f"INFO: [{gage_id}] Validation output found — skipping validation run.")
         return True
-    
+
     return False
 
 # ====================== SLURM Submission ======================
@@ -233,7 +233,7 @@ def run_experiment(model_name, model_dir, gage_id, job_name, exp_config_dir,
 
     # # Skip submission if validation exists — job is fully complete
     validation_exists = check_validation_exists(exp_info_dir, gage_id)
-    
+
     if validation_exists:
         return
 
@@ -272,9 +272,15 @@ def check_status():
 
 # For requeue-ing launcher via slrum
 def launcher_exit(incomplete_exists):
-    wallclock_min = int(os.getenv("LAUNCHER_WALLCLOCK", "60"))
+    # Get wallclock in minutes; must be set in the submit_launcher.slurm
+    wallclock_min_str = os.getenv("LAUNCHER_WALLCLOCK_MIN")
+    if wallclock_min_str is None:
+        raise RuntimeError("Environment variable LAUNCHER_WALLCLOCK_MIN must be set, in the submit_launcher.slurm, before calling launcher_exit.")
+
+    wallclock_min = int(wallclock_min_str)
     buffer = 30 # seconds
     max_runtime_sec = wallclock_min * 60 - buffer
+
     if incomplete_exists:
         print("[INFO] Incomplete gages/models detected — requesting SLURM requeue.")
         time.sleep(max_runtime_sec)
@@ -311,7 +317,7 @@ def get_running_slurm_jobs():
     Returns a set of job names currently running or pending for the given user.
     """
     user = getpass.getuser()
-    
+
     cmd = ["squeue", "-u", user, "-h", "-o", "%j", "-t", "R,PD"]
     try:
         output = subprocess.check_output(cmd, text=True)
@@ -326,7 +332,7 @@ def get_running_slurm_jobs():
 # Main function loops over all models x all gages
 # ==============================================================================
 def runner():
-    
+
     incomplete_exists = False
 
     # Get all currently running/pending Slurm job names
@@ -342,7 +348,7 @@ def runner():
         for m_idx, model_name in enumerate(models_for_gage):
 
             print(f"\n--- Model {m_idx+1}/{len(models_for_gage)} | {model_name} ---")
-            
+
             model_dir = model_name_to_dir(model_name)
             job_name = f"{model_dir}_{gage_id}"
 
@@ -350,7 +356,7 @@ def runner():
             if is_experiment_complete(gage_id, model_dir):
                 print(f"[{gage_id}] Experiment '{job_name}' already completed. Skipping...")
                 continue
-            
+
             # Skip if job is already running/pending
             if job_name in running_jobs:
                 print(f"[{gage_id}] Job '{job_name}' is already running or pending. Skipping...")
@@ -361,7 +367,7 @@ def runner():
 
             current_iter = get_current_iteration(exp_info_dir, gage_id)
             max_iter     = get_max_iter(exp_config_dir, gage_id)
-            
+
             if current_iter == 0:
                 print(f"[{gage_id}] First time setup — generating configs...")
                 generate_config_files_for_gage(model_name, model_dir, gage_id, exp_config_dir, exp_info_dir)
@@ -381,10 +387,10 @@ def runner():
 
     print("\n=== Launcher Finished ===\n")
 
-    
+
     # Exit with special code: 99 = request SLURM requeue
     launcher_exit(incomplete_exists)
-    
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-status",
@@ -395,7 +401,7 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    
+
     print(f"\n=== Sandbox Launcher Started @ {datetime.now()} ===")
 
     # STATUS MODE

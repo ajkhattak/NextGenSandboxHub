@@ -14,23 +14,43 @@
 ##SBATCH --exclusive
 
 
-#module load cmake/3.30.2
-#module load openmpi/4.1.6
-#module load gcc/12.4.0
-#module load netcdf-fortran/4.6.1
-#module load sqlite/3.46.0
-#module load udunits/2.2.28
 
-source /home/Ahmad.Jan.Khattak/.venv_sandbox_py3.11/bin/activate
+# -------------------------------
+# User-defined wallclock
+# -------------------------------
+# Set SLURM_TIMELIMIT in seconds to match #SBATCH --time
+# User MUST edit this variable to match the requested time
+SLURM_TIMELIMIT=$((5*60))  # 5 minutes in seconds
+
+# Check that the variable is set
+if [ -z "$SLURM_TIMELIMIT" ]; then
+    echo "ERROR: SLURM_TIMELIMIT is not set. Please set it in the script."
+    exit 1
+fi
+
+export LAUNCHER_WALLCLOCK=$SLURM_TIMELIMIT
+# convert to minutes
+export LAUNCHER_WALLCLOCK_MIN=$(( LAUNCHER_WALLCLOCK / 60 ))
+echo "Launcher wallclock (minutes): $LAUNCHER_WALLCLOCK_MIN"
+
+# ----------------------------------------------------
+#SANDBOX_PACKAGE_PATH=$(python -c "import sandbox, os; print(os.path.dirname(sandbox.__file__))")
+#source "${SANDBOX_PACKAGE_PATH}/.venv/venv_sandbox_py3.11/bin/activate"
+#echo "sss: ${SANDBOX_PACKAGE_PATH}"
+unset PYTHONPATH
+source /scratch4/NCEPDEV/ohd/Ahmad.Jan.Khattak/Code/NextGenSandboxHub/.venv/venv_sandbox_py3.11/bin/activate
 
 # Print current node and time info
 echo "Running on $(hostname) at $(date)"
 echo "SLURM_JOB_ID: $SLURM_JOB_ID"
 
-export LAUNCHER_WALLCLOCK=${SLURM_TIMELIMIT:-5}  # fallback 5 minutes if not set
-echo "[submit_launcher.slurm] Max wallclock (minutes) = $LAUNCHER_WALLCLOCK"
+# Debug info
+echo "LL Python executable: $(which python)"
+python -c "import numpy; print('LL NumPy version:', numpy.__version__)"
+python -c "import sqlite3; print('LL sqlite3 version:', sqlite3.sqlite_version)"
 
-#module load python/3.11  # if needed on your HPC
+
+# ----------------------------------------------------
 echo "[submit_launcher.slurm] (Re)Submitting sandbox_launcher.py"
 python launcher/sandbox_launcher.py
 exit_code=$?
