@@ -9,16 +9,22 @@ ComputeTWI <- function(div_infile, dem_output_dir, distribution = 'quantiles', n
   
   div <- read_sf(div_infile, 'divides')
   
-  # @param out_type Output type; one of 'cells' (default), 'catchment area', and 'specific contributing area'.
-  wbt_d8_flow_accumulation(input = glue("{dem_output_dir}/dem_corr.tif"), output = glue("{dem_output_dir}/sca.tif")
-                           , out_type = 'specific contributing area', verbose_mode = FALSE)
+  twi_file <- glue("{dem_output_dir}/twi.tif")
+  
+  if (file.exists(twi_file)) {
+    message("dem/twi.tif file exists, so skipping generating twi..")
+  } else {
+    # @param out_type Output type; one of 'cells' (default), 'catchment area', and 'specific contributing area'.
+    wbt_d8_flow_accumulation(input = glue("{dem_output_dir}/dem_corr.tif"), output = glue("{dem_output_dir}/sca.tif"),
+                             out_type = 'specific contributing area', verbose_mode = FALSE)
   
   
-  wbt_slope(dem = glue("{dem_output_dir}/dem_corr.tif"), output = glue("{dem_output_dir}/slope.tif"),
-            verbose_mode = FALSE)
-  
-  wbt_wetness_index(sca = glue("{dem_output_dir}/sca.tif"), slope = glue("{dem_output_dir}/slope.tif"), 
-                    output = glue("{dem_output_dir}/twi.tif"), verbose_mode = FALSE)
+   wbt_slope(dem = glue("{dem_output_dir}/dem_corr.tif"), output = glue("{dem_output_dir}/slope.tif"),
+             verbose_mode = FALSE)
+
+    wbt_wetness_index(sca = glue("{dem_output_dir}/sca.tif"), slope = glue("{dem_output_dir}/slope.tif"),
+                      output = glue("{dem_output_dir}/twi.tif"), verbose_mode = FALSE)
+  }
   
   twi = rast(glue("{dem_output_dir}/twi.tif"))
   
@@ -27,35 +33,56 @@ ComputeTWI <- function(div_infile, dem_output_dir, distribution = 'quantiles', n
   
   if (distribution == 'quantiles') {
     twi_cat <- zonal::execute_zonal(data = twi,
-                             geom = div,
-                             ID = "divide_id",
-                             fun = zonal::equal_population_distribution,
-                             groups = nclasses)
+                                    geom = div,
+                                    ID = "divide_id",
+                                    fun = zonal::equal_population_distribution,
+                                    groups = nclasses)
     
   }
   else if (distribution == 'simple') {
      twi_cat <- zonal::execute_zonal(data = twi,
-                              geom = div,
-                              ID = "divide_id",
-                              fun = zonal::distribution,
-                              breaks = nclasses)
+                                     geom = div,
+                                     ID = "divide_id",
+                                     fun = zonal::distribution,
+                                     breaks = nclasses)
+  }
+
+  # Set default TWI to empty rows
+  default_twi <- data.frame(
+    v = seq(0, 15, length.out = nclasses),
+    frequency = rep(1 / nclasses, nclasses)
+  )
+
+
+  for (i in seq_len(nrow(twi_cat))) {
+    x <- twi_cat$fun.twi[i]
+
+    if ( x == "" || x == "[]") {
+      message("Replacing empty TWI with default distribution")
+      twi_cat$fun.twi[i] <- as.character(toJSON(default_twi, auto_unbox = TRUE)) #default_twi_json
+    }
   }
   
   return(twi_cat)
 }
 
 
-
 ComputeWidth <- function(div_infile, dem_output_dir) {
   
   div <- read_sf(div_infile, 'divides')
   
-  wbt_d8_pointer(dem = glue("{dem_output_dir}/dem_corr.tif"), 
-                 output = glue("{dem_output_dir}/dem_d8.tif"))
+  downslope_fp_length_file <- glue("{dem_output_dir}/downslope_fp_length.tif")
   
-  wbt_downslope_flowpath_length(d8_pntr = glue("{dem_output_dir}/dem_d8.tif"), 
-                                output = glue("{dem_output_dir}/downslope_fp_length.tif"), watersheds=NULL)
-  # note: watersheds=div never tested but maybe useful in some cases; default is NULL
+  if (file.exists(downslope_fp_length_file)) {
+    message("dem/downslope_fp_length.tif file exists, so skipping generating flowpath length..")
+  } else {
+    wbt_d8_pointer(dem = glue("{dem_output_dir}/dem_corr.tif"),
+                   output = glue("{dem_output_dir}/dem_d8.tif"))
+
+    wbt_downslope_flowpath_length(d8_pntr = glue("{dem_output_dir}/dem_d8.tif"),
+                                  output = glue("{dem_output_dir}/downslope_fp_length.tif"), watersheds=NULL)
+    # note: watersheds=div never tested but maybe useful in some cases; default is NULL
+  }
   
   flowpath_length <- rast(glue("{dem_output_dir}/downslope_fp_length.tif"))
   
@@ -99,6 +126,22 @@ ComputeWidth <- function(div_infile, dem_output_dir) {
                               fun = corrected_distrib_func,
                               breaks = c(0.0,0.1,500,1000,1500))
   
+  # Set default width distribution to empty rows
+
+  default_dist <- data.frame(
+    v = c(0.1, 500, 1000, 1500),
+    frequency = c(0, 1, 0, 0)
+  )
+
+  for (i in seq_len(nrow(width_dist))) {
+    x <- width_dist$fun.downslope_fp_length[i]
+
+    if ( x == "" || x == "[]") {
+      #message("Replacing empty TWI with default distribution")
+      width_dist$fun.downslope_fp_length[i] <- as.character(toJSON(default_dist, auto_unbox = TRUE))
+    }
+  }
+
   return(width_dist)
 }
 

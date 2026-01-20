@@ -17,6 +17,16 @@ aspect_function <- function(div_infile, dem_output_dir) {
                                     ID = "divide_id",
                                     fun = circular_mean)
   
+  for (i in seq_len(nrow(aspect_cat))) {
+    x <- aspect_cat$fun.aspect[i]
+
+    if (is.nan(x) || x == "" || x == "[]") {
+      message("Replacing empty aspect with default value")
+      aspect_cat$fun.aspect[i] <- 360 # facing north = 360 or 0
+    }
+  }
+
+
   return(aspect_cat)
   
 }

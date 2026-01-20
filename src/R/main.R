@@ -63,8 +63,8 @@ Setup <-function() {
   } else if (length(args) > 2) {
     stop("Usage: RScript main.R input.yaml sandbox_dir")
   } else {
-    sandbox_dir   <<-  "<path_to_sandboxhub>"
-    infile_config <-   "<path_to_sandboxhub>/configs/sandbox_config.yaml"
+    sandbox_dir   <<- "<path_to_sandboxhub>"
+    infile_config <-  "<path_to_sandboxhub>/configs/sandbox_config.yaml"
   } 
 
   if (!file.exists(infile_config)) {
@@ -78,15 +78,12 @@ Setup <-function() {
   output_dir    <<- inputs$general$input_dir
   hf_version    <<- inputs$subsetting$hf_version
   hf_gpkg_path  <<- inputs$subsetting$hf_gpkg_path
-  nproc         <<- inputs$subsetting$number_processors
-  
   
   source(paste0(sandbox_dir, "/src/R/install_load_libs.R"))
   source(glue("{sandbox_dir}/src/R/custom_functions.R"))
   
   compute_divide_attributes <<- get_param(inputs, "subsetting$compute_divide_attributes", FALSE)
   
-  # dem_input_file        <<- get_param(inputs, "subsettings$dem_input_file", "s3://lynker-spatial/gridded-resources/dem.vrt")
   # Newer DEM, better for oCONUS and other previously problematic basins
   dem_input_file  <<- get_param(inputs, "subsetting$dem_input_file", "s3://lynker-spatial/gridded/3DEP/USGS_seamless_DEM_13.vrt")
 
@@ -103,9 +100,10 @@ Setup <-function() {
   gage_file     <<- get_param(inputs, "subsetting$options$use_gage_file$gage_file", NULL)
   column_name   <<- get_param(inputs, "subsetting$options$use_gage_file$column_name", "")
   
-  use_gpkg      <<- get_param(inputs, "subsetting$options$use_gpkg$use_gpkg", FALSE)
-  gpkg_dir      <<- get_param(inputs, "subsetting$options$use_gpkg$gpkg_dir", NULL)
-  pattern       <<- get_param(inputs, "subsetting$options$use_gpkg$pattern", "Gage_")
+  use_gpkg       <<- get_param(inputs, "subsetting$options$use_gpkg$use_gpkg", FALSE)
+  gpkg_dir       <<- get_param(inputs, "subsetting$options$use_gpkg$gpkg_dir", NULL)
+  pattern        <<- get_param(inputs, "subsetting$options$use_gpkg$pattern", "Gage_")
+  selected_gpkgs <<- get_param(inputs, "subsetting$options$use_gpkg$select", NULL)
   
   if (sum(use_gage_id, use_gage_file, use_gpkg) != 1){
     print(glue("setup error: one condition needs to be TRUE, user provided: \n
@@ -168,15 +166,36 @@ if (use_gage_id == TRUE || use_gage_file == TRUE) {
 } else if (use_gpkg == TRUE) {
   
   gage_files = list.files(gpkg_dir, full.names = TRUE, pattern = pattern)
+
   if (dir.exists(gpkg_dir)) {
     gage_files <- list.files(gpkg_dir, full.names = TRUE, pattern = pattern)
+
   } else if (file.exists(gpkg_dir)) {
     # gpkg_dir is actually a file
     gage_files <- gpkg_dir
   } else {
     stop("gpkg_dir does not exist")
   }
- print (glue("GPKG: ", gpkg_dir))
+
+ if (!is.null(selected_gpkgs)) {
+   # collapse multiple selections into a regex OR
+   pattern <- paste(selected_gpkgs, collapse = "|")
+   matches <- grep(pattern, gage_files, value = TRUE)
+  
+   if (length(matches) == 0) {
+     stop(glue(
+       "None of the selected gage files were found.\n",
+       "Selected: {toString(selected_gpkgs)}\n",
+       "Available: {toString(basename(gage_files))}"
+     ))
+   }
+   
+   gage_files <- matches
+
+ }
+ 
+ print (glue("GPKG FILES : {gage_files}"))
+
   DriverGivenGPKG(gage_files = gage_files, 
                   gpkg_dir   = gpkg_dir, 
                   output_dir = output_dir,

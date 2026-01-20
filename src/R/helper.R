@@ -4,67 +4,123 @@
 # @email lauren.bolotin@noaa.gov
 # @date  February 05, 2024
 
-# Get the DEM
+
 GetDEM <- function(div_infile,
-                   dem_input_file = NULL,
-                  dem_output_dir) {
-  print ("DEM FUNCTION")
-  print (glue("DEM file: ", dem_input_file))
+                   dem_input_file,
+                   dem_output_dir,
+                   buffer_m = 2000,
+                   aggregate_factor = 10) {
+
+  cat("=== Starting DEM processing ===\n")
+  cat(glue("DEM input file1: {dem_input_file}\n"))
+  terraOptions(tempdir = "/Volumes/BigDrive/terra_temp")
+  # ----------------------------
+  # Load DEM safely
   
   tryCatch({
+    # For S3 VRTs, use /vsis3/ path
+    if (grepl("^s3://", dem_input_file)) {
+      dem_input_file <- sub("^s3://", "/vsis3/", dem_input_file)
+    }
     elev <- rast(dem_input_file)
+    cat("\nDEM loaded successfully.\n")
   }, error = function(e) {
-    cat ("Error: dem_input_file does not exist: provided ", dem_input_file, "\n")
-    cat("Details:", e$message, "\n")
+    stop(glue("Failed to load DEM: {dem_input_file}\nDetails: {e$message}"))
   })
-  
-  # Get the catchment geopackage
-  div <- read_sf(div_infile, 'divides')
-  crs_div <- st_crs(div)
+
+  # ----------------------------
+  # Read catchment / divides
+
+  div      <- read_sf(div_infile, "divides")
+  crs_div  <- st_crs(div)
   crs_elev <- crs(elev)
   
   if (!identical(crs_div, crs_elev)) {
     div <- st_transform(div, crs = crs_elev)
+    cat("Reprojected divides to DEM CRS.\n")
   }
-  
-  # Buffer because we want to guarantee we don not have boundary issues when processing the DEM
+
+  # ----------------------------
+  # Buffer divides (to avoid boundary issues)
+
   tryCatch({
-    div_bf <<- st_buffer(div,dist=5000) # didn't use this for the one AK basin
-    dem <<- crop(elev, project(vect(div_bf), crs(elev)), snap = "out") 
+    div_bf <<- st_buffer(div,dist=buffer_m)
   }, error = function(e) {
     cat ("Failed to create DEM buffer; cropping to divides instead\n")
-    dem <<- crop(elev, project(vect(div), crs(elev)), snap = "out") # cropped the one AK basin to div, not div_bf
-    cat ("Successfully cropped DEM to divides\n")
   })
 
-  if (grepl("dem.vrt", dem_input_file)) { # If using the original DEM, need to convert units
-    cm_to_m <- 0.01
-    dem <- dem * cm_to_m
-  } # If using USGS 10 m DEM, do not need to convert units
+  cat(glue("Buffered divides by {buffer_m} meters.\n"))
+  flush.console()
 
-  # Checking for NaN values
-  if (any(is.nan(values(dem)))) {
-    print (glue("Warning: The DEM contains NaN values."))
+  # ----------------------------
+  # Crop DEM to buffered divides
+
+  tryCatch({
+    dem <- crop(elev, vect(div_bf), snap = "out")
+    cat("DEM cropped to buffered divides.\n")
+  }, error = function(e) {
+    warning("Buffer crop failed; cropping to divides only.")
+    dem <- crop(elev, vect(div), snap = "out")
+  })
+
+
+  # ----------------------------
+  # Convert units if VRT is in cm
+
+  if (grepl("USGS_seamless_DEM_13.vrt", dem_input_file)) {
+    dem <- dem * 0.01  # cm → m
+    dem <- as.float(dem)  # ensures FLT4S
+    cat("Converted DEM units from cm to m.\n")
   }
-  
-  dem[dem < 0] <- 0      # Convert negative values to NA
-  
-  if (grepl("USGS_seamless_13.vrt", dem_input_file)) { # If using USGS 10 m DEM, need to aggregate
-    dem <- raster(dem)
-    dem <- aggregate(dem, fact = 3, fun = mean)
+
+  # ----------------------------
+  # Aggregate to coarser resolution
+
+  if (aggregate_factor > 1) {
+    cat(glue("Aggregating DEM by factor {aggregate_factor}...\n"))
+    elev_file <- file.path(dem_output_dir, "dem_coarse.tif")
+
+    dem <- aggregate(dem,
+                     fact = aggregate_factor,
+                     fun = "mean",
+                     filename = elev_file,
+                     overwrite = TRUE)
+    cat("Aggregation complete.\n")
   }
+
+  # ----------------------------
+  # Remove negative values
+  # ----------------------------
+
+  dem[dem < 0] <- 0
+
+  # ----------------------------
+  # Write DEM to disk
+
+  dem_file <- file.path(dem_output_dir, "dem.tif")
+  writeRaster(dem, dem_file, datatype = "FLT4S", overwrite = TRUE)
+  cat(glue("DEM written to {dem_file}\n"))
   
-  writeRaster(dem, glue("{dem_output_dir}/dem.tif"), overwrite = TRUE)
-  
+  # ----------------------------
+  # Reproject DEM using gdalwarp
+
+  dem_proj_file <- file.path(dem_output_dir, "dem_proj.tif")
   gdal_utils("warp",
-             source = glue("{dem_output_dir}/dem.tif"),
-             destination = glue("{dem_output_dir}/dem_proj.tif"),
-             options = c("-of", "GTiff", "-t_srs", "EPSG:5070", "-r", "bilinear")
-  )
+             source = dem_file,
+             destination = dem_proj_file,
+             options = c("-of", "GTiff", "-t_srs", "EPSG:5070", "-r", "bilinear"))
+  cat(glue("DEM reprojected to EPSG:5070: {dem_proj_file}\n"))
   
-  wbt_breach_depressions(dem = glue("{dem_output_dir}/dem_proj.tif"), 
-                         output = glue("{dem_output_dir}/dem_corr.tif") )
+  # ----------------------------
+  # Breach depressions
+
+  dem_corr_file <- file.path(dem_output_dir, "dem_corr.tif")
+  wbt_breach_depressions(dem = dem_proj_file,
+                         output = dem_corr_file)
+  cat(glue("Depressions breached: {dem_corr_file}\n"))
   
+  cat("=== DEM processing complete ===\n")
+
 }
 
 
@@ -83,11 +139,12 @@ fun_crop_upper <- function(values, coverage_fraction) {
 
 # Adapted from the distribution function at: https://github.com/mikejohnson51/zonal/blob/master/R/custom_function.R
 corrected_distrib_func = function(value, coverage_fraction, breaks = 10, constrain = FALSE){
-  
-  if (length(value) <= 0 | all(is.nan(value))) {
+
+
+  if (length(value) <= 0 || all(is.na(value)) || all(is.nan(value))) {
     return("[]")
   }
-  
+
   x1 = value*coverage_fraction
   x1 = x1[!is.na(x1)]
   
@@ -128,7 +185,6 @@ corrected_distrib_func = function(value, coverage_fraction, breaks = 10, constra
   }
   
   as.character(toJSON(tmp[,c("v", "frequency")]))
-  
   
 }
 

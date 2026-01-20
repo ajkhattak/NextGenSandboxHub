@@ -4,8 +4,9 @@
 
 # ########################### Slope ########################
 # Function computes slope from a DEM to replace the hydrofabric slope values
+# DEFAULT UNITS = "degrees"
+
 slope_function <- function(div_infile, dem_output_dir) {
-  
   div <- read_sf(div_infile, 'divides')
   
   # This was already run in twi_width.R
@@ -17,9 +18,17 @@ slope_function <- function(div_infile, dem_output_dir) {
                                     geom = div,
                                     ID = "divide_id",
                                     fun = "mean")
-  return(slope_cat)
 
+  for (i in seq_len(nrow(slope_cat))) {
+    x <- slope_cat$mean.slope[i]
+
+    if (is.nan(x) || x == "" || x == "[]") {
+      message("Replacing empty GIUH with default distribution")
+      slope_cat$mean.slope[i] <- 10.0
+      }
   }
   
+  return(slope_cat)
+}
 
 
