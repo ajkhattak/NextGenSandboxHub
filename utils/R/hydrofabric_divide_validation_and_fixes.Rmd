@@ -1,0 +1,397 @@
+---
+title: "Hydrofabric validation and correction Notebook"
+output: html_notebook
+# Divide Validation and Repair Workflow
+# This notebook performs quality control and corrective processing for
+# hydrofabric divide features. The workflow validates divide attribute consistency,
+# splits divides by VPU, fills missing divide attributes using neighboring
+# divides, and corrects common geometry issues such as stray or semi-closed divides.
+---
+
+library(sf)
+library(dplyr)
+library(glue)
+library(jsonlite)
+library(terra)
+
+#############################################
+# QC checks to ensure divide and divide-attributes exist and are consistent (no missing data)
+```{r}
+# Set the following paths
+out_dir <- "/Users/ahmadjankhattak/Core/projects/nwm_bm_sims/input2/hf_v2.2_by_vpuid_set1"
+gpkg_files <- list.files(out_dir, pattern = "\\.gpkg$", recursive = TRUE, full.names = TRUE)
+
+total_div <- 0
+check_divs_attrs_consistency <- function(
+    gpkg_file,
+    id_col = "divide_id",
+    vpuid_col = "vpuid",
+    check_cols = "",
+    allow_na = FALSE) 
+  {
+  
+  print("-----------------------------")
+  message(glue("Checking {basename(gpkg_file)}"))
+  
+  # Read layers
+  divs  <- st_read(gpkg_file, layer = "divides", quiet = TRUE)
+  attrs <- st_read(gpkg_file, layer = "divide-attributes", quiet = TRUE)
+  
+  # ---- Basic row count check ----
+  total_div <<- total_div + nrow(divs)
+  print(glue("Num divides: {nrow(divs)} {total_div}"))
+  if (nrow(divs) != nrow(attrs)) {
+    stop(glue(
+      "{basename(gpkg_file)}: Row count mismatch — ",
+      "divides = {nrow(divs)}, divide-attributes = {nrow(attrs)}"
+    ))
+  }
+  
+  # ---- Column existence checks ----
+  for (col in c(id_col, vpuid_col)) {
+    if (!col %in% names(divs)) {
+      stop(glue("{basename(gpkg_file)}: column '{col}' missing in divides"))
+    }
+    if (!col %in% names(attrs)) {
+      stop(glue("{basename(gpkg_file)}: column '{col}' missing in divide-attributes"))
+    }
+  }
+  
+  # ---- vpuid single-value rule ----
+  vpuid_divs  <- unique(divs[[vpuid_col]])
+  vpuid_attrs <- unique(attrs[[vpuid_col]])
+  
+  if (length(vpuid_divs) != 1) {
+    stop(glue(
+      "{basename(gpkg_file)}: divides has multiple vpuid values: ",
+      "{toString(vpuid_divs)}"
+    ))
+  }
+  
+  if (length(vpuid_attrs) != 1) {
+    stop(glue(
+      "{basename(gpkg_file)}: divide-attributes has multiple vpuid values: ",
+      "{toString(vpuid_attrs)}"
+    ))
+  }
+  
+  if (vpuid_divs != vpuid_attrs) {
+    stop(glue(
+      "{basename(gpkg_file)}: vpuid mismatch — ",
+      "divides = {vpuid_divs}, divide-attributes = {vpuid_attrs}"
+    ))
+  }
+  
+  # ---- vpuid set equality check ----
+  missing_in_attrs <- setdiff(divs[[vpuid_col]], attrs[[vpuid_col]])
+  missing_in_divs  <- setdiff(attrs[[vpuid_col]], divs[[vpuid_col]])
+  
+  if (length(missing_in_attrs) > 0 || length(missing_in_divs) > 0) {
+    stop(glue(
+      "{basename(gpkg_file)}: vpuid mismatch detected\n",
+      "In divides only: {toString(missing_in_attrs)}\n",
+      "In divide-attributes only: {toString(missing_in_divs)}"
+    ))
+  }
+  
+ 
+  for (col in check_cols) {
+
+    if (!col %in% names(attrs)) {
+      message(glue("{basename(gpkg_file)}: missing column '{col}' in divide-attributes"))
+      message("FAILED: GIUH etc. column does not exist.")
+      return(FALSE)
+    }
+    
+    x <- attrs[[col]]  # current column
+    
+    is_empty <- rep(FALSE, length(x))  # default
+    
+    if (is.list(x)) {
+      is_empty <- vapply(x, function(z) is.null(z) || length(z) == 0 || all(is.na(z)), logical(1))
+      
+    } else if (is.numeric(x)) {
+      if (!allow_na) {
+        is_empty <- is.na(x)
+      }
+      
+    } else if (is.character(x)) {
+      # Could be JSON strings (GIUH) or normal strings
+      is_empty <- vapply(x, function(cell) {
+        if (is.na(cell) || cell == "" || cell == "[]") return(TRUE)
+        
+        # Try parsing JSON safely
+        parsed <- tryCatch({
+          # fix trailing commas, common in GPKG exports
+          cell_clean <- gsub(",\\s*\\]$", "]", cell)
+          fromJSON(cell_clean)
+        }, error = function(e) NULL)
+        
+        # empty array or invalid JSON = empty
+        if (is.null(parsed) || length(parsed) == 0) return(TRUE)
+        
+        # if parsed JSON is a data.frame (typical for GIUH)
+        if (is.data.frame(parsed) && all(is.na(parsed$v))) return(TRUE)
+        
+        FALSE
+      }, logical(1))
+      
+    } else {
+      # unsupported type
+      message(glue("WARNING: unsupported column type for '{col}': {class(x)}"))
+      next
+    }
+    
+    #If any empty / NA values found, report and fail
+    if (any(is_empty)) {
+      bad_ids <- attrs[[id_col]][is_empty]
+      message(glue(
+        "{basename(gpkg_file)}: empty or invalid values in '{col}' for divide_id(s): ",
+        "{toString(bad_ids)}\n",
+        "Total divides: {nrow(divs)}, bad divides: {length(bad_ids)}"
+      ))
+      message(glue("FAILED: {col} is empty for some divides."))
+      return(FALSE)
+    }
+    
+    if (!allow_na && any(is.nan(attrs[[col]]))) {
+      bad_ids <- attrs[[id_col]][is.na(attrs[[col]])]
+      message(glue(
+        "{basename(gpkg_file)}: NA values in '{col}' for divide_id(s): ",
+        "{toString(bad_ids)}"
+      ))
+      message(glue("FAILED: {col} has NA values."))
+      return(FALSE)
+    }
+    
+  }
+  
+  message("Status: PASSED")
+  
+  invisible(TRUE)
+}
+
+
+# post-process testing
+
+results <- lapply(gpkg_files, check_divs_attrs_consistency, 
+                  check_cols = c("giuh", "twi", "width_dist", "N_nash_surface", "K_nash_surface", 
+                                   "terrain_slope", "terrain_aspect")
+                  )
+```
+
+################################################################################
+# Split hydrofabric into VPUs, easy for processing and computing divide attributes such as GIUH, TWIs 
+```{r}
+# Set the following paths
+base_hf_gpkg <- "/Users/ahmadjankhattak/Core/input_data/hf2.2_gpkgs/conus_nextgen_updated_fixed.gpkg"
+out_dir      <- "/Users/ahmadjankhattak/Core/input_data/usgs/HUCS/hfv2.2_by_vpuid"
+
+# hf = hydrofabric
+
+split_hf_gpkg_by_vpuid <- function(base_hf_gpkg, out_dir) {
+  print ("A")
+  # Create output directory if needed
+  if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+  
+  # List all layers in the GPKG
+  layers <- st_layers(base_hf_gpkg)$name
+  message("Found layers: ", paste(layers, collapse = ", "))
+  
+  # Read the divides layer first to get vpuid values
+  divides <- st_read(base_hf_gpkg, layer = "divides")
+  
+  if (!"vpuid" %in% names(divides)) stop("Column 'vpuid' not found in divides layer")
+  
+  vpuid_values <- sort(unique(divides$vpuid))
+  print (vpuid_values)
+  #return()
+  # Loop over each vpuid
+  for (v in vpuid_values) {
+    message("Processing vpuid = ", v)
+    
+    vpuid_outfile <- file.path(out_dir, paste0("vpuid_", v, ".gpkg"))
+    
+    # Loop over all layers
+    for (lyr in layers) {
+      layer_sf <- st_read(base_hf_gpkg, layer = lyr)
+      
+      # Check if the layer has a vpuid column
+      if ("vpuid" %in% names(layer_sf)) {
+        layer_sf <- layer_sf %>% filter(vpuid == v)
+      }
+      
+      # Write layer to vpuid-specific GPKG
+      if (file.exists(vpuid_outfile) && lyr == layers[1]) file.remove(vpuid_outfile)
+      st_write(layer_sf, vpuid_outfile, layer = lyr, append = TRUE)
+    }
+
+  }
+  
+  message("All layers split by vpuid into: ", out_dir)
+}
+
+split_hf_gpkg_by_vpuid(base_hf_gpkg, out_dir = out_dir)
+
+```
+
+
+################################################################################
+# Fill Missing Divide Attributes
+```{r}
+## Identifies divides with missing attributes (mostly coastal) and assigns values
+## based on neighboring divides within the same VPU (Vector Processing Unit).
+
+
+# Set the following paths
+infile       <- "/Users/ahmadjankhattak/Core/input_data/hf2.2_gpkgs/conus_nextgen.gpkg"
+outfile      <- "/Users/ahmadjankhattak/Core/input_data/hf2.2_gpkgs/conus_nextgen_updated2.gpkg"
+dem_vrt_file <- "s3://lynker-spatial/gridded/3DEP/USGS_seamless_DEM_13.vrt"
+
+fill_missing_divide_attrs <- function(
+    infile,
+    outfile,
+    id_col = "divide_id") 
+  {
+  
+  # Read all layers
+  all_layers <- st_layers(infile)$name
+  
+  check_divs  <- st_read(infile, layer = 'divides', quiet = TRUE)
+  check_attrs <- st_read(infile, layer = 'divide-attributes', quiet = TRUE)
+  
+  # Ensure divide_id columns are character to avoid bind_rows errors
+  check_divs[[id_col]] <- as.character(check_divs[[id_col]])
+  check_attrs[[id_col]] <- as.character(check_attrs[[id_col]])
+  
+  # Identify missing rows
+  missing_in_attrs <- setdiff(check_divs[[id_col]], check_attrs[[id_col]])
+  
+  if(length(missing_in_attrs) > 0) {
+
+    # Filter missing coastal divides
+    coastal_missing <- check_divs %>%
+      filter(divide_id %in% missing_in_attrs & type == "coastal")
+    
+    if(nrow(coastal_missing) > 0) {
+      
+      # Initialize empty character dataframe
+      missing_coastal_neighbors <- data.frame(
+        coastal_divide_id = character(),
+        nearest_divide_id = character(),
+        stringsAsFactors = FALSE
+      )
+      
+      # Loop over each VPU
+      print ("unique vpuid")
+      print (unique(coastal_missing$vpuid))
+      
+      for(vpu in unique(coastal_missing$vpuid)) {
+        print (glue("VPU: {vpu}"))
+        coastal_vpu <- coastal_missing %>% filter(vpuid == vpu)
+        non_coastal_vpu <- check_divs %>% filter(type == "network" & vpuid == vpu)
+        
+        if(nrow(non_coastal_vpu) > 0) {
+          nearest_idx <- st_nearest_feature(coastal_vpu, non_coastal_vpu)
+          
+          new_rows <- data.frame(
+            coastal_divide_id = coastal_vpu[[id_col]],
+            nearest_divide_id = non_coastal_vpu[[id_col]][nearest_idx],
+            stringsAsFactors = FALSE
+          )
+          
+          missing_coastal_neighbors <- bind_rows(missing_coastal_neighbors, new_rows)
+
+        }
+      }
+      
+      # Copy attributes from nearest neighbors
+      attrs_to_copy <- missing_coastal_neighbors %>%
+        left_join(check_attrs, by = c("nearest_divide_id" = "divide_id")) %>%
+        dplyr::mutate(!!id_col := coastal_divide_id) %>%
+        dplyr::select(all_of(names(check_attrs)))
+    
+      # Combine with original attributes
+      check_attrs_updated <- bind_rows(check_attrs, attrs_to_copy)
+      } else {
+        check_attrs_updated <- check_attrs
+        }
+  } else {
+    check_attrs_updated <- check_attrs
+  }
+  
+  # Write all layers to new outfile
+  for(layer_name in all_layers) {
+    if(layer_name == "divide-attributes") {
+      st_write(check_attrs_updated, outfile, layer = layer_name, delete_layer = TRUE)
+    } else {
+      layer_data <- st_read(infile, layer = layer_name, quiet = TRUE)
+      st_write(layer_data, outfile, layer = layer_name, delete_layer = TRUE)
+    }
+  }
+  
+  message(glue("All layers written to {outfile}, with updated divide-attributes."))
+  invisible(check_attrs_updated)
+}
+
+
+fill_missing_divide_attrs(infile, outfile)
+```
+
+
+################################################################################
+# Fix Stray Divide Geometries
+```{r}
+
+# Identifies and corrects stray divide geometries, including semi-closed
+# polygons and divides with open or dangling endpoints.
+ 
+fix_divides_geometry <- function(
+    infile,                   # path to the GeoPackage
+    layer_name = 'divides',   # layer to fix
+    dem_raster_file = NULL,   # optional: raster for CRS reference
+    overwrite = TRUE,         # whether to overwrite the layer
+    quiet = FALSE
+) {
+  
+  stopifnot(file.exists(infile))
+  
+  # Read the layer
+  div <- read_sf(infile, layer = layer_name)
+  
+  # Optionally transform CRS to match raster
+  if (!is.null(dem_raster_file)) {
+    elev <- rast(dem_raster_file)
+    div <- st_transform(div, crs = crs(elev))
+  }
+
+  
+  # Identify invalid geometries
+  invalid_rows <- which(!st_is_valid(div))
+  
+  if (length(invalid_rows) > 0) {
+    message("Fixing ", length(invalid_rows), " invalid geometries...")
+    div <- st_make_valid(div)
+  } else {
+    message("All geometries in layer '", layer_name, "' are valid.")
+    return()
+  }
+  
+  st_write(div, infile, layer = layer_name,
+    delete_layer = TRUE,   # deletes only this layer
+    quiet = quiet
+  )
+  
+  message("Layer '", layer_name, "' successfully updated in:\n  ", infile)
+  
+  invisible(div)
+}
+
+
+fix_divides_geometry(infile = outfile, layer_name = "divides", dem_raster_file = dem_vrt_file)
+
+# Sanity checks
+any(!st_is_valid(read_sf(outfile, "divides")))
+
+```
+
