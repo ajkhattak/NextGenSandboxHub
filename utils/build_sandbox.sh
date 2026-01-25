@@ -66,8 +66,8 @@ build_sandbox()
 	conda install -y pycares=4.11.0 # need for ngen-cal
 
 	#Save how to activate (use conda activate)
-	if ! grep -qxF "export SANDBOX_VENV='conda activate $VENV_SANDBOX_PATH'" "$BASH_FILE"; then
-            echo "export SANDBOX_VENV='conda activate $VENV_SANDBOX_PATH'" >> "$BASH_FILE"
+	if ! grep -qxF "export SANDBOX_VENV='$VENV_SANDBOX_PATH'" "$BASH_FILE"; then
+            echo "export SANDBOX_VENV='$VENV_SANDBOX_PATH'" >> "$BASH_FILE"
 	fi
 
     else
