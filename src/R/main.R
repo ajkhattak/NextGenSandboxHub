@@ -65,11 +65,12 @@ Setup <-function() {
   } else {
     sandbox_dir   <<- "<path_to_sandboxhub>"
     infile_config <-  "<path_to_sandboxhub>/configs/sandbox_config.yaml"
+
   } 
 
   if (!file.exists(infile_config)) {
     print(paste0("input config file does not exist, provided: ", infile_config))
-    print ("Note: if running from RStudio, make sure infile_config points is set propely (line 54 in the main.R).")
+    print ("Note: if running from RStudio, make sure sandbox_dir & infile_config are set propely (see src/R/main.R).")
     stop()
   }
 
@@ -88,7 +89,8 @@ Setup <-function() {
   dem_input_file  <<- get_param(inputs, "subsetting$dem_input_file", "s3://lynker-spatial/gridded/3DEP/USGS_seamless_DEM_13.vrt")
 
   dem_output_dir  <<- get_param(inputs, "subsetting$dem_output_dir", "")
-
+  dem_aggregate_factor <<- get_param(inputs, "subsetting$dem_aggregate_factor", 3)
+  
   # NLCD vegetation data parameters
   nlcd_data_path        <<- get_param(inputs, "subsetting$nlcd_data_path", FALSE)
   calculate_vegetation  <<- get_param(inputs, "subsetting$calculate_vegetation", FALSE)
@@ -154,12 +156,12 @@ if (use_gage_id == TRUE || use_gage_file == TRUE) {
 
   DriverGivenGageIDs(gage_id = gage_ids, 
                     output_dir = output_dir,
-                    nproc = nproc,
                     dem_output_dir = dem_output_dir,
                     dem_input_file = dem_input_file,
                     nlcd_data_path = nlcd_data_path,
                     calculate_vegetation = calculate_vegetation,
-                    compute_divide_attributes = compute_divide_attributes
+                    compute_divide_attributes = compute_divide_attributes,
+                    dem_aggregate_factor = dem_aggregate_factor
                     )
   
   
@@ -199,12 +201,12 @@ if (use_gage_id == TRUE || use_gage_file == TRUE) {
   DriverGivenGPKG(gage_files = gage_files, 
                   gpkg_dir   = gpkg_dir, 
                   output_dir = output_dir,
-                  nproc = nproc,
                   dem_output_dir = dem_output_dir,
                   dem_input_file = dem_input_file,
                   nlcd_data_path = nlcd_data_path,
                   calculate_vegetation = calculate_vegetation,
-                  compute_divide_attributes = compute_divide_attributes
+                  compute_divide_attributes = compute_divide_attributes,
+                  dem_aggregate_factor = dem_aggregate_factor
                   )
 }
 

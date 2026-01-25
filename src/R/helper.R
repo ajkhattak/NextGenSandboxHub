@@ -9,7 +9,7 @@ GetDEM <- function(div_infile,
                    dem_input_file,
                    dem_output_dir,
                    buffer_m = 2000,
-                   aggregate_factor = 10) {
+                   aggregate_factor = 3) {
 
   cat("=== Starting DEM processing ===\n")
   cat(glue("DEM input file1: {dem_input_file}\n"))
@@ -18,10 +18,6 @@ GetDEM <- function(div_infile,
   # Load DEM safely
   
   tryCatch({
-    # For S3 VRTs, use /vsis3/ path
-    if (grepl("^s3://", dem_input_file)) {
-      dem_input_file <- sub("^s3://", "/vsis3/", dem_input_file)
-    }
     elev <- rast(dem_input_file)
     cat("\nDEM loaded successfully.\n")
   }, error = function(e) {
@@ -29,8 +25,7 @@ GetDEM <- function(div_infile,
   })
 
   # ----------------------------
-  # Read catchment / divides
-
+  # Read the geopackage
   div      <- read_sf(div_infile, "divides")
   crs_div  <- st_crs(div)
   crs_elev <- crs(elev)
@@ -63,13 +58,11 @@ GetDEM <- function(div_infile,
     dem <- crop(elev, vect(div), snap = "out")
   })
 
-
   # ----------------------------
   # Convert units if VRT is in cm
-
   if (grepl("USGS_seamless_DEM_13.vrt", dem_input_file)) {
-    dem <- dem * 0.01  # cm → m
-    dem <- as.float(dem)  # ensures FLT4S
+    dem <- dem * 0.01  # cm to m
+    #dem <- as.float(dem)  # ensures FLT4S - note CONUS scale TWI/GIUHs etc. were produced using as.float(dem)
     cat("Converted DEM units from cm to m.\n")
   }
 

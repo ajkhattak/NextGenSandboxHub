@@ -15,6 +15,7 @@ subsetting :
   hf_gpkg_path             : "<path_to>/conus_nextgen.gpkg"  #------------ For example, "<paht_to>/conus_nextgen.gpkg" # input
   dem_output_dir           : "dem"    #----------------------------------- If set to null string, the dem.tif and associated files will be deleted at the end. If provide an absolute path, all .tif files will be moved to that directory.
   dem_input_file           : "<path_to>/dem.vrt" #------------------------ Set to local dem.vrt file, if not available leave it empty # (OPTIONAL)
+  dem_aggregate_factor : 3 # --------------------------------------------- Aggregation factor to coarsen the DEM resolution; default is 3 for 10 cm DEM to get 30 x 30 m grids
   # Path to NLCD data for vegetation type (IVGTYP) calculation
   nlcd_data_path           : "<path_to>/Annual_NLCD_LndCov_2021_CU_C1V1.tif" # OPTIONAL
   calculate_vegetation     : FALSE  #---------------------------------------- Set to FALSE to skip vegetation calculation # OPTIONAL

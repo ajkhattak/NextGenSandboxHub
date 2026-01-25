@@ -26,6 +26,7 @@ echo "Sandbox build directory: $SANDBOX_BUILD_DIR"
 
 VENV_SANDBOX_PATH="$SANDBOX_BUILD_DIR/venv/venv_sandbox_py3.11"
 VENV_FORCING_PATH="$SANDBOX_BUILD_DIR/venv/venv_forcing"
+
 PYTHON_VERSION="python3.11"
 
 
@@ -118,7 +119,7 @@ build_sandbox()
     $PYTHON_VERSION -m venv "$VENV_FORCING_PATH"
     source "$VENV_FORCING_PATH/bin/activate"
     
-    pip install -U pip==24.0
+    pip install -U pip==25.0
     pip install -r ./doc/env/requirements_forcing.txt
     # or run the below two steps
     # pip install -r extern/CIROH_DL_NextGen/forcing_prep/requirements.txt

@@ -12,7 +12,8 @@ DriverGivenGageIDs <- function(gage_ids,
                                compute_divide_attributes = FALSE,
                                nlcd_data_path = "",
                                calculate_vegetation = FALSE,
-                               nproc = 1) {
+                               dem_aggregate_factor = 3) 
+  {
   
   print ("DRIVER GIVEN GAGE ID")
 
@@ -51,7 +52,8 @@ ProcessCatchmentID <- function(id) {
     RunDriver(gage_id = id,
               dem_input_file = dem_input_file,
               dem_output_dir = dem_dir,
-              compute_divide_attributes = compute_divide_attributes
+              compute_divide_attributes = compute_divide_attributes,
+              dem_aggregate_factor = dem_aggregate_factor
               )
 
     failed <- FALSE
@@ -90,7 +92,8 @@ DriverGivenGPKG <- function(gage_files,
                             compute_divide_attributes = FALSE,
                             nlcd_data_path = "",
                             calculate_vegetation = FALSE,
-                            nproc = 1) {
+                            dem_aggregate_factor = 3) 
+  {
 
   print ("DRIVER GIVEN GEOPACKAGE FUNCTION")
 
@@ -148,7 +151,8 @@ ProcessGPKG <- function(gfile, failed_dir) {
               loc_gpkg_file = local_gpkg_file,
               dem_output_dir = dem_dir,
               dem_input_file = dem_input_file,
-              compute_divide_attributes = compute_divide_attributes
+              compute_divide_attributes = compute_divide_attributes,
+              dem_aggregate_factor = dem_aggregate_factor
               )
 
     failed <- FALSE
@@ -187,7 +191,8 @@ RunDriver <- function(gage_id = NULL,
                       dem_output_dir,
                       loc_gpkg_file = "",
                       compute_divide_attributes = FALSE,
-                      twi_pre_computed_option = FALSE
+                      twi_pre_computed_option = FALSE,
+                      dem_aggregate_factor = 3
                       ) {
 
   print ("RUN DRIVER FUNCTION")
@@ -333,7 +338,7 @@ RunDriver <- function(gage_id = NULL,
   } else {
     message("DEM correction file does not exist.")
     GetDEM(div_infile = outfile, dem_input_file, dem_output_dir,
-           buffer_m = 2000, aggregate_factor = 10)
+           buffer_m = 2000, aggregate_factor = dem_aggregate_factor)
   }
 
 
