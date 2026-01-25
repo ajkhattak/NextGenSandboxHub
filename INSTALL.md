@@ -16,6 +16,26 @@ Detailed instructions on how to install, configure, and get the NextGenSandboxHu
      ```
 
 >**NOTE:** The script installs a python env named `.venv_sandbox_py3.11` (see utils/build_sandbox.sh [here](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/build_sandbox.sh#L18)). This environment MUST be activated before performing any of the following steps.
+
+### <ins>  Sandbox Virtual Environment Activation
+During the Sandbox build step, the following environment variables are appended to your shell configuration file (.bashrc, .bash_profile, or equivalent) for easy navigation and environment activation: 
+```
+SANDBOX_BUILD_DIR, SANDBOX_DIR, SANDBOX_VENV
+```
+
+**Activate the virtual environment:**
+ - Navigate to the sandbox directory
+   ```
+   cd $SANDBOX_DIR
+   ```
+ - If using Conda:
+   ```
+   conda activate $SANDBOX_VENV
+   ```
+ - If using a standard Python venv
+   ```
+   source $SANDBOX_VENV
+   ```
   
 ### <ins>  Step 2. Hydrofabric Installation
 Ensure R and Rtools are already installed before proceeding. There are two ways to install the required packages:
