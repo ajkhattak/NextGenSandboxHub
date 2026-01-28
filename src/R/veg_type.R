@@ -17,8 +17,8 @@ divides <- read_sf(div_infile, 'divides')
     "12" = "24",  # Perennial Ice/Snow -> Snow or Ice
     
     # Developed/Urban land
-    "21" = "6",   # Developed, Open Space -> Urban and Built-Up Land
-    "22" = "6",   # Developed, Low Intensity -> Urban and Built-Up Land
+    "21" = "1",   # Developed, Open Space -> Urban and Built-Up Land
+    "22" = "1",   # Developed, Low Intensity -> Urban and Built-Up Land
     "23" = "1",   # Developed, Medium Intensity -> Urban and Built-Up Land
     "24" = "1",   # Developed, High Intensity -> Urban and Built-Up Land
     
