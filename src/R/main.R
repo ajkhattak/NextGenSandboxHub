@@ -65,7 +65,6 @@ Setup <-function() {
   } else {
     sandbox_dir   <<- "<path_to_sandboxhub>"
     infile_config <-  "<path_to_sandboxhub>/configs/sandbox_config.yaml"
-
   } 
 
   if (!file.exists(infile_config)) {
@@ -94,7 +93,8 @@ Setup <-function() {
   # NLCD vegetation data parameters
   nlcd_data_path        <<- get_param(inputs, "subsetting$nlcd_data_path", FALSE)
   calculate_vegetation  <<- get_param(inputs, "subsetting$calculate_vegetation", FALSE)
-  
+  veg_method            <<- get_param(inputs, "subsetting$classification_method", "majority")
+
   use_gage_id   <<- get_param(inputs, "subsetting$options$use_gage_id$use_gage_id", FALSE)
   gage_ids      <<- get_param(inputs, "subsetting$options$use_gage_id$gage_ids", NULL)
   
@@ -161,7 +161,8 @@ if (use_gage_id == TRUE || use_gage_file == TRUE) {
                     nlcd_data_path = nlcd_data_path,
                     calculate_vegetation = calculate_vegetation,
                     compute_divide_attributes = compute_divide_attributes,
-                    dem_aggregate_factor = dem_aggregate_factor
+                    dem_aggregate_factor = dem_aggregate_factor,
+                    veg_method = veg_method
                     )
   
   
@@ -206,7 +207,8 @@ if (use_gage_id == TRUE || use_gage_file == TRUE) {
                   nlcd_data_path = nlcd_data_path,
                   calculate_vegetation = calculate_vegetation,
                   compute_divide_attributes = compute_divide_attributes,
-                  dem_aggregate_factor = dem_aggregate_factor
+                  dem_aggregate_factor = dem_aggregate_factor,
+                  veg_method = veg_method
                   )
 }
 

@@ -12,7 +12,9 @@ DriverGivenGageIDs <- function(gage_ids,
                                compute_divide_attributes = FALSE,
                                nlcd_data_path = "",
                                calculate_vegetation = FALSE,
-                               dem_aggregate_factor = 3) 
+                               dem_aggregate_factor = 3,
+                               veg_method = NULL
+                               ) 
   {
   
   print ("DRIVER GIVEN GAGE ID")
@@ -53,7 +55,8 @@ ProcessCatchmentID <- function(id) {
               dem_input_file = dem_input_file,
               dem_output_dir = dem_dir,
               compute_divide_attributes = compute_divide_attributes,
-              dem_aggregate_factor = dem_aggregate_factor
+              dem_aggregate_factor = dem_aggregate_factor,
+              veg_method = veg_method
               )
 
     failed <- FALSE
@@ -92,7 +95,9 @@ DriverGivenGPKG <- function(gage_files,
                             compute_divide_attributes = FALSE,
                             nlcd_data_path = "",
                             calculate_vegetation = FALSE,
-                            dem_aggregate_factor = 3) 
+                            dem_aggregate_factor = 3,
+                            veg_method = NULL
+                            ) 
   {
 
   print ("DRIVER GIVEN GEOPACKAGE FUNCTION")
@@ -152,7 +157,8 @@ ProcessGPKG <- function(gfile, failed_dir) {
               dem_output_dir = dem_dir,
               dem_input_file = dem_input_file,
               compute_divide_attributes = compute_divide_attributes,
-              dem_aggregate_factor = dem_aggregate_factor
+              dem_aggregate_factor = dem_aggregate_factor,
+              veg_method = veg_method
               )
 
     failed <- FALSE
@@ -192,7 +198,8 @@ RunDriver <- function(gage_id = NULL,
                       loc_gpkg_file = "",
                       compute_divide_attributes = FALSE,
                       twi_pre_computed_option = FALSE,
-                      dem_aggregate_factor = 3
+                      dem_aggregate_factor = 3,
+                      veg_method = NULL
                       ) {
 
   print ("RUN DRIVER FUNCTION")
@@ -417,7 +424,7 @@ RunDriver <- function(gage_id = NULL,
     start.time <- Sys.time()
 
     # Calculate vegetation type
-    divides_with_veg <- calc_maj_vegtyp_nlcd(outfile, nlcd_data_path)
+    divides_with_veg <- ComputeVegTypeNLCD(outfile, nlcd_data_path, veg_method, nclasses = 2)
 
     time.taken <- as.numeric(Sys.time() - start.time, units = "secs")
     print (paste0("Time (vegetation calc) = ", time.taken))

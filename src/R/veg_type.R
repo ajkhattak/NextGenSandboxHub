@@ -1,13 +1,22 @@
 # @author Seth Younger
 # @email seth.younger@noaa.gov
 # @date  July 17, 2025
+# Modified by Ahmad Jan Khattak (1/28/2026)
+
+# Calculate vegetation type(s) from NLCD and convert the veg type ID to Noah-MP (USGS) look table.
+# Supports either majority/mode class or fractional dominant N vegetation types.
 
 # Function to calculate majority vegetation type from NLCD data on disk and convert to NWM codes
-calc_maj_vegtyp_nlcd <- function(div_infile, nlcd_data_path) {
-
-divides <- read_sf(div_infile, 'divides')
-
-  # Read NLCD raster data
+ComputeVegTypeNLCD <- function(div_infile, 
+                               nlcd_data_path,
+                               veg_method = c("majority", "fraction"),
+                               nclasses = 2
+                               ) {
+  
+  veg_method <- match.arg(veg_method)
+  
+  # Read divides & NLCD raster data
+  div  <- read_sf(div_infile, 'divides')
   nlcd <- rast(nlcd_data_path)
 
   # Create mapping from NLCD codes to NWM vegetation types
@@ -49,27 +58,71 @@ divides <- read_sf(div_infile, 'divides')
     "95" = "17"   # Emergent Herbaceous Wetlands -> Herbaceous Wetland
   )
   
-  # Calculate majority landcover type for each divide
-  divides$nlcd_maj <- exact_extract(nlcd, divides, fun = 'majority')
+  nlcd_frac <- exact_extract(nlcd, div, fun = "frac")
   
-  # Convert NLCD codes to character and reclassify to NWM codes
-  nlcd_codes_char <- as.character(divides$nlcd_maj)
-  nwm_codes <- nlcd_to_nwm_lookup[nlcd_codes_char]
+  # Aggregate to USGS/NWM veg types
+  veg_agg <- apply(nlcd_frac, 1, aggregate_nlcd_to_nwm,
+                   nlcd_to_nwm_lookup = nlcd_to_nwm_lookup
+                   )
   
-  # Convert back to numeric
-  nwm_codes <- as.numeric(nwm_codes)
-  
-  # Report unmatched codes
-  if (any(is.na(nwm_codes) & !is.na(divides$nlcd_maj))) {
-    unmatched <- unique(divides$nlcd_maj[is.na(nwm_codes) & !is.na(divides$nlcd_maj)])
-    message(paste("NLCD codes without NWM equivalents:", paste(unmatched, collapse = ", ")))
+  # ----- MAJORITY METHOD -----
+  if (veg_method == "majority") {
+    
+    div$IVGTYP_nlcd <- sapply(veg_agg, function(df) {
+      if (is.null(df) || nrow(df) == 0) {
+        return(NA_real_)
+      }
+      df$nwm[which.max(df$fraction)]
+    })
   }
-  
-  # Add the NWM vegetation type to the divides dataframe
-  divides$IVGTYP_nlcd <- nwm_codes
-  
-  # Remove the temporary nlcd_maj column
-  divides$nlcd_maj <- NULL
 
-  return(divides)
+  if (veg_method == "fraction") {
+    
+    div$IVGTYP_nlcd <- sapply(veg_agg, function(df) {
+
+      if (is.null(df) || nrow(df) == 0) {
+        return(NA_character_)
+        }
+        
+        # Ensure sorted
+        df <- df[order(-df$fraction), ]
+        df <- head(df, nclasses)
+        
+        # Normalize
+        df$fraction <- df$fraction / sum(df$fraction)
+        
+        # Rename columns to desired schema (consistent with other divide-attributes)
+        out <- data.frame(v = df$nwm, frequency = round(df$fraction, 4))
+        
+        # Convert to JSON (no pretty-printing)
+        toJSON(out, auto_unbox = TRUE)
+      })
+
+  }
+
+  return(div)
 }
+
+
+aggregate_nlcd_to_nwm <- function(row, nlcd_to_nwm_lookup) {
+  
+  df <- tibble(
+    nlcd = sub("frac_", "", names(row)),
+    fraction = as.numeric(row)
+  )
+  
+  df <- df[df$fraction > 0, ]
+  
+  df$nwm <- as.numeric(nlcd_to_nwm_lookup[df$nlcd])
+  df <- df[!is.na(df$nwm), ]
+  
+  if (nrow(df) == 0) return(NULL)
+  
+  df %>%
+    group_by(nwm) %>%
+    summarise(fraction = sum(fraction), .groups = "drop") %>%
+    arrange(desc(fraction))
+}
+
+#Majority is now computed in NWM space after NLCD→NWM aggregation, using the same fractional machinery as the fraction method.
+# Dominance must be computed after categorical aggregation, never before.
