@@ -4,31 +4,40 @@
 
 # Clone NextGenSandboxHub repository
 # git clone https://github.com/ajkhattak/NextGenSandboxHub && cd NextGenSandboxHub
-# Run: ./utils/build_sandbox.sh
+# Run: BASH_FILE=~/.bash_profile BUILD=ON ./utils/build_sandbox.sh
 
 ###############################################################
 
-BUILD_SANDBOX=ON
+###### Config #######
+BUILD_SANDBOX=${BUILD:-ON}
 
-BASH_FILE="$HOME/.bash_profile"  # <- change this to your local settings
+BASH_FILE="${BASH_FILE:-$HOME/.zshrc}" # <- change this to your local settings or provide it as env variable
+
+echo "$BUILD_SANDBOX"       # empty
+echo "$BASH_FILE"           # still defaults to ~/.zshrc
+
+PYTHON_VERSION="python3.11"
+
+######## PATHS #########
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-echo "Script directory: $SCRIPT_DIR"
-
 SANDBOX_DIR="$(dirname "$SCRIPT_DIR")"
-echo "Sandbox directory: $SANDBOX_DIR"
-
-SANDBOX_BUILD_DIR="$(dirname "$SANDBOX_DIR")/sandbox_build"
+SANDBOX_BUILD_DIR="$SANDBOX_DIR/sandbox_build"
 NGEN_DIR="$SANDBOX_BUILD_DIR/ngen"
-
-mkdir -p "$SANDBOX_BUILD_DIR"
-echo "Sandbox build directory: $SANDBOX_BUILD_DIR"
 
 VENV_SANDBOX_PATH="$SANDBOX_BUILD_DIR/venv/venv_sandbox_py3.11"
 VENV_FORCING_PATH="$SANDBOX_BUILD_DIR/venv/venv_forcing"
 
-PYTHON_VERSION="python3.11"
+mkdir -p "$SANDBOX_BUILD_DIR"
 
+echo "Script dir        : $SCRIPT_DIR"
+echo "Sandbox dir       : $SANDBOX_DIR"
+echo "Sandbox build dir : $SANDBOX_BUILD_DIR"
+
+append_if_missing() {
+    local line="$1"
+    grep -qxF "$line" "$BASH_FILE" || echo "$line" >> "$BASH_FILE"
+}
 
 # reload the updated bash profile
 source "$BASH_FILE"
@@ -80,7 +89,6 @@ build_sandbox()
         $PYTHON_VERSION -m venv "$VENV_SANDBOX_PATH"
         source "$VENV_SANDBOX_PATH/bin/activate"
         pip install -U pip==24.0 "setuptools>=64.0,<69.0" wheel
-	#conda install pycares=4.11.0 # needed for ngen-cal
 
 	if ! grep -qxF "export SANDBOX_VENV='$VENV_SANDBOX_PATH/bin/activate'" "$BASH_FILE"; then
             echo "export SANDBOX_VENV='$VENV_SANDBOX_PATH/bin/activate'" >> "$BASH_FILE"
@@ -88,23 +96,26 @@ build_sandbox()
 
     fi
 
+    append_if_missing "export SANDBOX_DIR='$SANDBOX_DIR'"
+    append_if_missing "export SANDBOX_BUILD_DIR='$SANDBOX_BUILD_DIR'"
+    append_if_missing "export NGEN_DIR='$NGEN_DIR'"
+    
     pip install -e .
 
-    git submodule update --init
+    git submodule update --init --recursive
     git submodule update --remote extern/ngen-cal
     git submodule update --remote extern/CIROH_DL_NextGen
     git submodule update --remote extern/lstm
     
     pip install 'extern/ngen-cal/python/ngen_cal[netcdf]'
-    #pip install extern/ngen-cal/python/ngen_config_gen
     pip install extern/ngen-cal/python/ngen_conf
-    #pip install hydrotools.events
     pip install -e ./extern/ngen_cal_plugins
 
     # also install lstm
     pip install -e ./extern/lstm
 
     echo "Sandbox Python Environment Created ($VENV_SANDBOX_PATH)"
+    
     if command -v conda &>/dev/null; then
         conda deactivate
     else
@@ -121,9 +132,6 @@ build_sandbox()
     
     pip install -U pip==25.0
     pip install -r ./doc/env/requirements_forcing.txt
-    # or run the below two steps
-    # pip install -r extern/CIROH_DL_NextGen/forcing_prep/requirements.txt
-    # pip install zarr==2.18.2
     deactivate
 
     ############################################
@@ -141,7 +149,12 @@ build_sandbox()
 }
 
 
-if [ "$BUILD_SANDBOX" == "ON" ]; then
-    echo "Building Python Virtual Environments for NextGen Sandbox"
+############################################
+# ENTRY POINT
+############################################
+if [[ "$BUILD_SANDBOX" == "ON" ]]; then
+    echo "=== Building NextGen Sandbox ==="
     build_sandbox
+else
+    echo "BUILD=OFF — skipping"
 fi
