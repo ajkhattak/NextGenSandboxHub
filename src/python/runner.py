@@ -17,7 +17,8 @@ import shutil
 from src.python import configuration
 
 class Runner:
-    def __init__(self, sandbox_dir, config_workflow, config_calib):
+    def __init__(self, sandbox_dir, config_workflow, config_calib
+                 ):
         self.os_name         = platform.system()
         self.sandbox_dir     = Path(sandbox_dir)
         self.config_workflow = config_workflow
@@ -30,30 +31,6 @@ class Runner:
 
         # Check whether `mpirun` exists on the system; if exists, then it assumes that ngen was built with MPI=ON
         self.mpirun_exists = shutil.which("mpirun") is not None
-
-    def run(self):
-
-        self.infile = os.path.join(self.output_dir, "basins_passed.csv")
-        self.indata = pd.read_csv(self.infile, dtype=str)
-
-        if self.gage_ids:
-            self.indata = self.indata[self.indata['gage_id'].isin(self.gage_ids)]
-            self.indata.reset_index(drop=True, inplace=True)
-
-        if "LSTM" in self.formulation:
-            print("Running LSTM in NextGen ...")
-            self.run_ngen_without_calibration()
-        elif self.ngen_cal_type not in ['calibration', 'validation', 'calibvalid', 'restart']:
-            print("Running NextGen without calibration ...")
-            self.run_ngen_without_calibration()
-        else:
-            print(f'Running NextGen with task_type {self.ngen_cal_type}')
-
-            tuple_list = zip(self.indata["gage_id"], self.indata['num_divides'])
-            
-
-            for gage_id, num_divides in tuple_list:
-                self.run_ngen_with_calibration((gage_id, num_divides))
 
 
     def load_configuration(self):
@@ -101,22 +78,79 @@ class Runner:
             if not self.restart_dir:
                 raise FileNotFoundError(f"restart_dir does not exist, provided {self.restart_dir}.")
 
-        gage_ids = dsim.get('gage_ids', None)
-        self.gage_ids = gage_ids or []  # Default to empty list [] if None
-
-        # If it's a single string, convert to list
-        if isinstance(gage_ids, str):
-            self.gage_ids = [gage_ids]
-        elif not isinstance(gage_ids, list):
-            raise TypeError(f"gage_ids must be a string, list, or None, but got {type(self.gage_ids).__name__}")
+        # Get gages IDs
+        self.gage_ids, self.num_divides = self.load_gage_ids(dsim.get("gage_ids_input"))
 
         self.sim_name_suffix = dsim.get('sim_name_suffix') or None
+
+        densemble = dsim.get('ensemble') or None
+
+        if (densemble):
+            self.ensemble_enabled = bool(densemble.get('enabled'))
+            self.ensemble_size    = int(densemble.get('members') or 1)
+            self.ensemble_models  = densemble.get('models')
+            if self.ensemble_enabled:
+                assert self.ensemble_size > 1, (
+                    "Ensemble size must be greater than 1 when ensemble is enabled"
+                )
+            else:
+                self.ensemble_size    = 1
+                self.ensemble_models  = []
+        else:
+            self.ensemble_enabled = False
+            self.ensemble_size    = 1
+            self.ensemble_models  = []
+
+    def load_gage_ids(self, gage_ids_input):
+        num_cats = -99
+        if gage_ids_input is None:
+            raise TypeError("gage_ids_input must be a CSV path, a string ID, or a list of IDs")
+
+        # Case 1: CSV file path
+        if isinstance(gage_ids_input, str) and gage_ids_input.lower().endswith(".csv"):
+            path = Path(gage_ids_input)
+
+            if not path.is_file():
+                raise FileNotFoundError(f"gage_ids file not found: {path}")
+
+            df = pd.read_csv(path, dtype=str)
+
+            if 'gage_id' not in df.columns:
+                raise ValueError("CSV must contain a 'gage_id' column")
+
+            return df['gage_id'].tolist(), df['num_divides'].tolist()
+
+        # Case 2: single gage ID as string
+        if isinstance(gage_ids_input, str):
+            return [gage_ids_input], [num_cats]
+
+        # Case 3: list / tuple / set
+        if isinstance(gage_ids_input, (list, tuple, set)):
+            return [str(x) for x in gage_ids_input], [num_cats for x in gage_ids_input]
+
+        raise TypeError("gage_ids_input must be a CSV path, a string ID, or a list of IDs")
+
+    def run(self):
+
+        if "LSTM" in self.formulation:
+            print("Running LSTM in NextGen ...")
+            self.run_ngen_without_calibration()
+        elif self.ngen_cal_type not in ['calibration', 'validation', 'calibvalid', 'restart']:
+            print("Running NextGen without calibration ...")
+            self.run_ngen_without_calibration()
+        else:
+            print(f'Running NextGen with task_type {self.ngen_cal_type}')
+
+            for tp in zip(self.gage_ids, self.num_divides):
+                self.run_ngen_with_calibration(tp)
 
 
     def run_ngen_without_calibration(self):
         ngen_exe = os.path.join(self.ngen_dir, "cmake_build/ngen")
 
-        for id, ncats in zip(self.indata["gage_id"], self.indata['num_divides']):
+
+        for id, ncats in zip(self.gage_ids, self.num_divides):
+            
             ncats = int(ncats)
             o_dir = self.output_dir / id
             if self.sim_name_suffix:
@@ -198,22 +232,27 @@ class Runner:
 
             restart_dir = self.restart_dir.replace("{*}", id)
 
-            ConfigGen = configuration.ConfigurationCalib(gpkg_file = gpkg_file,
-                                                         output_dir = o_dir,
-                                                         ngen_dir = self.ngen_dir,
-                                                         realization_file_par = file_par,
-                                                         troute_output_file = troute_output_file,
-                                                         ngen_cal_type=ngen_cal_type_calib_restart,
-                                                         formulation = self.formulation,
-                                                         simulation_time=self.calibration_time,
-                                                         evaluation_time=self.calib_eval_time,
-                                                         ngen_cal_basefile=self.config_calib,
-                                                         restart_dir=restart_dir,
-                                                         num_proc=self.num_procs)
+            ConfigGen = configuration.ConfigurationCalib(
+                gpkg_file            = gpkg_file,
+                output_dir           = o_dir,
+                ngen_dir             = self.ngen_dir,
+                sandbox_dir          = self.sandbox_dir,
+                realization_file_par = file_par,
+                troute_output_file   = troute_output_file,
+                ngen_cal_type        = ngen_cal_type_calib_restart,
+                formulation          = self.formulation,
+                simulation_time      = self.calibration_time,
+                evaluation_time      = self.calib_eval_time,
+                ngen_cal_basefile    = self.config_calib,
+                restart_dir          = restart_dir,
+                num_proc             = self.num_procs,
+                ensemble_enabled     = self.ensemble_enabled,
+                ensemble_size        = self.ensemble_size,
+                ensemble_models      = self.ensemble_models
+            )
             
             ConfigGen.write_calib_input_files()
-            
-            
+
             run_command = "python -m ngen.cal configs/ngen-cal_calib_config.yaml"
             result = subprocess.call(run_command, shell=True)
 
@@ -222,21 +261,36 @@ class Runner:
             start_time = pd.Timestamp(self.validation_time['start_time']).strftime("%Y%m%d%H%M")
             troute_output_file = os.path.join("./troute_output_{}.nc".format(start_time))
 
-            ConfigGen = configuration.ConfigurationCalib(gpkg_file = gpkg_file,
-                                                         output_dir = o_dir,
-                                                         ngen_dir = self.ngen_dir,
-                                                         realization_file_par = file_par,
-                                                         troute_output_file = troute_output_file,
-                                                         ngen_cal_type='validation',
-                                                         formulation = self.formulation,
-                                                         simulation_time=self.validation_time,
-                                                         evaluation_time=self.valid_eval_time,
-                                                         ngen_cal_basefile=self.config_calib,
-                                                         restart_dir=self.restart_dir,
-                                                         num_proc=self.num_procs)
+            ConfigGen = configuration.ConfigurationCalib(
+                gpkg_file            = gpkg_file,
+                output_dir           = o_dir,
+                ngen_dir             = self.ngen_dir,
+                sandbox_dir          = self.sandbox_dir,
+                realization_file_par = file_par,
+                troute_output_file   = troute_output_file,
+                ngen_cal_type        = 'validation',
+                formulation          = self.formulation,
+                simulation_time      = self.validation_time,
+                evaluation_time      = self.valid_eval_time,
+                ngen_cal_basefile    = self.config_calib,
+                restart_dir          = self.restart_dir,
+                num_proc             = self.num_procs,
+                ensemble_enabled     = self.ensemble_enabled,
+                ensemble_size        = self.ensemble_size,
+                ensemble_models      = self.ensemble_models
+            )
             
             ConfigGen.write_calib_input_files()
-            run_command = f"python {self.sandbox_dir}/src/python/validation.py configs/ngen-cal_valid_config.yaml"
+
+            run_command = f"python {self.sandbox_dir}/src/python/validation.py -config configs/ngen-cal_valid_config.yaml"
+
+            if self.ensemble_enabled:
+                run_command = (
+                    f"python {self.sandbox_dir}/src/python/validation.py "
+                    f"-config configs/ngen-cal_valid_config.yaml "
+                    f"-routing configs/troute_config.yaml"
+                )
+
             result = subprocess.call(run_command, shell=True)
 
     

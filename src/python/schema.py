@@ -45,9 +45,12 @@ def get_schema_model_attributes(gdf_model):
     
         if 'ISLTYP' in d:
             df['ISLTYP'] = d
-        if 'IVGTYP' in d:
-            df['IVGTYP'] = d
 
+        if 'IVGTYP_nlcd' in d:
+            df['IVGTYP_nlcd'] = d
+        elif 'IVGTYP' in d:
+            df['IVGTYP'] = d
+            
         if 'refkdt' in d:
             df['soil_refkdt'] = d
         
@@ -80,8 +83,10 @@ def get_schema_model_attributes(gdf_model):
                 df['twi'] = d
         if 'width_dist' in d:
             df['width_dist'] = d
+
         if 'giuh' in d:
             df['giuh'] = d
+
         if 'N_nash' in d:
             df['N_nash_surface'] = d
         if 'K_nash' in d:

@@ -23,7 +23,8 @@ from pathlib import Path
 class RealizationGenerator:
     def __init__(self, ngen_dir, forcing_dir,  output_dir, formulation,
                  simulation_time, forcing_format, verbosity, ngen_cal_type,
-                 domain):
+                 domain, ensemble_enabled, ensemble_size, ensemble_member_id,
+                 ensemble_models):
         
         self.ngen_dir    = ngen_dir
         self.forcing_dir = forcing_dir
@@ -36,9 +37,31 @@ class RealizationGenerator:
         self.ngen_cal_type   = ngen_cal_type
         self.lib_files       = self.get_lib_files()
         self.domain          = domain.lower()
+        self.ensemble_enabled    = ensemble_enabled
+        self.ensemble_size       =  ensemble_size
+        self.ensemble_member_id  = ensemble_member_id
 
+        if isinstance(ensemble_models, str):
+            self.ensemble_models = ensemble_models.lower()
+        elif isinstance(ensemble_models, (list, tuple, set)):
+            self.ensemble_models = [m.lower() for m in ensemble_models]
+        else:
+            self.ensemble_models = []
+        
         realization_name = self.formulation.replace(",","_").lower()
-        self.realization_file = os.path.join(self.output_dir,"configs",f"realization_{realization_name}.json")
+
+        # the same tag is used in the config files names
+        self.tag = f"cfg_tile-{self.ensemble_member_id}" if ensemble_enabled else "cfg"
+
+        self.realization_file = (
+            Path(self.output_dir)
+            / "configs"
+            / (
+                f"realization_{realization_name}_{self.tag}.json"
+                if self.ensemble_enabled
+                else f"realization_{realization_name}.json"
+            )
+        )
         
         if "CFE-S" in self.formulation:
             surface_water_partitioning_scheme = "Schaake"
@@ -82,7 +105,7 @@ class RealizationGenerator:
         if 'LSTM' in self.formulation and not os.path.exists(lstm_dir):
             print(f"LSTM config files directory does not exist. {lstm_dir}")
             sys.exit(0)
-            
+
 
     def write_realization_file(self):
 
@@ -105,13 +128,18 @@ class RealizationGenerator:
         if self.ngen_cal_type not in ['calibration', 'validation', 'calibvalid', 'restart']:
             root["output_root"] = os.path.join(self.output_dir, "outputs","div")
 
+        if self.ensemble_enabled:
+             root["output_root"] = os.path.join(self.output_dir, "output", f"output_{self.tag}")
+             os.makedirs(root["output_root"], exist_ok=True)
+
         if self.forcing_format == ".nc":
             root["global"]["forcing"] = {
                 "path": self.forcing_dir,
                 "provider": "NetCDF"
             }
 
-        if "t-route" in self.formulation.lower():
+
+        if "t-route" in self.formulation.lower() and not self.ensemble_enabled:
             root["routing"] = {
                 "t_route_config_file_with_path": os.path.join(self.config_dir, "troute_config.yaml")
             }
@@ -239,6 +267,10 @@ class RealizationGenerator:
         return lib_files
 
     def get_pet_block(self, var_names_map=False):
+
+        tag = self.tag if (self.ensemble_enabled and "pet" in self.ensemble_models) else "cfg"
+
+            
         block = {
             "name": "bmi_c",
             "params": {
@@ -246,7 +278,7 @@ class RealizationGenerator:
                 "model_type_name": "PET",
                 "library_file": self.lib_files['evapotranspiration'],
                 "forcing_file": "",
-                "init_config": os.path.join(self.config_dir, 'pet/pet_config_{{id}}.txt'),
+                "init_config": os.path.join(self.config_dir, f'pet/pet_{tag}_{{{{id}}}}.txt'),
                 "allow_exceed_end_time": "true",
                 "main_output_variable": "water_potential_evaporation_flux",
                 "registration_function": "register_bmi_pet",
@@ -293,6 +325,9 @@ class RealizationGenerator:
 
 
     def get_noah_owp_modular_block(self):
+
+        tag = self.tag if (self.ensemble_enabled and "nom" in self.ensemble_models) else "cfg"
+
         block = {
             "name": "bmi_fortran",
             "params": {
@@ -300,7 +335,7 @@ class RealizationGenerator:
                 "model_type_name": "NoahOWP",
                 "main_output_variable": "QINSUR",
                 "library_file": self.lib_files['noah-owp-modular'],
-                "init_config": os.path.join(self.config_dir, 'noahowp/noahowp_config_{{id}}.input'),
+                "init_config": os.path.join(self.config_dir, f'noahowp/noahowp_{tag}_{{{{id}}}}.input'),
                 "allow_exceed_end_time": True,
                 "fixed_time_step": False,
                 "uses_forcing_file": False,
@@ -333,6 +368,9 @@ class RealizationGenerator:
         return block
 
     def get_snow17_block(self):
+
+        tag = self.tag if (self.ensemble_enabled and "snow17" in self.ensemble_models) else "cfg"
+
         block = {
             "name": "bmi_fortran",
             "params": {
@@ -340,7 +378,7 @@ class RealizationGenerator:
                 "model_type_name": "Snow17",
                 "main_output_variable": "raim",
                 "library_file": self.lib_files['snow17'],
-                "init_config": os.path.join(self.config_dir, 'snow17/snow17_config_{{id}}.namelist.input'),
+                "init_config": os.path.join(self.config_dir, f'snow17/snow17_{tag}_{{{{id}}}}.namelist.input'),
                 "allow_exceed_end_time": True,
                 "fixed_time_step": False,
                 "uses_forcing_file": False,
@@ -361,6 +399,9 @@ class RealizationGenerator:
         return block
 
     def get_sacsma_block(self):
+
+        tag = self.tag if (self.ensemble_enabled and "sacsma" in self.ensemble_models) else "cfg"
+            
         block = {
             "name": "bmi_fortran",
             "params": {
@@ -368,7 +409,7 @@ class RealizationGenerator:
                 "model_type_name": "SacSMA",
                 "main_output_variable": "tci",
                 "library_file": self.lib_files['sac-sma'],
-                "init_config": os.path.join(self.config_dir, 'sacsma/sacsma_config_{{id}}.namelist.input'),
+                "init_config": os.path.join(self.config_dir, f'sacsma/sacsma_{tag}_{{{{id}}}}.namelist.input'),
                 "allow_exceed_end_time": True,
                 "fixed_time_step": False,
                 "uses_forcing_file": False,
@@ -394,6 +435,9 @@ class RealizationGenerator:
         return block
     
     def get_cfe_block(self, cfe_standalone=False):
+
+        tag = self.tag if (self.ensemble_enabled and "cfe" in self.ensemble_models) else "cfg"
+
         block = {
             "name": "bmi_c",
             "params": {
@@ -401,7 +445,7 @@ class RealizationGenerator:
                 "model_type_name": "CFE",
                 "main_output_variable": "Q_OUT",
                 "library_file": self.lib_files['cfe'],
-                "init_config": os.path.join(self.config_dir, 'cfe/cfe_config_{{id}}.txt'),
+                "init_config": os.path.join(self.config_dir, f'cfe/cfe_{tag}_{{{{id}}}}.txt'),
                 "allow_exceed_end_time": True,
                 "fixed_time_step": False,
                 "uses_forcing_file": False,
@@ -440,6 +484,9 @@ class RealizationGenerator:
         return block
 
     def get_topmodel_block(self):
+
+        tag = self.tag if (self.ensemble_enabled and "topmodel" in self.ensemble_models) else "cfg"
+
         block = {
             "name": "bmi_c",
             "params": {
@@ -447,7 +494,7 @@ class RealizationGenerator:
                 "model_type_name": "TOPMODEL",
                 "main_output_variable": "Qout",
                 "library_file": self.lib_files['topmodel'],
-                "init_config": os.path.join(self.config_dir, 'topmodel/topmod_{{id}}.run'),
+                "init_config": os.path.join(self.config_dir, f'topmodel/topmod_{tag}_{{{{id}}}}.run'),
                 "allow_exceed_end_time": True,
                 "fixed_time_step": False,
                 "uses_forcing_file": False,
@@ -470,6 +517,9 @@ class RealizationGenerator:
         return block
 
     def get_sft_block(self):
+
+        tag = self.tag if (self.ensemble_enabled and "sft" in self.ensemble_models) else "cfg"
+
         block = {
             "name": "bmi_c++",
             "params": {
@@ -477,7 +527,7 @@ class RealizationGenerator:
                 "model_type_name": "SoilFreezeThaw",
                 "main_output_variable": "num_cells",
                 "library_file": self.lib_files['SoilFreezeThaw'],
-                "init_config": os.path.join(self.config_dir, 'sft/sft_config_{{id}}.txt'),
+                "init_config": os.path.join(self.config_dir, f'sft/sft_{tag}_{{{{id}}}}.txt'),
                 "allow_exceed_end_time": True,
                 "uses_forcing_file": False,
                 "variables_names_map": {
@@ -488,6 +538,9 @@ class RealizationGenerator:
         return block
 
     def get_smp_block(self):
+
+        tag = self.tag if (self.ensemble_enabled and "smp" in self.ensemble_models) else "cfg"
+
         block = {
             "name": "bmi_c++",
             "params": {
@@ -495,7 +548,7 @@ class RealizationGenerator:
                 "model_type_name": "SoilMoistureProfile",
                 "main_output_variable": "soil_water_table",
                 "library_file": self.lib_files['SoilMoistureProfiles'],
-                "init_config": os.path.join(self.config_dir, 'smp/smp_config_{{id}}.txt'),
+                "init_config": os.path.join(self.config_dir, f'smp/smp_{tag}_{{{{id}}}}.txt'),
                 "allow_exceed_end_time": True,
                 "uses_forcing_file": False,
                 "variables_names_map": {
@@ -525,6 +578,10 @@ class RealizationGenerator:
         return block
 
     def get_casam_block(self):
+
+        tag = self.tag if (self.ensemble_enabled and "casam" in self.ensemble_models) else "cfg"
+
+            
         #note the model_type_name should be LGAR as this name is currently supported by ngen-cal for calibration
         block = {
             "name": "bmi_c++",
@@ -533,7 +590,7 @@ class RealizationGenerator:
                 "model_type_name": "LGAR",
                 "main_output_variable": "precipitation_rate",
                 "library_file": self.lib_files['CASAM'],
-                "init_config": os.path.join(self.config_dir, 'casam/casam_config_{{id}}.txt'),
+                "init_config": os.path.join(self.config_dir, f'casam/casam_{tag}_{{{{id}}}}.txt'),
                 "allow_exceed_end_time": True,
                 "uses_forcing_file": False,
                 "variables_names_map": {
@@ -607,6 +664,9 @@ class RealizationGenerator:
         return block
 
     def get_lstm_block(self):
+
+        tag = self.tag if (self.ensemble_enabled and "lstm" in self.ensemble_models) else "cfg"
+
         block = {
             "name": "bmi_python",
             "params": {
@@ -616,7 +676,7 @@ class RealizationGenerator:
                 "allow_exceed_end_time": True,
                 "fixed_time_step": False,
                 "uses_forcing_file": False,
-                "init_config": os.path.join(self.config_dir, 'lstm/lstm_config_{{id}}.yaml'),
+                "init_config": os.path.join(self.config_dir, f'lstm/lstm_{tag}_{{{{id}}}}.yaml'),
                 "variables_names_map": {
                     "atmosphere_water__liquid_equivalent_precipitation_rate": "APCP_surface",
                     "land_surface_air__temperature": "TMP_2maboveground"
@@ -668,9 +728,6 @@ class RealizationGenerator:
 
         return [block_jinjabmi, block_unit_conversion]
 
-
-
-
 #############################################################################
 # module for NOAH-OWP-Modular (NOM) block in the nextgen realization file 
 # @param config_dir : input directory of the NOM config files
@@ -686,82 +743,3 @@ class RealizationGenerator:
  # PRES_surface [Pa]         <-> PSFC [Pa]         <-> SFCPRS [Pa]
 # SPFH_2maboveground [kg/kg] <-> Q2D [kg kg^-1]    <-> Q2 [kg/kg]
 #############################################################################
-
-
-"""
-        if ("CFE" in self.formulation)  and ("PET" in self.formulation):
-            #model_type_name = "CFE"
-            main_output_variable = "Q_OUT"
-            
-            modules = [self.get_sloth_block(), self.get_pet_block(var_names_map=True), self.get_cfe_block()]
-                
-            output_variables = ["RAIN_RATE", "DIRECT_RUNOFF", "INFILTRATION_EXCESS", "NASH_LATERAL_RUNOFF",
-                               "DEEP_GW_TO_CHANNEL_FLUX", "SOIL_TO_GW_FLUX", "Q_OUT", "SOIL_STORAGE", "POTENTIAL_ET", "ACTUAL_ET"]
-            output_header_fields = ["rain_rate", "direct_runoff", "infiltration_excess", "nash_lateral_runoff",
-                                   "deep_gw_to_channel_flux", "soil_to_gw_flux", "q_out", "soil_storage", "PET", "AET"]
-            output_variables = ["RAIN_RATE", "Q_OUT", "POTENTIAL_ET", "ACTUAL_ET"]
-            output_header_fields = ["rain_rate", "q_out", "PET", "AET"]
-        elif "NOM" in self.formulation and "CFE" in self.formulation:
-            #model_type_name = "NOM_CFE"
-            main_output_variable = "Q_OUT"
-            modules = [self.get_sloth_block(), self.get_noah_owp_modular_block(), self.get_cfe_block()]
-            output_variables = ["RAIN_RATE", "DIRECT_RUNOFF", "GIUH_RUNOFF", "INFILTRATION_EXCESS", "NASH_LATERAL_RUNOFF",
-                               "DEEP_GW_TO_CHANNEL_FLUX", "SOIL_TO_GW_FLUX", "Q_OUT", "SOIL_STORAGE", "POTENTIAL_ET", "ACTUAL_ET"]
-            output_header_fields = ["rain_rate", "direct_runoff", "giuh_runoff", "infiltration_excess", "nash_lateral_runoff",
-                                   "deep_gw_to_channel_flux", "soil_to_gw_flux", "q_out", "soil_storage", "PET", "AET"]
-        elif "NOM" in self.formulation and "CFE" in self.formulation and "PET" in formulation:
-            #model_type_name = "NOM_CFE_PET"
-            main_output_variable = "Q_OUT"
-            modules = [self.get_sloth_block(), self.get_noah_owp_modular_block(), self.get_pet_block(), self.get_cfe_block()]
-            output_variables = ["RAIN_RATE", "DIRECT_RUNOFF", "GIUH_RUNOFF", "INFILTRATION_EXCESS", "NASH_LATERAL_RUNOFF",
-                               "DEEP_GW_TO_CHANNEL_FLUX", "SOIL_TO_GW_FLUX", "Q_OUT", "SOIL_STORAGE", "POTENTIAL_ET", "ACTUAL_ET"]
-            output_header_fields = ["rain_rate", "direct_runoff", "giuh_runoff", "infiltration_excess", "nash_lateral_runoff",
-                                   "deep_gw_to_channel_flux", "soil_to_gw_flux", "q_out", "soil_storage", "PET", "AET"]
-        elif "NOM" in self.formulation and "LASAM" in self.formulation:
-            #model_type_name = "NOM_LASAM"
-            main_output_variable = "total_discharge"
-            modules = [self.get_sloth_block(), self.get_noah_owp_modular_block(), self.get_lasam_block()]
-            output_variables = ["TGS", "precipitation", "potential_evapotranspiration", "actual_evapotranspiration",
-                               "soil_storage", "surface_runoff", "giuh_runoff", "groundwater_to_stream_recharge", "percolation",
-                               "total_discharge", "infiltration"]
-            output_header_fields = ["ground_temperature", "rain_rate", "PET_rate", "actual_ET", "soil_storage", "direct_runoff",
-                                   "giuh_runoff", "deep_gw_to_channel_flux", "soil_to_gw_flux", "q_out", "infiltration"]
-        elif "PET" in self.formulation and "LASAM" in self.formulation:
-            #model_type_name = "PET_LASAM"
-            main_output_variable = "total_discharge"
-            modules = [self.get_sloth_block(), self.get_pet_block(), self.get_lasam_block()]
-            output_variables = ["precipitation", "potential_evapotranspiration", "actual_evapotranspiration",
-                               "soil_storage", "surface_runoff", "giuh_runoff", "groundwater_to_stream_recharge", "percolation",
-                               "total_discharge", "infiltration"]
-            output_header_fields = ["rain_rate", "PET_rate", "actual_ET", "soil_storage", "direct_runoff", "giuh_runoff",
-                                   "deep_gw_to_channel_flux", "soil_to_gw_flux", "q_out", "infiltration"]
-        elif "NOM" in self.formulation and "TOPMODEL" in self.formulation:
-            #model_type_name = "NOM_TOPMODEL"
-            main_output_variable = "Qout"
-            modules = [self.get_noah_owp_modular_block(), self.get_topmodel_block()]
-            output_variables = ["Qout", "soil_water__domain_volume_deficit", "land_surface_water__runoff_mass_flux"]
-            output_header_fields = ["qout", "soil_deficit", "direct_runoff"]
-
-        elif "NOM" in self.formulation and "CFE" in self.formulation and "SMP" in self.formulation and "SFT" in self.formulation:
-            #model_type_name = "NOM_CFE_SMP_SFT"
-            main_output_variable = "Q_OUT"
-            modules = [self.get_sloth_block(), self.get_noah_owp_modular_block(), self.get_cfe_block(), self.get_smp_block(), self.get_sft_block()]
-            output_variables = ["soil_ice_fraction", "TGS", "RAIN_RATE", "DIRECT_RUNOFF", "GIUH_RUNOFF", "NASH_LATERAL_RUNOFF",
-                               "DEEP_GW_TO_CHANNEL_FLUX", "Q_OUT", "SOIL_STORAGE", "POTENTIAL_ET", "ACTUAL_ET", "soil_moisture_fraction", "ice_fraction_schaake"]
-            output_header_fields = ["soil_ice_fraction", "ground_temperature", "rain_rate", "direct_runoff", "giuh_runoff", "nash_lateral_runoff",
-                                   "deep_gw_to_channel_flux", "q_out", "soil_storage", "PET", "AET", "soil_moisture_fraction", "ice_fraction_schaake"]
-            if self.precip_partitioning_scheme == "Xinanjiang":
-                output_variables[-1] = "ice_fraction_xinanjiang"
-                output_header_fields[-1] = "ice_fraction_xinanjiang"
-        elif "NOM" in self.formulation and "LASAM" in self.formulation and "SMP" in self.formulation and "SFT" in self.formulation:
-            #model_type_name = "NOM_LASAM_SMP_SFT"
-            main_output_variable = "total_discharge"
-            modules = [self.get_sloth_block(), self.get_noah_owp_modular_block(), self.get_lasam_block(), self.get_smp_block(), self.get_sft_block()]
-            output_variables = ["soil_ice_fraction", "TGS", "precipitation", "potential_evapotranspiration", "actual_evapotranspiration",
-                               "soil_storage", "surface_runoff", "giuh_runoff", "groundwater_to_stream_recharge", "percolation", "total_discharge",
-                               "infiltration", "soil_moisture_fraction"]
-            output_header_fields = ["soil_ice_fraction", "ground_temperature", "rain_rate", "PET_rate", "actual_ET",
-                                   "soil_storage", "direct_runoff", "giuh_runoff", "deep_gw_to_channel_flux", "soil_to_gw_flux", "q_out",
-                                   "infiltration", "soil_moisture_fraction"]
-
-"""

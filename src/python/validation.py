@@ -59,7 +59,7 @@ def _update_troute_config(
     forcing_parameters["nts"] = nts
 
 
-def main(general: General, model_conf: Mapping[str, Any]):
+def main(general: General, model_conf: Mapping[str, Any], troute_config: Mapping[str, Any]):
     #seed the random number generators if requested
     if general.random_seed is not None:
         import random
@@ -105,6 +105,7 @@ def main(general: General, model_conf: Mapping[str, Any]):
         adjustables: Sequence[CalibrationCatchment] = agent.model.adjustables
         
         realization: NgenRealization = agent.model.unwrap().ngen_realization
+        
         assert realization is not None
 
         validation_parms = model.model.unwrap().val_params
@@ -117,9 +118,15 @@ def main(general: General, model_conf: Mapping[str, Any]):
         realization.time.start_time = sim_start
         realization.time.end_time = sim_end
 
-        assert realization.routing is not None
+        ensemble = True
+        if troute_config is None:
+            ensemble = False
 
-        troute_config_path = realization.routing.config
+        troute_config_path = troute_config
+        if not ensemble:
+            assert realization.routing is not None
+
+            troute_config_path = realization.routing.config
         
         with troute_config_path.open() as fp:
             troute_config = yaml.safe_load(fp)
@@ -129,9 +136,10 @@ def main(general: General, model_conf: Mapping[str, Any]):
         troute_config_path_validation = troute_config_path.with_name("troute_valid_config.yaml")
         with troute_config_path_validation.open("w") as fp:
             yaml.dump(troute_config, fp)
-
+        
         # NOTE: do this before `update_config` is called so the right path is written to disk
-        realization.routing.config = troute_config_path_validation
+        if not ensemble:
+            realization.routing.config = troute_config_path_validation
 
         for calibration_object in adjustables:
             best_df: pd.DataFrame = calibration_object.df[[str(agent.best_params), 'param', 'model']]
@@ -161,8 +169,7 @@ def main(general: General, model_conf: Mapping[str, Any]):
                     end_time=eval_end,
                     simulation_interval=simulation_interval,
                 )
-                #print(f"{sim=}")
-                #print(f"{obs=}")
+
                 score = _objective_func(sim, obs, validation_parms.objective, (sim_start, sim_end))
                 print(f"validation run score: {score}")
                 agent_pm.hook.ngen_cal_model_iteration_finish(iteration = "validation", info = agent.job)
@@ -182,17 +189,22 @@ if __name__ == "__main__":
     # get the command line parser
     parser = argparse.ArgumentParser(
         description='Validation in NGEN NWM architecture.')
-    parser.add_argument('config_file', type=Path,
-                        help='The configuration yaml file for catchments to be operated on')
+    #parser.add_argument('config_file',   type=Path, help='The configuration yaml file for catchments to be operated on')
+    #parser.add_argument("troute_config", type=Path, required=False,  help="Path to t-route config file")
+
+    parser.add_argument("-config",  dest="config_file",   type=Path, required=False,  help="sandbox config file")
+    parser.add_argument("-routing", dest="troute_config", type=Path, required=False,  help="caliberation config file")
 
     args = parser.parse_args()
+    troute_config = args.troute_config
 
     with open(args.config_file) as file:
         conf = yaml.safe_load(file)
 
+    
     general = General(**conf['general'])
     # change directory to workdir
     chdir(general.workdir)
 
     #model = Model(model=conf['model']).model
-    main(general, conf['model'])
+    main(general, conf['model'], troute_config)

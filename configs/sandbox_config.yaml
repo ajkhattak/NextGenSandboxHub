@@ -19,6 +19,7 @@ subsetting :
   # Path to NLCD data for vegetation type (IVGTYP) calculation
   nlcd_data_path           : "<path_to>/Annual_NLCD_LndCov_2021_CU_C1V1.tif" # OPTIONAL
   calculate_vegetation     : FALSE  #---------------------------------------- Set to FALSE to skip vegetation calculation # OPTIONAL
+  classification_method    : "fraction"  #----------------------------------- vegetation classfication method (majority or fraction). Defaults to 'majority' method
 
   # Note: only gage_ids that fall within the domain of the hydrofabric listed above will be subsetted
   options :
@@ -54,7 +55,7 @@ formulation :
 
 simulation :
   task_type        : "<pick_option>" #------------------------------------- Supported options: calibvalid, calibration, validation, restart, control
-  gage_ids         :  "08020700"   #--------------------------------------- Provide a gage id or list of ids; if Null, basin_passed.csv file is loaded
+  sim_name_suffix  :  "08020700"   #--------------------------------------- Provide a single gage id, or list of ids, or a .csv file (with columns gage_id and num_divides)
   sim_name_suffix  :  "pet_cfe" #------------------------------------------ User specified name appended to the gage_id. For example, 01105000_pet_cfe
   #simulation_time : {"start_time" : "2015-10-01 00:00:00", "end_time" : "2020-09-30 23:00:00"} # only needed when task_type is control
   calibration_time : {"start_time" : "2016-10-01 00:00:00", "end_time" : "2021-09-30 23:00:00"} # Entire simulation period for calibration; including spinup period
@@ -63,3 +64,6 @@ simulation :
   valid_eval_time  : {"start_time" : "2010-11-23 14:00:00", "end_time" : "2010-12-23 02:00:00"} # Evalaution period for validation (excluding spinup period)
   restart_dir      : "<path_to_restart_dir>/{*}/202410042024_ngen_qaiklwj0_worker/" #----------- Restart experiment from the best iteration
   
+  ensemble:
+    enabled: TRUE # ---------------------------------------------------------------- Ensemble ON/OFF
+    members: 2    # ---------------------------------------------------------------- Ensemble members (based on vegetation fraction)

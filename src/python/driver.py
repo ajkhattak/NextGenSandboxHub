@@ -73,8 +73,9 @@ class Driver:
             print ("INFO: LSTM formulation -- setting task_type to control ")
             self.task_type = "control"
 
-        self.gage_ids = dsim.get('gage_ids', None)
-
+        # Get gages IDs
+        self.gage_ids = self.load_gage_ids(dsim.get("gage_ids_input"))
+        
         self.sim_name_suffix = dsim.get('sim_name_suffix') or None
 
         dlauncher = d.get('sandbox_launcher') or None
@@ -92,7 +93,6 @@ class Driver:
                 raise ValueError("calibration_time is not provided or is not a valid dictionary.")
             
             self.simulation_time = dsim["calibration_time"]
-            #self.calib_eval_time = dsim["calib_eval_time"]
         elif self.task_type == 'validation':
             if "validation_time" not in dsim or not isinstance(dsim["validation_time"], dict):
                 raise ValueError("validation_time is not provided or is not a valid dictionary.")
@@ -106,7 +106,57 @@ class Driver:
             self.simulation_time = dsim["simulation_time"]
         else:
             raise ValueError("Not a valid task_type provided: valid options are [control, calibration, validation, calibvalid, restart]")
-        
+
+        densemble = dsim.get('ensemble') or None
+
+        if (densemble):
+            self.ensemble_enabled = bool(densemble.get('enabled'))
+            self.ensemble_size    = int(densemble.get('members') or 1)
+            self.ensemble_models  = densemble.get('models')
+            
+            if self.ensemble_enabled:
+                assert self.ensemble_size > 1, (
+                    "Ensemble size must be greater than 1 when ensemble is enabled"
+                )
+            else:
+                self.ensemble_size = 1
+                self.ensemble_models = []
+        else:
+            self.ensemble_enabled = False
+            self.ensemble_size    = 1
+            self.ensemble_models  = []
+
+
+
+    def load_gage_ids(self, gage_ids_input):
+        if gage_ids_input is None:
+            raise TypeError("gage_ids_input must be a CSV path, a string ID, or a list of IDs")
+
+        # Case 1: CSV file path
+        if isinstance(gage_ids_input, str) and gage_ids_input.lower().endswith(".csv"):
+            path = Path(gage_ids_input)
+
+            if not path.is_file():
+                raise FileNotFoundError(f"gage_ids file not found: {path}")
+
+            df = pd.read_csv(path, dtype=str)
+
+            if 'gage_id' not in df.columns:
+                raise ValueError("CSV must contain a 'gage_id' column")
+
+            return df['gage_id'].tolist()
+
+        # Case 2: single gage ID as string
+        if isinstance(gage_ids_input, str):
+            return [gage_ids_input]
+
+        # Case 3: list / tuple / set
+        if isinstance(gage_ids_input, (list, tuple, set)):
+            return [str(x) for x in gage_ids_input]
+
+        raise TypeError("gage_ids_input must be a CSV path, a string ID, or a list of IDs")
+
+
     def process_clean_input_param(self, clean):
         clean_lst = []
         if isinstance(clean, str):
@@ -212,7 +262,7 @@ class Driver:
             print("-- ", gpkg_name, end="")
 
         gpkg_dir = os.path.join(i_dir, gpkg_dir)
-
+        
         helper.create_clean_dirs(output_dir=o_dir,
                                  task_type=self.task_type,
                                  clean=self.clean)
@@ -229,7 +279,11 @@ class Driver:
                                     forcing_format = self.forcing_format,
                                     ngen_cal_type  = self.task_type,
                                     schema = self.schema_type,
-                                    domain = self.domain)
+                                    domain = self.domain,
+                                    ensemble_enabled = self.ensemble_enabled,
+                                    ensemble_size    = self.ensemble_size,
+                                    ensemble_models  = self.ensemble_models
+                                    )
 
         failed = False
         if not failed:
@@ -263,7 +317,7 @@ class Driver:
         forcing_files = self.get_forcing_files(self.gpkg_dirs)
 
         basin_ids = []
-        num_cats = []
+        num_cats  = []
 
         tuple_list = list(zip(self.gpkg_dirs, self.output_dirs, forcing_files))
 

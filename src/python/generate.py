@@ -14,13 +14,16 @@ from pathlib import Path
 import argparse
 import json
 
-from src.python import configuration
 from src.python import realization
+
+from src.python.configuration import get_config_generator
 
 class Generate:
     def __init__(self, sandbox_dir, gpkg_file, forcing_dir, ngen_dir,
                  sim_time, formulation, formulations_supported, output_dir,
-                 forcing_format, ngen_cal_type, schema, domain):
+                 forcing_format, ngen_cal_type, schema, domain,
+                 ensemble_enabled=False, ensemble_size=1,
+                 ensemble_models = None):
         
         self.sandbox_dir = sandbox_dir
         self.gpkg_file   = gpkg_file
@@ -36,6 +39,10 @@ class Generate:
         self.forcing_format  = forcing_format
         self.ngen_cal_type   = ngen_cal_type
 
+
+        self.ensemble_enabled = ensemble_enabled
+        self.ensemble_size    = ensemble_size if ensemble_enabled else 1
+        self.ensemble_models  = ensemble_models
         
         if not os.path.exists(self.gpkg_file):
             sys.exit(f'The gpkg file does not exist: ', self.gpkg_file)
@@ -57,91 +64,69 @@ class Generate:
             raise ValueError(
                 f"\nUnsupported formulation: {self.formulation_in} \n"
                 f"Supported: {self.formulations_supported} \n"
-                "[INFO]: Formulations that omit T-ROUTE are allowed, as it is appended automatically; however, all other formulation components must be specified exactly as supported."
+                "[INFO]: Formulations that omit T-ROUTE are allowed, as it is appended automatically; \
+                however, all other formulation components must be specified exactly as supported."
             )
 
-        if self.verbosity >= 3:
-            print("*******************************************")
-            print(self.colors.BLUE)
-            print("Running (from driver.py):\n", generate_config_files)
-            print("Model option provided: ", args.models_option)
-            print("Generating configuration files for model(s) option: ", self.coupled_models_options[args.models_option])
-            print(self.colors.ENDC)
-            print("*******************************************")
 
-        ConfigGen = configuration.ConfigurationGenerator(sandbox_dir = self.sandbox_dir,
-                                                         gpkg_file   = self.gpkg_file,
-                                                         forcing_dir = self.forcing_dir,
-                                                         output_dir  = self.output_dir,
-                                                         ngen_dir    = self.ngen_dir,
-                                                         formulation = self.formulation,
-                                                         simulation_time = self.simulation_time,
-                                                         verbosity     = 1,
-                                                         ngen_cal_type = self.ngen_cal_type,
-                                                         schema_type   = self.schema)
-
-        if self.verbosity >= 3:
-            print("Running (from driver.py): \n ", generate_realization_file)
-            print(self.colors.ENDC)
+        # Ensemble loop (or single run)
+        for member_id in range(1, self.ensemble_size+1):
+            self._generate_member(member_id if self.ensemble_enabled else 1)
             
-        if "NOM" in self.formulation:
-            ConfigGen.write_nom_input_files()
 
-        if "PET" in self.formulation:
-            ConfigGen.write_pet_input_files()
+    def _generate_member(self, member_id):
+        
 
-        if "CFE" in self.formulation:
-            ConfigGen.write_cfe_input_files()
+        ConfigGen = get_config_generator(
+            sandbox_dir=self.sandbox_dir,
+            gpkg_file=self.gpkg_file,
+            forcing_dir=self.forcing_dir,
+            output_dir=self.output_dir,
+            ngen_dir=self.ngen_dir,
+            formulation=self.formulation,
+            simulation_time=self.simulation_time,
+            verbosity=1,
+            ngen_cal_type=self.ngen_cal_type,
+            schema_type=self.schema,
+            ensemble_enabled=self.ensemble_enabled,
+            ensemble_size=self.ensemble_size,
+            ensemble_models=self.ensemble_models
+        )
 
-        if "TOPMODEL" in self.formulation:
-            ConfigGen.write_topmodel_input_files()
+        tag = f"cfg_tile-{member_id}" if self.ensemble_enabled else "cfg"
+        ConfigGen.write_input_files(member_id, tag)
 
-        if "CASAM" in self.formulation:
-            ConfigGen.write_lasam_input_files()
 
-        if "SFT" in self.formulation:
-            ConfigGen.write_sft_input_files()
+        """
 
-        if "SNOW17" in self.formulation:
-            ConfigGen.write_snow17_input_files()
-
-        if "LSTM" in self.formulation:
-            ConfigGen.write_lstm_input_files()
-
-        if "SAC-SMA" in self.formulation:
-            ConfigGen.write_sacsma_input_files()
 
         if "SMP" in self.formulation:
             
             if "CFE" in self.formulation:
-                ConfigGen.write_smp_input_files(cfe_coupled=True, lasam_coupled=False)
+                ConfigGen.write_smp_input_files(cfe_coupled=True, lasam_coupled=False,
+                                                member_id=member_id, tag=tag)
             elif "LASAM" in self.formulation:
-                ConfigGen.write_smp_input_files(cfe_coupled=False, lasam_coupled=True)
-
-        if "t-route" in self.formulation.lower():
-            ConfigGen.write_troute_input_files()
-        
-        result = False
-        if result:
-            sys.exit("config files could not be generated, check the options provided!")
-
-        if self.verbosity >= 3:
-            print("*******************************************")
-            print(self.colors.GREEN)
-            print("Generating realization file ...")
-            
-        RealGen = realization.RealizationGenerator(ngen_dir = self.ngen_dir,
-                                                   forcing_dir = self.forcing_dir,
-                                                   output_dir = self.output_dir,
-                                                   formulation = self.formulation,
-                                                   simulation_time = self.simulation_time,
-                                                   forcing_format = self.forcing_format,
-                                                   verbosity = 1,
-                                                   ngen_cal_type = self.ngen_cal_type,
-                                                   domain = self.domain)
+                ConfigGen.write_smp_input_files(cfe_coupled=False, lasam_coupled=True,
+                                                member_id=member_id, tag=tag)
+        """
+        RealGen = realization.RealizationGenerator(
+            ngen_dir           = self.ngen_dir,
+            forcing_dir        = self.forcing_dir,
+            output_dir         = self.output_dir,
+            formulation        = self.formulation,
+            simulation_time    = self.simulation_time,
+            forcing_format     = self.forcing_format,
+            ngen_cal_type      = self.ngen_cal_type,
+            domain             = self.domain,
+            ensemble_enabled   = self.ensemble_enabled,
+            ensemble_size      =  self.ensemble_size,
+            ensemble_member_id = member_id,
+            ensemble_models    = self.ensemble_models,
+            verbosity          = 1
+        )
 
         RealGen.write_realization_file()
-
+        
                 
     class colors:
         BLUE = '\33[34m'
