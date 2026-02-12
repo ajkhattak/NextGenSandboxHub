@@ -37,13 +37,13 @@
   dynamic_vic_option                = 1
   radiative_transfer_option         = 3
   sfc_drag_coeff_option             = 1
-  canopy_stom_resist_option         = 1
+  canopy_stom_resist_option         = 1                 ! OPT_CRS (Ball-Berry)
   crop_model_option                 = 0
   snowsoil_temp_time_option         = 3
   soil_temp_boundary_option         = 2
   supercooled_water_option          = 1
-  stomatal_resistance_option        = 1
-  evap_srfc_resistance_option       = 4
+  stomatal_resistance_option        = 4              ! OPT_BTR (previously 1)
+  evap_srfc_resistance_option       = 5              ! OPT_RSF (previously 4)
   subsurface_option                 = 2
 /
 

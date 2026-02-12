@@ -28,22 +28,62 @@ except:
 
 os_name = platform.system()
 
-class ConfigurationGenerator:
+from src.python.registry import MODELS_REGISTRY #, register_model
+
+def _load_formulations():
+    # Import formulation modules here so they register themselves
+    import src.python.models.lstm
+    import src.python.models.nom
+    import src.python.models.cfe
+    import src.python.models.topmodel
+    import src.python.models.pet
+    import src.python.models.sacsma
+    import src.python.models.casam
+    import src.python.models.snow17
+    import src.python.models.troute
+    import src.python.models.sft
+    import src.python.models.smp
+
+def get_config_generator(formulation, **kwargs):
+    ctx = ConfigurationContext(formulation=formulation, **kwargs)
+
+    _load_formulations()
+    keys = [k.strip().upper() for k in formulation.replace(",", "+").split("+")]
+    generators = []
+    for key in keys:
+        if key not in MODELS_REGISTRY:
+            raise ValueError(f"Unknown model in the formulation: {key}")
+        # creates an instance using class context MODELS_REGISTRY["NOM"] => NOMConfigurationGenerator
+        generators.append(MODELS_REGISTRY[key](ctx))
+
+    if len(generators) == 1:
+        return generators[0]
+
+    return CompositeConfigurationGenerator(generators)
+
+class ConfigurationContext:
+
     def __init__(self, sandbox_dir, gpkg_file, forcing_dir, output_dir,
                  ngen_dir, formulation, simulation_time,
-                 verbosity, ngen_cal_type, schema_type = None):
-        self.sandbox_dir = sandbox_dir
-        self.gpkg_file   = gpkg_file
-        self.forcing_dir = forcing_dir
-        self.output_dir  = output_dir
-        self.ngen_dir    = ngen_dir
-        self.formulation = formulation
-        self.simulation_time = simulation_time
-        self.verbosity       = verbosity
-        self.ngen_cal_type   = ngen_cal_type
-        self.schema_type     = schema_type
+                 verbosity, ngen_cal_type, schema_type = None,
+                 ensemble_enabled = False,
+                 ensemble_size    = 1,
+                 ensemble_models  = None):
 
-
+        self.sandbox_dir        = sandbox_dir
+        self.gpkg_file          = gpkg_file
+        self.forcing_dir        = forcing_dir
+        self.output_dir         = output_dir
+        self.ngen_dir           = ngen_dir
+        self.formulation        = formulation
+        self.simulation_time    = simulation_time
+        self.verbosity          = verbosity
+        self.ngen_cal_type      = ngen_cal_type
+        self.schema_type        = schema_type
+        self.ensemble_enabled   = ensemble_enabled
+        self.ensemble_size      = ensemble_size
+        self.ensemble_models    = ensemble_models
+        
         with open(os.path.join(self.sandbox_dir, "configs/basefiles", "custom.yaml"), 'r') as file:
             df_custom = yaml.safe_load(file)['models']
 
@@ -56,6 +96,7 @@ class ConfigurationGenerator:
 
         self.soil_class_NWM, self.vegetation_height = self.get_soil_class_NWM()
 
+        self.save_ensemble_weights()
         
     def get_soil_class_NWM(self):
         nom_soil_file = os.path.join(self.soil_params_NWM_dir, "SOILPARM.TBL")
@@ -129,21 +170,21 @@ class ConfigurationGenerator:
             gdf_soil['soil_refkdt'] = 3.0
 
         gdf = gpd.GeoDataFrame(data={'geometry': gdf_div['geometry'].values}, index=gdf_soil.index)
-        gdf['soil_b'] = gdf_soil['soil_b'].copy()
-        gdf['soil_satdk'] = gdf_soil['soil_dksat'].copy()
-        gdf['soil_satpsi'] = gdf_soil['soil_psisat'].copy()
-        gdf['soil_slop'] = gdf_soil['slope_1km'].copy()
-        gdf['soil_smcmax'] = gdf_soil['soil_smcmax'].copy()
-        gdf['soil_wltsmc'] = gdf_soil['soil_smcwlt'].copy()
-        gdf['soil_refkdt'] = gdf_soil['soil_refkdt'].copy()
-        gdf['max_gw_storage'] = gdf_soil['gw_Zmax'].copy()
-        gdf['Cgw'] = gdf_soil['gw_Coeff'].copy()
-        gdf['gw_expon'] = gdf_soil['gw_Expon'].copy()
-        gdf['ISLTYP'] = gdf_soil['ISLTYP'].copy()
-        gdf['IVGTYP'] = gdf_soil['IVGTYP'].copy()
-        gdf['elevation_mean'] = gdf_soil['elevation_mean'].copy()
-        gdf['slope_mean'] = gdf_soil['slope_mean'].copy()
-        gdf['aspect_mean'] = gdf_soil['aspect_mean'].copy()
+        gdf['soil_b']          = gdf_soil['soil_b'].copy()
+        gdf['soil_satdk']      = gdf_soil['soil_dksat'].copy()
+        gdf['soil_satpsi']     = gdf_soil['soil_psisat'].copy()
+        gdf['soil_slop']       = gdf_soil['slope_1km'].copy()
+        gdf['soil_smcmax']     = gdf_soil['soil_smcmax'].copy()
+        gdf['soil_wltsmc']     = gdf_soil['soil_smcwlt'].copy()
+        gdf['soil_refkdt']     = gdf_soil['soil_refkdt'].copy()
+        gdf['max_gw_storage']  = gdf_soil['gw_Zmax'].copy()
+        gdf['Cgw']             = gdf_soil['gw_Coeff'].copy()
+        gdf['gw_expon']        = gdf_soil['gw_Expon'].copy()
+        gdf['ISLTYP']          = gdf_soil['ISLTYP'].copy()
+        gdf['IVGTYP']          = gdf_soil['IVGTYP'].copy()
+        gdf['elevation_mean']  = gdf_soil['elevation_mean'].copy()
+        gdf['slope_mean']      = gdf_soil['slope_mean'].copy()
+        gdf['aspect_mean']     = gdf_soil['aspect_mean'].copy()
         gdf['impervious_mean'] = gdf_soil['impervious_mean'].copy()
 
         mask = gdf['soil_b'].gt(0.0)
@@ -167,730 +208,44 @@ class ConfigurationGenerator:
 
         gdf['divide_area'] = gdf_soil['divide_area']
 
+        if "IVGTYP_nlcd" in params and params["IVGTYP_nlcd"] in gdf_soil.columns:
+            gdf["IVGTYP_nlcd"] = gdf_soil[params["IVGTYP_nlcd"]]
+         
+
         df_cats = gpd.read_file(self.gpkg_file, layer='divides')
         catids = [int(re.findall('[0-9]+', s)[0]) for s in df_cats['divide_id']]
 
         return gdf, catids
 
-    def write_nom_input_files(self):
-        nom_dir = os.path.join(self.output_dir,"configs/noahowp")
-        self.create_directory(nom_dir)
-        
-        # copy NOM params dir 
-        str_sub ="cp -r "+ self.soil_params_NWM_dir + " %s"%nom_dir
-        out=subprocess.call(str_sub,shell=True)
-        
-        nom_basefile = os.path.join(self.sandbox_dir, "configs/basefiles/config_noahowp.input")
+    def save_ensemble_weights(self, file_format="csv"):
 
-        if not os.path.exists(nom_basefile):
-            sys.exit(f"Sample NoahOWP config file does not exist, provided is {nom_basefile}")
+        if not self.ensemble_enabled:
+            return
 
-        # Read infile line by line
-        with open(nom_basefile, 'r') as infile:
-            lines = infile.readlines()
+        rows = []
 
-        start_time = pd.Timestamp(self.simulation_time['start_time']).strftime("%Y%m%d%H%M")
-        end_time = pd.Timestamp(self.simulation_time['end_time']).strftime("%Y%m%d%H%M")
-
-        flat_domain = 0.0
-        
         for catID in self.catids:
             cat_name = 'cat-' + str(catID)
-            centroid_x = str(self.gdf['geometry'][cat_name].centroid.x)
-            centroid_y = str(self.gdf['geometry'][cat_name].centroid.y)
-            soil_type = str(self.gdf.loc[cat_name]['ISLTYP'])
-            veg_type = str(self.gdf.loc[cat_name]['IVGTYP'])
-
-            aspect = str(self.gdf.loc[cat_name]['aspect_mean'] * flat_domain)
-
-            # Lauren fixed computing slope in degrees, so the divide-attributes has correct slope now (July, 2025)
-            #slope  = self.gdf.loc[cat_name]['slope_mean']/100. # convert percent to ratio
-            #slope_deg = math.degrees(math.atan(slope)) # convert radian to degrees
-
-            terrain_slope = str(self.gdf.loc[cat_name]['terrain_slope']*flat_domain)
             
-            fname_nom = f'noahowp_config_{cat_name}.input'
-            nom_file = os.path.join(nom_dir, fname_nom)
-
-            with open(nom_file, 'w') as file:
-                for line in lines:
-                    if line.strip().startswith('startdate'):
-                        file.write(f'  startdate      = \"{start_time}\"  \n')
-                    elif line.strip().startswith('enddate'):
-                        file.write(f'  enddate      = \"{end_time}\"  \n')
-                    elif line.strip().startswith('forcing_filename'):
-                        file.write(f'  forcing_filename   = \"{self.forcing_dir}\"  \n')
-                    elif line.strip().startswith('output_filename'):
-                        file.write(f'  output_filename   = \"output-{cat_name}.csv\"  \n')
-                    elif line.strip().startswith('parameter_dir'):
-                        file.write(f'  parameter_dir      = \"{os.path.join(nom_dir, "parameters")}\" \n')
-                    elif line.strip().startswith('lat'):
-                        file.write(f'  lat      = {centroid_y} \n')
-                    elif line.strip().startswith('lon'):
-                        file.write(f'  lon      = {centroid_x} \n')
-                    elif line.strip().startswith('terrain_slope'):
-                        file.write(f'  terrain_slope      = {terrain_slope} \n')
-                    elif line.strip().startswith('azimuth'):
-                        file.write(f'  azimuth       = {aspect} \n')
-                    elif line.strip().startswith('isltyp'):
-                        file.write(f'  isltyp           = {soil_type} \n')
-                    elif line.strip().startswith('vegtyp'):
-                        file.write(f'  vegtyp        = {veg_type} \n')
-                    else:
-                        file.write(line)
-
-
-    def write_cfe_input_files(self):
-
-        cfe_dir = os.path.join(self.output_dir, "configs/cfe")
-        self.create_directory(cfe_dir)
-
-        cfe_basefile = os.path.join(self.sandbox_dir, "configs/basefiles/config_cfe.txt")
-
-        if not os.path.exists(cfe_basefile):
-            sys.exit(f"Sample CFE config file does not exist, provided is {cfe_basefile}")
-
-        delimiter = ","
-        
-        # Read infile line by line
-        with open(cfe_basefile, 'r') as infile:
-            lines = infile.readlines()
-
-        for catID in self.catids:
-            cat_name = 'cat-' + str(catID)
-            fname = cat_name + '*.txt'
-
-            fname_cfe = f'cfe_config_{cat_name}.txt'
-            cfe_file = os.path.join(cfe_dir, fname_cfe)
-
-            with open(cfe_file, 'w') as file:
-                for line in lines:
-                    if line.startswith("#"):
-                        continue
-                    if line.strip().startswith('soil_params.b'):
-                        if self.gdf['soil_b'][cat_name] == 1.0:
-                            file.write(f'soil_params.b=1.1[]\n')
-                        else:
-                            file.write(f'soil_params.b={self.gdf["soil_b"][cat_name]}[]\n')
-                    elif line.strip().startswith('soil_params.satdk'):
-                        file.write(f'soil_params.satdk={self.gdf["soil_satdk"][cat_name]}[m s-1]\n')
-                    elif line.strip().startswith('soil_params.satpsi'):
-                        file.write(f'soil_params.satpsi={self.gdf["soil_satpsi"][cat_name]}[m]\n')
-                    elif line.strip().startswith('soil_params.slop'):
-                        file.write(f'soil_params.slop={self.gdf["soil_slop"][cat_name]}[m/m]\n')
-                    elif line.strip().startswith('soil_params.smcmax'):
-                        file.write(f'soil_params.smcmax={self.gdf["soil_smcmax"][cat_name]}[m/m]\n')
-                    elif line.strip().startswith('soil_params.wltsmc'):
-                        file.write(f'soil_params.wltsmc={self.gdf["soil_wltsmc"][cat_name]}[m/m]\n')
-                    elif line.strip().startswith('soil_params.refkdt'):
-                        file.write(f'refkdt={self.gdf["soil_refkdt"][cat_name]}\n')
-                    elif line.strip().startswith('max_gw_storage'):
-                        file.write(f'max_gw_storage={self.gdf["max_gw_storage"][cat_name]}[m]\n')
-                    elif line.strip().startswith('Cgw'):
-                        file.write(f'Cgw={self.gdf["Cgw"][cat_name]}[m h-1]\n')
-                    elif line.strip().startswith('expon'):
-                        file.write(f'expon={self.gdf["gw_expon"][cat_name]}[]\n')
-                    elif line.strip().startswith('surface_runoff_scheme'):
-                        surface_runoff_scheme = line.strip().split("=")[1]
-                        file.write(line)
-
-                        if surface_runoff_scheme == "GIUH" or surface_runoff_scheme == 1:
-                            giuh_cat = json.loads(self.gdf['giuh'][cat_name])
-                            giuh_cat = pd.DataFrame(giuh_cat, columns=['v', 'frequency'])
-                            giuh_ordinates = ",".join(str(x) for x in np.array(giuh_cat["frequency"]))
-                            file.write(f'giuh_ordinates={giuh_ordinates}\n')
-                        elif surface_runoff_scheme == "NASH_CASCADE" or surface_runoff_scheme == 2:
-                            file.write(f'N_nash_surface={int(self.gdf["N_nash_surface"][cat_name])}[]\n')
-                            file.write(f'K_nash_surface={self.gdf["K_nash_surface"][cat_name]}[h-1]\n')
-                            s = [str(0.0),] * int(self.gdf['N_nash_surface'][cat_name])
-                            s = delimiter.join(s)
-                            file.write(f'nash_storage_surface={s}[]\n')
-                            file.write(f'retention_depth_nash_surface=0.0[]\n')
-
-                    elif line.strip().startswith('N_nash_surface') or line.strip().startswith('K_nash_surface') or \
-                         line.strip().startswith('nash_storage_surface'):
-                        continue
-                    elif line.strip().startswith('surface_water_partitioning_scheme'):
-
-                        if "CFE-X" in self.formulation:
-                            self.surface_water_partitioning_scheme = "Xinanjiang"
-                            soil_id = self.gdf['ISLTYP'][cat_name]
-                            file.write(f'surface_water_partitioning_scheme={self.surface_water_partitioning_scheme}\n')
-                            file.write(f'a_Xinanjiang_inflection_point_parameter={self.soil_class_NWM["AXAJ"][soil_id]}\n')
-                            file.write(f'b_Xinanjiang_shape_parameter={self.soil_class_NWM["BXAJ"][soil_id]}\n')
-                            file.write(f'x_Xinanjiang_shape_parameter={self.soil_class_NWM["XXAJ"][soil_id]}\n')
-                            file.write(f"urban_decimal_fraction={self.gdf['impervious_mean'][cat_name]}\n")
-                            #file.write(f"urban_decimal_fraction=0.0\n")
-                        elif "CFE-S" in self.formulation:
-                            self.surface_water_partitioning_scheme = line.strip().split("=")[1]
-                            file.write(line)
-
-                    elif line.strip().startswith('a_Xinanjiang_inflection_point_parameter') or \
-                         line.strip().startswith('b_Xinanjiang_shape_parameter') or \
-                         line.strip().startswith('x_Xinanjiang_shape_parameter'):
-                        continue
-                    elif line.strip().startswith('sft_coupled'):
-                        sft_coupled = line.strip().split("=")[1]
-                        if sft_coupled.lower() == "true":
-                            ice_content_threshold = 0.3
-                            file.write("sft_coupled=true")
-                            file.write(f"ice_content_threshold={ice_content_threshold}")
-                    else:
-                        file.write(line)
-                if "SFT" in self.formulation:
-                    ice_content_threshold = 0.3
-                    file.write("sft_coupled=true\n")
-                    file.write(f"ice_content_threshold={ice_content_threshold}")
-
-
-
-    def write_topmodel_input_files(self):
-
-        topmodel_dir = os.path.join(self.output_dir, "configs/topmodel")
-        self.create_directory(topmodel_dir)
-        
-        for catID in self.catids:
-            cat_name = 'cat-' + str(catID)
-            fname = cat_name + '*.txt'
-
-            topmod = [
-                "0",
-                f'{cat_name}',
-                f"./forcing/{cat_name}.csv",
-                f'{topmodel_dir}/subcat_{cat_name}.dat',
-                f'{topmodel_dir}/params_{cat_name}.dat',
-                f'{topmodel_dir}/topmod_{cat_name}.out',
-                f'{topmodel_dir}/hyd_{cat_name}.out'
-            ]
-
-            fname_tm = f'topmod_{cat_name}.run'
-            tm_file = os.path.join(topmodel_dir, fname_tm)
-            with open(tm_file, "w") as f:
-                f.writelines('\n'.join(topmod))
-
-            params = [
-                f'Extracted study basin: {cat_name}',
-                "0.032  5.0  50.  3600.0  3600.0  0.05  0.0000328  0.002  0  1.0  0.02  0.1"
-            ]
-
-            fname_tm = f'params_{cat_name}.dat'
-            tm_file = os.path.join(topmodel_dir, fname_tm)
-            with open(tm_file, "w") as f:
-                f.writelines('\n'.join(params))
-
-            twi_cat = json.loads(self.gdf['twi'][cat_name])
-            twi_cat = pd.DataFrame(twi_cat, columns=['v', 'frequency'])
-            twi_cat = twi_cat.sort_values(by=['v'], ascending=False)
-
-            width_f = json.loads(self.gdf['width_dist'][cat_name])
-            df_width_f = pd.DataFrame(width_f, columns=['v', 'frequency'])
-            v_cumm = np.cumsum(df_width_f['frequency'])
-
-            nclasses_twi = len(twi_cat['frequency'].values)
-            nclasses_width_function = len(df_width_f['frequency'].values)
-
-            subcat = [
-                "1 1 1",
-                f'Extracted study basin: {cat_name}',
-                f'{nclasses_twi} 1',
-                'replace_with_twi',
-                f'{nclasses_width_function}',
-                'add_width_function',
-                '$mapfile.dat'
-            ]
-
-            twi_str = ''
-            for freq, value in zip(twi_cat['frequency'].values, twi_cat['v'].values):
-                twi_str += f"{freq:.6f} {value:.6f}\n"
-
-            subcat[3] = twi_str.strip()
-
-            widthf_str = ''
-            for freq, value in zip(v_cumm.values, df_width_f['v'].values):
-                widthf_str += f"{freq:.6f} {value:.6f} "
-
-            subcat[5] = widthf_str.strip()
-
-            fname_tm = f'subcat_{cat_name}.dat'
-            tm_file = os.path.join(topmodel_dir, fname_tm)
-            with open(tm_file, "w") as f:
-                f.writelines('\n'.join(subcat))
-
-    def write_sft_input_files(self):
-
-        sft_dir = os.path.join(self.output_dir, "configs/sft")
-        self.create_directory(sft_dir)
-        if not self.surface_water_partitioning_scheme in ["Schaake", "Xinanjiang"]:
-            sys.exit("Runoff scheme should be: Schaake or Xinanjiang")
-
-        ncells = 4 #19
-        soil_z = "0.1,0.15,0.18,0.23,0.29,0.36,0.44,0.55,0.69,0.86,1.07,1.34,1.66,2.07,2.58,3.22,4.01,5.0,6.0"
-        soil_z = "0.1,0.5,1.0,2.0"
-        delimiter = ','
-        nsteps_yr = 365 * 24
-
-        for catID in self.catids:
-            cat_name = 'cat-' + str(catID)
-            #forcing_file = glob.glob(os.path.join(self.forcing_dir, cat_name + '*.csv'))[0]
-            #df_forcing = pd.read_csv(self.forcing_file, delimiter=',', usecols=['T2D'], nrows=nsteps_yr, index_col=None)
-            #MAAT = [str(round(df_forcing['T2D'].mean(), 2)),] * ncells
-            MAAT = [str(285.0),] * ncells
-            MAAT = delimiter.join(MAAT)
-            soil_id = self.gdf['ISLTYP'][cat_name]
-
-            sft_params = [
-                'verbosity=none',
-                'soil_moisture_bmi=1',
-                'end_time=1.0[d]',
-                'dt=1.0[h]',
-                f'soil_params.smcmax={self.gdf["soil_smcmax"][cat_name]}[m/m]',
-                f'soil_params.b={self.gdf["soil_b"][cat_name]}[]',
-                f'soil_params.satpsi={self.gdf["soil_satpsi"][cat_name]}[m]',
-                f'soil_params.quartz={self.soil_class_NWM["QTZ"][soil_id]}[]',
-                f'ice_fraction_scheme={self.surface_water_partitioning_scheme}',
-                f'soil_z={soil_z}[m]',
-                f'soil_temperature={MAAT}[K]'
-            ]
-
-            fname_sft = f'sft_config_{cat_name}.txt'
-            sft_file = os.path.join(sft_dir, fname_sft)
-            with open(sft_file, "w") as f:
-                f.writelines('\n'.join(sft_params))
-
-    def write_smp_input_files(self, cfe_coupled, lasam_coupled=False):
-        
-        smp_dir = os.path.join(self.output_dir, "configs/smp")
-        self.create_directory(smp_dir)
-        
-        soil_z = "0.1,0.15,0.18,0.23,0.29,0.36,0.44,0.55,0.69,0.86,1.07,1.34,1.66,2.07,2.58,3.22,4.01,5.0,6.0"
-        soil_z = "0.1,0.5,1.0,2.0"
-        
-        for catID in self.catids:
-            cat_name = 'cat-' + str(catID)
-            soil_id = self.gdf['ISLTYP'][cat_name]
-
-            smp_params = [
-                'verbosity=none',
-                f'soil_params.smcmax={self.gdf["soil_smcmax"][cat_name]}[m/m]',
-                f'soil_params.b={self.gdf["soil_b"][cat_name]}[]',
-                f'soil_params.satpsi={self.gdf["soil_satpsi"][cat_name]}[m]',
-                f'soil_z={soil_z}[m]',
-                'soil_moisture_fraction_depth=1.0[m]'
-            ]
-
-            if cfe_coupled:
-                smp_params += ['soil_storage_model=conceptual', 'soil_storage_depth=2.0']
-            elif lasam_coupled:
-                smp_params += ['soil_storage_model=layered', 'soil_moisture_profile_option=constant',
-                               'soil_depth_layers=2.0', 'water_table_depth=10[m]']
-
-            fname_smp = f'smp_config_{cat_name}.txt'
-            smp_file = os.path.join(smp_dir, fname_smp)
-            with open(smp_file, "w") as f:
-                f.writelines('\n'.join(smp_params))
-
-    def write_lasam_input_files(self,
-                                sft_coupled=False):
-        
-        lasam_dir = os.path.join(self.output_dir,"configs/lasam")
-        self.create_directory(lasam_dir)
-
-        lasam_params_file = os.path.join(self.ngen_dir,"extern/LASAM/LASAM/data/vG_params_stat_nom_ordered.dat")
-        str_sub ="cp -r "+ lasam_params_file + " %s"%lasam_dir
-        out=subprocess.call(str_sub,shell=True)
-
-        sft_calib = "False"
-        soil_z = "10.0,15.0,18.0,23.0,29.0,36.0,44.0,55.0,69.0,86.0,107.0,134.0,166.0,207.0,258.0,322.0,401.0,500.0,600.0"
-        
-        lasam_params_base = [
-            'verbosity=none',
-            f'soil_params_file={lasam_params_file}',
-            'layer_thickness=200.0[cm]',
-            'initial_psi=2000.0[cm]',
-            'timestep=3600[sec]',
-            'endtime=1000000000.0[d]',
-            'forcing_resolution=3600[sec]',
-            'ponded_depth_max=0[cm]',
-            'use_closed_form_G=false',
-            'layer_soil_type=',
-            'wilting_point_psi=15495.0[cm]',
-            'field_capacity_psi=340.9[cm]',
-            'adaptive_timestep=true',
-            'giuh_ordinates='
-        ]
-
-        if sft_coupled:
-            lasam_params_base.append('sft_coupled=true')
-            lasam_params_base.append(f'soil_z={soil_z}[cm]')
-
-        if (sft_coupled and (sft_calib in ["true", "True"])):
-            lasam_params_base.append('calib_params=true')
-            
-        if self.ngen_cal_type in ['calibration', 'validation', 'restart']:
-            lasam_params_base.append('calib_params=true')
-        
-        soil_type_loc = lasam_params_base.index("layer_soil_type=")
-            
-        giuh_loc_id = lasam_params_base.index("giuh_ordinates=")
-            
-
-        for catID in self.catids:
-            cat_name = 'cat-' + str(catID)
-            fname = cat_name + '*.txt'
-
-            lasam_params = lasam_params_base.copy()
-            lasam_params[soil_type_loc] += str(self.gdf['ISLTYP'][cat_name])
-
-            giuh_cat = json.loads(self.gdf['giuh'][cat_name])
-            giuh_cat = pd.DataFrame(giuh_cat, columns=['v', 'frequency'])
-            giuh_ordinates = ",".join(str(x) for x in np.array(giuh_cat["frequency"]))
-
-            any_nans = np.any(np.isnan(giuh_cat["frequency"]))
-            if any_nans:
-                giuh_ordinates = str(1.0)
-
-            lasam_params[giuh_loc_id] += giuh_ordinates
-
-            fname_lasam = f'lasam_config_{cat_name}.txt'
-            lasam_file = os.path.join(lasam_dir, fname_lasam)
-            with open(lasam_file, "w") as f:
-                f.writelines('\n'.join(lasam_params))
-
-
-    def write_pet_input_files(self):
-        pet_dir = os.path.join(self.output_dir,"configs/pet")
-        self.create_directory(pet_dir)
-                
-        #df_cats = gpd.read_file(self.gpkg_file, layer='divides')
-        #df_cats = df_cats.to_crs("EPSG:4326")
-        #df_cats.set_index("divide_id", inplace=True)
-
-        for catID in self.catids:
-            cat_name = 'cat-' + str(catID)
-            centroid_x = str(self.gdf['geometry'][cat_name].centroid.x)
-            centroid_y = str(self.gdf['geometry'][cat_name].centroid.y)
-            #centroid_x = str(df_cats['geometry'][cat_name].centroid.x)
-            #centroid_y = str(df_cats['geometry'][cat_name].centroid.y)
-            elevation_mean = self.gdf['elevation_mean'][cat_name]
-
-            veg_type = int(self.gdf.loc[cat_name]['IVGTYP'])
-
-            veg_height = self.vegetation_height[veg_type]
-            # taken from evapotranpiration repo (see include/PETPenmanMonteithMethod.h)
-            zero_plane_displacement = 2.0/3.0 *  veg_height
-            momentum_transfer_roughness_length = 0.1845 * zero_plane_displacement 
-            heat_transfer_roughness_length = 0.1 * momentum_transfer_roughness_length
-
-            # surface_longwave_emissivity: snow/ice=[0.97-0.99], bare soil=[0.93–0.96], veg=[0.95–0.98], water=[0.98–0.99]
-            pet_params = [
-                'verbose=0',
-                f'pet_method={self.pet_method}',
-                'forcing_file=BMI',
-                'run_unit_tests=0',
-                'yes_aorc=1',
-                'yes_wrf=0',
-                'wind_speed_measurement_height_m=10.0',
-                'humidity_measurement_height_m=2.0',
-                f'vegetation_height_m={veg_height}',
-                f'zero_plane_displacement_height_m={zero_plane_displacement}',
-                f'momentum_transfer_roughness_length={momentum_transfer_roughness_length}',
-                f'heat_transfer_roughness_length_m={heat_transfer_roughness_length}',
-                'surface_longwave_emissivity=0.965',
-                'surface_shortwave_albedo=0.2',
-                'cloud_base_height_known=FALSE',
-                'time_step_size_s=3600',
-                'num_timesteps=1',
-                'shortwave_radiation_provided=1',
-                f'latitude_degrees={centroid_y}',
-                f'longitude_degrees={centroid_x}',
-                f'site_elevation_m={elevation_mean}'
-            ]
-
-            fname_pet = f'pet_config_{cat_name}.txt'
-            pet_file = os.path.join(pet_dir, fname_pet)
-            with open(pet_file, "w") as f:
-                f.writelines('\n'.join(pet_params))
-
-    def write_snow17_input_files(self):
-
-        snow17_dir = os.path.join(self.output_dir, "configs/snow17")
-        self.create_directory(snow17_dir)
-
-        snow17_basefile = os.path.join(self.sandbox_dir, "configs/basefiles/config_snow17.namelist.input")
-
-        snow17_param_basefile = os.path.join(self.sandbox_dir, "configs/basefiles/snow17_params_cat.txt")
-        
-        if not os.path.exists(snow17_basefile):
-            sys.exit(f"Sample Snow17 config file does not exist: {snow17_basefile}")
-
-        # Read all lines from the base template
-        with open(snow17_basefile, "r") as infile:
-            lines = infile.readlines()
-
-        with open(snow17_param_basefile, "r") as infile_param:
-            lines_param = infile_param.readlines()
-            
-        for catID in self.catids:
-            cat_name = f"cat-{catID}"
-            fname_snow17       = f"snow17_config_{cat_name}.namelist.input"
-            fname_snow17_param = f"snow17_params_{cat_name}.txt"
-                        
-            snow17_file = os.path.join(snow17_dir, fname_snow17)
-            snow17_param_file = os.path.join(snow17_dir, fname_snow17_param)
-
-
-            with open(snow17_file, "w") as outfile:
-                for line in lines:
-
-                    if line.strip().startswith("!"):
-                        outfile.write(line)
-                        continue
-
-                    # Replace parameters
-                    if line.strip().startswith("main_id"):
-                        outfile.write(f'main_id             = "{cat_name}"     ! basin label or gage id\n')
-                    elif line.strip().startswith("forcing_root"):
-                        outfile.write(f'forcing_root        = "{self.forcing_dir}"\n')
-                    elif line.strip().startswith("output_root"):
-                        outfile.write(f'output_root         = "{self.output_dir}/output"\n')
-                    elif line.strip().startswith("snow17_param_file"):
-                        outfile.write(f'snow17_param_file   = "{snow17_param_file}"\n')
-                    else:
-                        outfile.write(line)             # Keep the rest of the lines unchanged
-
-            area = self.gdf['divide_area'][cat_name]
-            centroid_y = str(self.gdf['geometry'][cat_name].centroid.y)
-            elevation_mean = self.gdf['elevation_mean'][cat_name]
-
-            # write param files
-            with open(snow17_param_file, "w") as outfile_param:
-                for line in lines_param:
-
-                    if line.strip().startswith("!"):
-                        outfile.write(line)
-                        continue
-
-                    # Replace parameters
-                    if line.strip().startswith("hru_id"):
-                        outfile_param.write(f'hru_id {cat_name}\n')
-                    elif line.strip().startswith("hru_area"):
-                        outfile_param.write(f'hru_area {area}\n')
-                    elif line.strip().startswith("latitude"):
-                        outfile_param.write(f'latitude {centroid_y}\n')
-                    elif line.strip().startswith("elev"):
-                        outfile_param.write(f'elev {elevation_mean}\n')
-                    else:
-                        outfile_param.write(line)
-
-    def write_lstm_input_files(self):
-
-        lstm_dir = os.path.join(self.output_dir, "configs/lstm")
-        self.create_directory(lstm_dir)
-
-        lstm_basefile = os.path.join(self.sandbox_dir, "configs/basefiles/config_lstm.yaml")
-
-        if not os.path.exists(lstm_basefile):
-            sys.exit(f"Sample LSTM config file does not exist: {lstm_basefile}")
-
-        with open(lstm_basefile, 'r') as file:
-            base_file = yaml.safe_load(file)
-
-        train_cfg_path = os.path.join(self.sandbox_dir, "extern/lstm", base_file.get("train_cfg_file"))
-        train_cfg_path = os.path.normpath(train_cfg_path)
-
-        gpkg_name = os.path.basename(self.gpkg_file).split(".")[0]
-        gage_id   = gpkg_name.split("_")[1]
-
-        for catID in self.catids:
-            cat_name   = f"cat-{catID}"
-            fname_lstm = f"lstm_config_{cat_name}.yaml"
-
-            df_new = {
-                "train_cfg_file": train_cfg_path
-            }
-
-            centroid_y = float(self.gdf['geometry'][cat_name].centroid.y)
-            centroid_x = float(self.gdf['geometry'][cat_name].centroid.x)
-            elevation_mean = float(self.gdf['elevation_mean'][cat_name])
-            area = float(self.gdf['divide_area'][cat_name])
-            terrain_slope = float(self.gdf['terrain_slope'][cat_name])
-
-            df_new["area_sqkm"]  = area
-            df_new["basin_id"]   = gage_id
-            df_new["elev_mean"]  = elevation_mean
-            df_new["slope_mean"] = terrain_slope
-            df_new["lat"]        = centroid_y
-            df_new["lon"]        = centroid_x
-            df_new["verbose"]    = 0
-            df_new["time_step"]  = "1 hour"
-            df_new["initial_state"] = "zero"
-
-            with open(os.path.join(lstm_dir, fname_lstm), 'w') as file:
-                yaml.dump(df_new, file, default_flow_style=False, sort_keys=False)
-
-
-    def write_sacsma_input_files(self):
-
-        sacsma_dir = os.path.join(self.output_dir, "configs/sacsma")
-        self.create_directory(sacsma_dir)
-
-        sacsma_basefile = os.path.join(self.sandbox_dir, "configs/basefiles/config_sacsma.namelist.input")
-
-        sacsma_param_basefile = os.path.join(self.sandbox_dir, "configs/basefiles/sacsma_params_cat.HHWM8.txt")
-
-        if not os.path.exists(sacsma_basefile):
-            sys.exit(f"Sample Sac-SMA config file does not exist: {sacsma_basefile}")
-
-        # Read all lines from the base template
-        with open(sacsma_basefile, "r") as infile:
-            lines = infile.readlines()
-
-        with open(sacsma_param_basefile, "r") as infile_param:
-            lines_param = infile_param.readlines()
-
-        for catID in self.catids:
-            cat_name = f"cat-{catID}"
-            fname_sacsma       = f"sacsma_config_{cat_name}.namelist.input"
-            fname_sacsma_param = f"sacsma_params_{cat_name}.txt"
-
-            sacsma_file = os.path.join(sacsma_dir, fname_sacsma)
-            sacsma_param_file = os.path.join(sacsma_dir, fname_sacsma_param)
-
-
-            with open(sacsma_file, "w") as outfile:
-                for line in lines:
-
-                    if line.strip().startswith("!"):
-                        outfile.write(line)
-                        continue
-
-                    # Replace parameters
-                    if line.strip().startswith("main_id"):
-                        outfile.write(f'main_id             = "{cat_name}"     ! basin label or gage id\n')
-                    elif line.strip().startswith("forcing_root"):
-                        outfile.write(f'forcing_root        = "{self.forcing_dir}"\n')
-                    elif line.strip().startswith("output_root"):
-                        outfile.write(f'output_root         = "{self.output_dir}/output"\n')
-                    elif line.strip().startswith("sac_param_file"):
-                        outfile.write(f'sac_param_file   = "{sacsma_param_file}"\n')
-                    else:
-                        outfile.write(line)             # Keep the rest of the lines unchanged
-
-            area = self.gdf['divide_area'][cat_name]
-
-            # write param files
-            with open(sacsma_param_file, "w") as outfile_param:
-                for line in lines_param:
-
-                    if line.strip().startswith("!"):
-                        outfile.write(line)
-                        continue
-
-                    # Replace parameters
-                    if line.strip().startswith("hru_id"):
-                        outfile_param.write(f'hru_id {cat_name}\n')
-                    elif line.strip().startswith("hru_area"):
-                        outfile_param.write(f'hru_area {area}\n')
-                    else:
-                        outfile_param.write(line)
-
-
-    def write_troute_input_files(self):
-
-        troute_basefile = os.path.join(self.sandbox_dir, "configs/basefiles/config_troute.yaml")
-        troute_dir = os.path.join(self.output_dir,"configs")
-        gpkg_name = os.path.basename(self.gpkg_file).split(".")[0]
-
-        if not os.path.exists(troute_basefile):
-            sys.exit(f"Sample routing yaml file does not exist, provided is {troute_basefile}")
-
-        with open(troute_basefile, 'r') as file:
-            d = yaml.safe_load(file)
-
-        # get the terminal nexus id
-        gdf_net = gpd.read_file(self.gpkg_file, layer="flowpath-attributes")
-        gpkg_id = gpkg_name.split("_")[1]
-        mask    = gdf_net["gage"].str.contains(gpkg_id, na=False)
-
-        terminal_nexus_id = gdf_net.loc[mask, "gage_nex_id"].iloc[0]
-        
-        d['network_topology_parameters']['supernetwork_parameters']['geo_file_path'] = self.gpkg_file
-        d['network_topology_parameters']['waterbody_parameters']['level_pool']['level_pool_waterbody_parameter_file_path'] = self.gpkg_file
-        d['network_topology_parameters']['supernetwork_parameters']['title_string'] = gpkg_name
-
-        dt = 300
-        params = self.get_flowpath_attributes(gage_id=self.gpkg_file, full_schema=True)
-
-        columns = {
-            'key': params['key'],
-            'downstream': params['downstream'],
-            'mainstem': params['mainstem'],
-            'dx': params['dx'],
-            'n': params['n'],
-            'ncc': params['ncc'],
-            's0': params['s0'],
-            'bw': params['bw'],
-            'waterbody': params['waterbody'],
-            'gages': params['gages'],
-            'tw': params['tw'],
-            'twcc': params['twcc'],
-            'musk': params['musk'],
-            'musx': params['musx'],
-            'cs': params['cs'],
-            'alt': params['alt']
-        }
-
-        d['network_topology_parameters']['supernetwork_parameters']['columns'] = columns
-
-        start_time = pd.Timestamp(self.simulation_time['start_time'])
-        end_time = pd.Timestamp(self.simulation_time['end_time'])
-        diff_time = (end_time - start_time).total_seconds()
-
-        d['compute_parameters']['restart_parameters']['start_datetime'] = start_time.strftime("%Y-%m-%d_%H:%M:%S")
-
-        if self.ngen_cal_type in ['calibration', 'validation', 'calibvalid', 'restart']:
-            d['compute_parameters']['forcing_parameters']['qlat_input_folder'] = "./"
+            veg_type_nlcd = json.loads(self.gdf.loc[cat_name]['IVGTYP_nlcd'])
+            df = pd.DataFrame(veg_type_nlcd, columns=['v', 'frequency'])
+            frequencies = df['frequency'].tolist()
+
+            rows.append([cat_name] + frequencies)
+           
+        columns = ['divide_id'] + [f'weight_{i+1}' for i in range(self.ensemble_size)]
+
+        out_df = pd.DataFrame(rows, columns=columns)
+
+        # Save file
+        out_path = os.path.join(self.output_dir, "configs", "ensemble_weights")
+
+        if file_format == "csv":
+            out_df.to_csv(f"{out_path}.csv", index=False)
+        elif file_format == "parquet":
+            out_df.to_parquet(f"{out_path}.parquet", index=False)
         else:
-            d['compute_parameters']['forcing_parameters']['qlat_input_folder'] = os.path.join(self.output_dir, "outputs/div")
-
-        d['compute_parameters']['forcing_parameters']['qlat_file_pattern_filter'] = "nex-*"
-        del d['compute_parameters']['forcing_parameters']['binary_nexus_file_folder']
-        d['compute_parameters']['forcing_parameters']['nts'] = int(diff_time / dt)
-        d['compute_parameters']['forcing_parameters']['max_loop_size'] = 10000000
-
-        d['compute_parameters']['cpu_pool'] = 1
-
-        if self.ngen_cal_type in ['calibration', 'validation', 'calibvalid', 'restart']:
-            stream_output = {
-                "stream_output": {
-                    "stream_output_directory": "./",
-                    'stream_output_time': -1,
-                    'stream_output_type': '.nc',
-                    'stream_output_internal_frequency': 60
-                }
-            }
-        else:
-            stream_output = {
-                "stream_output": {
-                    'stream_output_directory': os.path.join(self.output_dir, "outputs/troute"),
-                    'mask_output': os.path.join(troute_dir, "mask_output.yaml"),
-                    'stream_output_time': -1,
-                    'stream_output_type': '.nc',
-                    'stream_output_internal_frequency': 60
-                }
-            }
-            # write mask file for terminal nexus output only
-            dnex = {
-                "nex": [terminal_nexus_id.split("-")[1]]
-                }
-            with open(os.path.join(troute_dir, "mask_output.yaml"), 'w') as file:
-                yaml.dump(dnex, file, default_flow_style=False, sort_keys=False)
-             
-        d['output_parameters'] = stream_output
-
-        with open(os.path.join(troute_dir, "troute_config.yaml"), 'w') as file:
-            yaml.dump(d, file, default_flow_style=False, sort_keys=False)
-
+            raise ValueError("file_format must be one of ['csv', 'parquet']")
 
     def get_flowpath_attributes(self,
                                 full_schema=False,
@@ -911,6 +266,69 @@ class ConfigurationGenerator:
             basin_gage_id = basin_gage[waterbody_id].tolist()
             return basin_gage_id
 
+# ----------------------------
+# Base Generator
+# ----------------------------
+class ConfigurationGenerator:
+    def __init__(self, context: ConfigurationContext):
+        self.ctx = context
+
+        # convenience
+        self.gdf = context.gdf
+        self.catids = context.catids
+
+        # shared derived fields
+        #self.pet_method = self._load_pet_method()
+        self.soil_params_NWM_dir = os.path.join(
+            self.ctx.ngen_dir,
+            "extern/noah-owp-modular/noah-owp-modular/parameters"
+        )
+
+    def __getattr__(self, name):
+        if name in [
+            "output_dir", "sandbox_dir", "gpkg_file",
+            "forcing_dir", "ngen_dir", "formulation",
+            "simulation_time", "verbosity", "ngen_cal_type",
+            "schema_type", "ensemble_enabled", "ensemble_size",
+            "ensemble_models", "gdf", "catids"
+        ]:
+            raise AttributeError(
+                f"Access '{name}' directly is not allowed. Use 'self.ctx.{name}' instead."
+            )
+        raise AttributeError(name)
+    
+    def write_input_files(self, member_id=None, tag=None):
+        """
+        Public entry point called by driver.
+        """
+        self._write_input_files(member_id, tag)
+
+    def _write_input_files(self, member_id, tag):
+        """
+        Must be overridden by subclasses.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} must implement _write_input_files()"
+        )
+
+    def create_directory(self, dir_name, member_id=1):
+        if member_id == 1 and os.path.exists(dir_name):
+            str_sub = "rm -rf " + dir_name
+            out = subprocess.call(str_sub, shell=True)
+        os.makedirs(dir_name, exist_ok=True)
+
+
+class CompositeConfigurationGenerator(ConfigurationGenerator):
+
+    def __init__(self, generators):
+        self.generators = generators
+
+    def write_input_files(self, member_id=None, tag=None):
+        for gen in self.generators:
+            gen.write_input_files(member_id, tag)
+
+
+"""
     def write_forcing_input_files(self,
                                   forcing_basefile,
                                   forcing_time,
@@ -953,31 +371,32 @@ class ConfigurationGenerator:
 
         return os.path.join(d["out_dir"], "config_forcing.yaml")
 
-    def create_directory(self, dir_name):
-        if os.path.exists(dir_name):
-            str_sub = "rm -rf " + dir_name
-            out = subprocess.call(str_sub, shell=True)
-        os.mkdir(dir_name)
-
+"""
 class ConfigurationCalib:
-    def __init__(self, gpkg_file, output_dir, ngen_dir, realization_file_par, troute_output_file,
-                 ngen_cal_basefile, ngen_cal_type, formulation,
-                 restart_dir, simulation_time, evaluation_time, num_proc):
+    def __init__(self, gpkg_file, output_dir, ngen_dir, sandbox_dir, realization_file_par,
+                 troute_output_file, ngen_cal_basefile, ngen_cal_type, formulation,
+                 restart_dir, simulation_time, evaluation_time, num_proc,
+                 ensemble_enabled,
+                 ensemble_size,
+                 ensemble_models):
         
-        self.gpkg_file = gpkg_file
-        self.output_dir = output_dir
-        self.ngen_dir = ngen_dir
-        self.realization_file_par = realization_file_par
-        self.simulation_time = simulation_time
-        self.evaluation_time = evaluation_time
-        self.formulation = formulation
-        #self.verbosity = verbosity
-        self.ngen_cal_type = ngen_cal_type
-        self.num_proc = num_proc
-        self.ngen_cal_basefile = ngen_cal_basefile
+        self.gpkg_file          = gpkg_file
+        self.output_dir         = output_dir
+        self.ngen_dir           = ngen_dir
+        self.sandbox_dir        = sandbox_dir
+        self.simulation_time    = simulation_time
+        self.evaluation_time    = evaluation_time
+        self.formulation        = formulation
+        self.ngen_cal_type      = ngen_cal_type
+        self.num_proc           = num_proc
+        self.ngen_cal_basefile  = ngen_cal_basefile
         self.troute_output_file = troute_output_file
-        self.restart_dir = restart_dir
-
+        self.restart_dir        = restart_dir
+        self.ensemble_enabled   = ensemble_enabled 
+        self.ensemble_size      = ensemble_size
+        self.ensemble_models    = ensemble_models
+        self.realization_file_par = realization_file_par
+        
     def get_flowpath_attributes(self):
 
         layers = fiona.listlayers(self.gpkg_file)
@@ -996,9 +415,14 @@ class ConfigurationCalib:
     def write_calib_input_files(self):
         
         conf_dir = os.path.join(self.output_dir, "configs")
-        realization_file = glob.glob(os.path.join(conf_dir, "realization_*.json"))
+        realization_file =  sorted(
+            glob.glob(os.path.join(conf_dir, "realization_*.json"))
+            )
 
-        assert len(realization_file) == 1
+        if (self.ensemble_enabled):
+            assert len(realization_file) == self.ensemble_size
+        else:
+            assert len(realization_file) == 1
 
         if not os.path.exists(self.ngen_cal_basefile):
             sys.exit(f"Sample calib yaml file does not exist, provided is {self.ngen_cal_basefile}")
@@ -1033,7 +457,7 @@ class ConfigurationCalib:
             "TOPMODEL": "topmodel_params",
             "NOM":      "noahowp_params",
             "SNOW17":   "snow17_params",
-            "SAC-SMA":   "sacsma_params"
+            "SAC-SMA":  "sacsma_params"
         }
         
         # Add calibratable parameter blocks
@@ -1041,9 +465,24 @@ class ConfigurationCalib:
             model = model.strip()
             for key, name in model_param_map.items():
                 param_values = base_file.get(name, [])
-                if key in model:
-                    df_new[f"{name}"] = param_values
+
                     
+                if (self.ensemble_models is not None
+                    and key in model
+                    and model in self.ensemble_models):
+                    new_params = []
+                    for i in range(self.ensemble_size):
+                        for p in param_values:
+                            # create a deep copy to avoid reference issues
+                            new_param = dict(p)
+                            new_param["name"] = f"{p['name']}_tile_{i+1}"
+                            new_params.append(new_param)
+
+                    df_new[f"{name}"] = new_params
+                elif key in model:
+                    df_new[f"{name}"] = param_values
+
+
         df_new["model"] = {
             "type": "ngen",
             "binary": os.path.join(self.ngen_dir, "cmake_build/ngen"),
@@ -1053,8 +492,26 @@ class ConfigurationCalib:
             "strategy": base_file.get("strategy", "uniform"),
             "eval_feature": gpkg_name.split("_")[1]
         }
+
+        if self.ensemble_enabled:
+            df_new["model"]["binary"] = os.path.join(self.sandbox_dir, "src/python/landcover_tiling.py")
+
+            cmd = (
+                f"--hydrofabric {self.gpkg_file.as_posix()} "
+                f"--realization {realization_file[0]} "
+                f"--routing {conf_dir}/troute_config.yaml"
+            )
             
-        if self.num_proc > 1:
+            if self.num_proc > 1:
+                cmd += f" --partition {self.num_proc}"
+
+            if self.ngen_cal_type == "validation":
+                 cmd += f" --task_type {self.ngen_cal_type}"
+
+            df_new["model"]["args"]  = cmd
+
+        
+        if self.num_proc > 1 and self.ensemble_size == 1:
             df_new["model"]["parallel"] = self.num_proc
             df_new["model"]["partitions"] = self.realization_file_par
 
@@ -1071,12 +528,15 @@ class ConfigurationCalib:
                         key = "CFE"
                     if key == "NOM":
                         key = "NoahOWP"
+                        continue
                     if key == "SNOW17":
                         key = "Snow17"
                     if key == "SAC-SMA":
                         key = "SacSMA"
                     param_values = base_file.get(name, [])
-                    df_new["model"]["params"][key] = param_values
+
+                    # store final params
+                    df_new["model"]["params"][key] = df_new[f"{name}"] #tiled_params
 
 
         if self.ngen_cal_type in ["calibration", "restart"]:
@@ -1121,6 +581,7 @@ class ConfigurationCalib:
                     state_file = glob.glob(str(Path(self.output_dir) / "*_parameter_df_state.parquet"))[0]
                 except:
                     state_file = glob.glob(str(Path(self.output_dir) / "*_worker" / "*_parameter_df_state.parquet"))[0]
+
             elif (self.ngen_cal_type == 'restart'):
                 try:
                     state_file = glob.glob(str(Path(self.restart_dir) / "*_parameter_df_state.parquet"))[0]
@@ -1135,13 +596,22 @@ class ConfigurationCalib:
             best_params_set = df_parq[best_itr]
             calib_params = best_params_set.index.to_list()
 
+            """
             for block_name in base_file:
                 if '_params' in block_name:    
                     for par in base_file[block_name]:
                         if par['name'] in calib_params:
                             par['init'] = float(best_params_set[par['name']]) #modify in place
+                            print ("pp ", par['name'], par['init'])
+            """
+            
+            for block_name in df_new:
+                if '_params' in block_name:    
+                    for par in df_new[block_name]:
+                        if par['name'] in calib_params:
+                            par['init'] = float(best_params_set[par['name']]) #modify in place
 
-
+                            
         if self.ngen_cal_type in ['calibration', 'restart']:
             config_fname = "ngen-cal_calib_config.yaml"
         elif self.ngen_cal_type == 'validation':
@@ -1150,4 +620,4 @@ class ConfigurationCalib:
         with open(os.path.join(conf_dir, config_fname), 'w') as file:
             yaml.dump(df_new, file, default_flow_style=False, sort_keys=False)
 
-    
+

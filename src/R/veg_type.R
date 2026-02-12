@@ -7,6 +7,7 @@
 # Supports either majority/mode class or fractional dominant N vegetation types.
 
 # Function to calculate majority vegetation type from NLCD data on disk and convert to NWM codes
+# for veg type description see https://www.mrlc.gov/data/legends/national-land-cover-database-class-legend-and-description
 ComputeVegTypeNLCD <- function(div_infile, 
                                nlcd_data_path,
                                veg_method = c("majority", "fraction"),
@@ -45,13 +46,14 @@ ComputeVegTypeNLCD <- function(div_infile,
     
     # Herbaceous/Grassland
     "71" = "7",   # Grassland/Herbaceous -> Grassland
+    
     "72" = "20",  # Sedge/Herbaceous (Alaska) -> Herbaceous Tundra
     "73" = "20",  # Lichens (Alaska) -> Herbaceous Tundra
     "74" = "20",  # Moss (Alaska) -> Herbaceous Tundra
     
     # Planted/Cultivated
-    "81" = "5",   # Pasture/Hay -> Cropland/Grassland Mosaic
-    "82" = "2",   # Cultivated Crops -> Dryland Cropland and Pasture
+    "81" = "7", #"5",   # Pasture/Hay -> Cropland/Grassland Mosaic (or simply Grassland = 7 as NLCD doc says Perennial grasses/legumes, planted for grazing or hay)
+    "82" = "4", #"2",   # Cultivated Crops -> Dryland Cropland and Pasture (or Mixed Dryland/Irrigated Cropland and Pasture = 4)
     
     # Wetlands
     "90" = "18",  # Woody Wetlands -> Wooded Wetland
