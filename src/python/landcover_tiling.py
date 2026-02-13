@@ -125,8 +125,6 @@ def copy_and_filter_model_params(
 
     with open(dst_path, "r") as f:
         dst = json.load(f)
-
-    # Compare the "time" blocks
     
     # Compare the "time" blocks
     if src.get("time") != dst.get("time"):
@@ -137,20 +135,13 @@ def copy_and_filter_model_params(
 
         if "model_params" not in src_module["params"]:
             continue
-            
+        
         src_params = src_module["params"]["model_params"]
 
         # Skip SLOTH
         if  src_module["params"]["model_type_name"] == "SLOTH":
             continue
-    
-        # Check if there are any _tile_ keys
-        #has_tile = any("_tile_" in k for k in src_params.keys())
 
-        # If there are no tile keys, SKIP modification
-        #if not has_tile:
-        #    continue
-        
         filtered_params = {}
 
         for k, v in src_params.items():
@@ -171,7 +162,7 @@ def copy_and_filter_model_params(
 
         # Update corresponding module in destination JSON
         for dst_module in dst["global"]["formulations"][0]["params"]["modules"]:
-            if dst_module["name"] == src_module["name"]:
+            if dst_module['params']["model_type_name"] == src_module['params']["model_type_name"]:
                 dst_module["params"]["model_params"] = filtered_params
 
     # Save updated JSON
