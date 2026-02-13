@@ -39,14 +39,15 @@ subsetting :
 ########################################################################
 #forcing data is stored under <input_dir>/gage_id/data/forcing
 forcings : 
-  forcing_format    : ".nc" #--------------------------------------------- Format .nc or .csv (recommended option .nc)
-  forcing_time      : {"start_time" : "2016-10-01 00:00:00", "end_time" : "2017-09-30 23:00:00"} #---------- Time (must cover the simulation times)
+  forcing_format  : ".nc" #--------------------------------------------- Format .nc or .csv (recommended option .nc)
+  forcing_time    : {"start_time" : "2016-10-01 00:00:00", "end_time" : "2020-09-30 23:00:00"} #---------- Forcing data time range [1-1-2016,12-31-2020]; simulation start/end times must fall within this period
+
   domain            : "conus"        #------------------------------------ options = ["conus", "HI", "PR", 'AK']
 
 ########################################################################
 formulation :
   #ngen_dir         : "<path_to_ngen_dir>" #------------------------------- OPTIONAL: Path to NextGen base directory. For instance, <path_to_ngen>/ngen. Defaults is <path_to_sandbox>/extern/ngen
-  models            : "PET, CFE, T-route"  #------------------------------- Name of the formulation. Run "sandbox -h" to see a complete list of supported formulations
+  models            : "PET, CFE, T-route"  #------------------------------- Formulation. Run "sandbox -h" to see a complete list of supported formulations
 
   clean             : ['existing'] #--------------------------------------- Clean existing config and realization files (does not delete simulation data)
   verbosity         : 0            #--------------------------------------- Verbosity levels (Set to 0 recommended unless debugging)
@@ -55,15 +56,16 @@ formulation :
 
 simulation :
   task_type        : "<pick_option>" #------------------------------------- Supported options: calibvalid, calibration, validation, restart, control
-  sim_name_suffix  :  "08020700"   #--------------------------------------- Provide a single gage id, or list of ids, or a .csv file (with columns gage_id and num_divides)
+  gage_ids_input   :  "08020700"   #--------------------------------------- Provide a single gage id, or list of ids, or a .csv file (with columns gage_id and num_divides)
   sim_name_suffix  :  "pet_cfe" #------------------------------------------ User specified name appended to the gage_id. For example, 01105000_pet_cfe
-  #simulation_time : {"start_time" : "2015-10-01 00:00:00", "end_time" : "2020-09-30 23:00:00"} # only needed when task_type is control
-  calibration_time : {"start_time" : "2016-10-01 00:00:00", "end_time" : "2021-09-30 23:00:00"} # Entire simulation period for calibration; including spinup period
-  calib_eval_time  : {"start_time" : "2017-10-01 00:00:00", "end_time" : "2021-09-30 23:00:00"} # Evalaution period for calibration (excluding spinup period)
-  validation_time  : {"start_time" : "2010-11-22 14:00:00", "end_time" : "2010-12-23 02:00:00"} # Entire simulation period for validation; including spinup period
-  valid_eval_time  : {"start_time" : "2010-11-23 14:00:00", "end_time" : "2010-12-23 02:00:00"} # Evalaution period for validation (excluding spinup period)
+  #simulation_time : {"start_time" : "2016-10-01 00:00:00", "end_time" : "2018-09-30 23:00:00"} # only needed when task_type is control
+  calibration_time : {"start_time" : "2016-10-01 00:00:00", "end_time" : "2018-09-30 23:00:00"} # Entire simulation period for calibration; including spinup period
+  calib_eval_time  : {"start_time" : "2017-10-01 00:00:00", "end_time" : "2018-09-30 23:00:00"} # Evalaution period for calibration (excluding spinup period)
+  validation_time  : {"start_time" : "2018-10-01 00:00:00", "end_time" : "2020-09-30 23:00:00"} # Entire simulation period for validation; including spinup period
+  valid_eval_time  : {"start_time" : "2019-10-01 00:00:00", "end_time" : "2020-09-30 23:00:00"} # Evalaution period for validation (excluding spinup period)
   restart_dir      : "<path_to_restart_dir>/{*}/202410042024_ngen_qaiklwj0_worker/" #----------- Restart experiment from the best iteration
   
   ensemble:
     enabled: TRUE # ---------------------------------------------------------------- Ensemble ON/OFF
     members: 2    # ---------------------------------------------------------------- Ensemble members (based on vegetation fraction)
+    models : "PET"  # ---------------------------------------------------------------- Apply landcover-based tiling only to the listed model(s); other models in the formulation are executed normally. Multiple models, for example, ["PET", "CFE"]
