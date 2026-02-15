@@ -83,12 +83,6 @@ class ConfigurationContext:
         self.ensemble_enabled   = ensemble_enabled
         self.ensemble_size      = ensemble_size
         self.ensemble_models    = ensemble_models
-        
-        with open(os.path.join(self.sandbox_dir, "configs/basefiles", "custom.yaml"), 'r') as file:
-            df_custom = yaml.safe_load(file)['models']
-
-            self.pet_method = df_custom['PET']["pet_method"]
-
 
         self.soil_params_NWM_dir = os.path.join(self.ngen_dir,"extern/noah-owp-modular/noah-owp-modular/parameters")
 
