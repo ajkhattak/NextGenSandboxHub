@@ -2,6 +2,7 @@ import os
 import geopandas as gpd
 import json
 import pandas as pd
+import yaml
 
 from src.python.registry import register_model
 from src.python.configuration import ConfigurationGenerator
@@ -11,8 +12,15 @@ from src.python.configuration import ConfigurationGenerator
 class PETConfigurationGenerator(ConfigurationGenerator):
     def __init__(self, ctx):
         super().__init__(ctx)
-        self.pet_method = self.ctx.pet_method
-        
+
+        yaml_path = os.path.join(self.ctx.sandbox_dir, "configs/basefiles/config_pet.yaml")
+
+        if not os.path.exists(yaml_path):
+            raise FileNotFoundError(f"Missing PET basefile: {yaml_path}")
+
+        with open(yaml_path, "r") as f:
+            self.pet_template = yaml.safe_load(f) or {}
+            
     def _write_input_files(self, member_id, tag):
         self.write_pet_input_files(member_id=member_id, tag=tag)
 
@@ -29,6 +37,8 @@ class PETConfigurationGenerator(ConfigurationGenerator):
         pet_dir = os.path.join(self.ctx.output_dir, "configs", "pet")
         self.create_directory(pet_dir,member_id)
 
+
+
         for catID in self.ctx.catids:
             cat_name = "cat-" + str(catID)
 
@@ -43,39 +53,39 @@ class PETConfigurationGenerator(ConfigurationGenerator):
                 veg_type_nlcd = pd.DataFrame(veg_type_nlcd, columns=['v', 'frequency'])
                 veg_type = veg_type_nlcd['v'][member_id - 1]
 
+            # Dynamcis variables
             veg_height = self.ctx.vegetation_height[veg_type]
-
+            
             # taken from evapotranpiration repo (see include/PETPenmanMonteithMethod.h)
-            zero_plane_displacement = 2.0 / 3.0 * veg_height
-            momentum_transfer_roughness_length = 0.1845 * zero_plane_displacement
-            heat_transfer_roughness_length = 0.1 * momentum_transfer_roughness_length
+            zero_plane_displacement_height_m   = 2.0 / 3.0 * veg_height 
+            momentum_transfer_roughness_length = 0.1845 * zero_plane_displacement_height_m
+            heat_transfer_roughness_length_m   = 0.1 * momentum_transfer_roughness_length
 
-            pet_params = [
-                "verbose=0",
-                f"pet_method={self.ctx.pet_method}",
-                "forcing_file=BMI",
-                "run_unit_tests=0",
-                "yes_aorc=1",
-                "yes_wrf=0",
-                "wind_speed_measurement_height_m=10.0",
-                "humidity_measurement_height_m=2.0",
-                f"vegetation_height_m={veg_height}",
-                f"zero_plane_displacement_height_m={zero_plane_displacement}",
-                f"momentum_transfer_roughness_length={momentum_transfer_roughness_length}",
-                f"heat_transfer_roughness_length_m={heat_transfer_roughness_length}",
-                "surface_longwave_emissivity=0.965",
-                "surface_shortwave_albedo=0.2",
-                "cloud_base_height_known=FALSE",
-                "time_step_size_s=3600",
-                "num_timesteps=1",
-                "shortwave_radiation_provided=1",
-                f"latitude_degrees={centroid_y}",
-                f"longitude_degrees={centroid_x}",
-                f"site_elevation_m={elevation_mean}"
-            ]
+            # Dynamic variables — names must match YAML keys
+            dynamic_values = {
+                "vegetation_height_m": veg_height,
+                "zero_plane_displacement_height_m": zero_plane_displacement_height_m,
+                "momentum_transfer_roughness_length": momentum_transfer_roughness_length,
+                "heat_transfer_roughness_length_m": heat_transfer_roughness_length_m,
+                "latitude_degrees": centroid_y,
+                "longitude_degrees": centroid_x,
+                "site_elevation_m": elevation_mean
+            }
+            
 
+            # build param list generically from the basefile
+            pet_params = []
+            for key in self.pet_template:
+                value = self.pet_template[key]
+                if value is None:
+                    # update nulls from dynamic_values
+                    if key not in dynamic_values:
+                        raise ValueError(f"Basefile has a key '{key}' set to null but no dynamic value is computed")
+                    value = dynamic_values[key]
+                pet_params.append(f"{key}={value}")
+
+            # write PET file
             fname_pet = f"pet_{tag}_{cat_name}.txt"
             pet_file = os.path.join(pet_dir, fname_pet)
-
             with open(pet_file, "w") as f:
-                f.writelines("\n".join(pet_params))
+                f.write("\n".join(pet_params) + "\n")

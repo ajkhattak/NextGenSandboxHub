@@ -124,7 +124,8 @@ class LSTMConfigurationGenerator(ConfigurationGenerator):
                 raise KeyError(f"{cat_name} not found in attributes parquet")
 
             centroid = self.ctx.gdf.loc[cat_name, "geometry"].centroid
-            
+            """
+            # works when names in the training and .parquet files are consistent
             attr_row = df_attr_div.loc[cat_name]
 
             static_attr_values = {
@@ -139,9 +140,27 @@ class LSTMConfigurationGenerator(ConfigurationGenerator):
                 "verbose": 0,
                 "time_step": "1 hour",
                 "initial_state": "zero",
-                "centroid_y": float(centroid.y),
                 **static_attr_values
             }
+            """
+            config = {
+                "train_cfg_file": train_cfg_path,
+                "basin_id": gage_id,
+                "verbose": 0,
+                "time_step": "1 hour",
+                "initial_state": "zero",
+                "ari_ix_mean" : float(df_attr_div.loc[cat_name]["ari_ix_mean"]),
+                "slp_dg_mean" : float(df_attr_div.loc[cat_name]["slp_dg_mean"]),
+                "centroid_y"  : float(df_attr_div.loc[cat_name]["lat_dec_deg"]),
+                "ims_pc_mean" : float(df_attr_div.loc[cat_name]["ims_pc_mean"]),
+                "ele_mt_mean" : float(df_attr_div.loc[cat_name]["ele_mt_mean"]),
+                "snd_pct"     : float(df_attr_div.loc[cat_name]["snd_pct"]),
+                "cly_pct"     : float(df_attr_div.loc[cat_name]["cly_pct"]),
+                "lka_pc_sse"  : float(df_attr_div.loc[cat_name]["lka_pc_sse"]),
+                "areasqkm"    : float(df_attr_div.loc[cat_name]["areasqkm"]),
+                "for_pc_forest_sse" : float(df_attr_div.loc[cat_name]["for_pc_forest"]),
+            }
+
 
             with open(lstm_file, "w") as f:
                 yaml.dump(config, f, sort_keys=False)

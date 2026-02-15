@@ -679,7 +679,13 @@ class RealizationGenerator:
                 "init_config": os.path.join(self.config_dir, f'lstm/lstm_{tag}_{{{{id}}}}.yaml'),
                 "variables_names_map": {
                     "atmosphere_water__liquid_equivalent_precipitation_rate": "APCP_surface",
-                    "land_surface_air__temperature": "TMP_2maboveground"
+                    "land_surface_air__temperature": "TMP_2maboveground",
+                    "atmosphere_air_water~vapor__relative_saturation": "SPFH_2maboveground",
+                    "land_surface_radiation~incoming~longwave__energy_flux": "DLWRF_surface",
+                    "land_surface_radiation~incoming~shortwave__energy_flux": "DSWRF_surface",
+                    "land_surface_wind__x_component_of_velocity": "UGRD_10maboveground",
+                    "land_surface_wind__y_component_of_velocity": "VGRD_10maboveground",
+                    "land_surface_air__pressure": "PRES_surface"
                 }
             }
         }
