@@ -81,7 +81,10 @@ class Runner:
         # Get gages IDs
         self.gage_ids, self.num_divides = self.load_gage_ids(dsim.get("gage_ids_input"))
 
-        self.sim_name_suffix = dsim.get('sim_name_suffix') or None
+        suffix = dsim.get('sim_name_suffix')
+        if suffix and any(c.isspace() for c in suffix):
+            raise ValueError("sim_name_suffix must not contain whitespace")
+        self.sim_name_suffix = suffix
 
         densemble = dsim.get('ensemble') or None
 

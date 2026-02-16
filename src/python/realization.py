@@ -222,7 +222,7 @@ class RealizationGenerator:
         global_block["params"]["model_type_name"] = model_type_name
         global_block["params"]["main_output_variable"] = main_output_variable
         global_block["params"]["output_variables"] = output_variables
-        global_block["params"]["output_header_fields"] = output_header_fields
+        #global_block["params"]["output_header_fields"] = output_header_fields
         global_block["params"]["modules"] = modules
 
         root["global"]["formulations"] = [global_block]
