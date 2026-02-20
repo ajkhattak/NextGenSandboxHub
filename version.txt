@@ -1,0 +1,3 @@
+version=0.8.0
+date=2026-02-20
+commit=def6a56
