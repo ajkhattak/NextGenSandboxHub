@@ -96,9 +96,17 @@ class Runner:
                 assert self.ensemble_size > 1, (
                     "Ensemble size must be greater than 1 when ensemble is enabled"
                 )
+                # Convert to lists and strip whitespace
+                formulation_list  = [m.strip() for m in self.formulation.split(",") if m.strip()]
+                ensemble_list     = [m.strip() for m in self.ensemble_models.split(",") if m.strip()]
+
+                for m1 in ensemble_list:
+                    if m1 not in formulation_list:
+                        raise ValueError(f"{m1} is not a valid ensemble member, not included in the formulation {self.formulation}")
             else:
                 self.ensemble_size    = 1
                 self.ensemble_models  = []
+
         else:
             self.ensemble_enabled = False
             self.ensemble_size    = 1
@@ -226,77 +234,76 @@ class Runner:
         print(f"Running basin {id} on cores {self.num_procs} ********", flush=True)
 
         if self.ngen_cal_type in ['calibration', 'calibvalid', 'restart']:
-            start_time = pd.Timestamp(self.calibration_time['start_time']).strftime("%Y%m%d%H%M")
-            troute_output_file = os.path.join("./troute_output_{}.nc".format(start_time))
-
-            ngen_cal_type_calib_restart = 'calibration'
-            if (self.ngen_cal_type == 'restart'):
-                ngen_cal_type_calib_restart = 'restart'
-
-            restart_dir = self.restart_dir.replace("{*}", id)
-
-            ConfigGen = configuration.ConfigurationCalib(
-                gpkg_file            = gpkg_file,
-                output_dir           = o_dir,
-                ngen_dir             = self.ngen_dir,
-                sandbox_dir          = self.sandbox_dir,
-                realization_file_par = file_par,
-                troute_output_file   = troute_output_file,
-                ngen_cal_type        = ngen_cal_type_calib_restart,
-                formulation          = self.formulation,
-                simulation_time      = self.calibration_time,
-                evaluation_time      = self.calib_eval_time,
-                ngen_cal_basefile    = self.config_calib,
-                restart_dir          = restart_dir,
-                num_proc             = self.num_procs,
-                ensemble_enabled     = self.ensemble_enabled,
-                ensemble_size        = self.ensemble_size,
-                ensemble_models      = self.ensemble_models
-            )
-            
-            ConfigGen.write_calib_input_files()
-
-            run_command = "python -m ngen.cal configs/ngen-cal_calib_config.yaml"
-            result = subprocess.call(run_command, shell=True)
+            mode = 'calibration' if self.ngen_cal_type == 'calibvalid' else self.ngen_cal_type
+            self.run_ngen_experiment(mode, gpkg_file, o_dir, file_par, id)
 
         if self.ngen_cal_type in ['validation', 'calibvalid']:
+            self.run_ngen_experiment('validation', gpkg_file, o_dir, file_par, id)
 
-            start_time = pd.Timestamp(self.validation_time['start_time']).strftime("%Y%m%d%H%M")
-            troute_output_file = os.path.join("./troute_output_{}.nc".format(start_time))
 
-            ConfigGen = configuration.ConfigurationCalib(
-                gpkg_file            = gpkg_file,
-                output_dir           = o_dir,
-                ngen_dir             = self.ngen_dir,
-                sandbox_dir          = self.sandbox_dir,
-                realization_file_par = file_par,
-                troute_output_file   = troute_output_file,
-                ngen_cal_type        = 'validation',
-                formulation          = self.formulation,
-                simulation_time      = self.validation_time,
-                evaluation_time      = self.valid_eval_time,
-                ngen_cal_basefile    = self.config_calib,
-                restart_dir          = self.restart_dir,
-                num_proc             = self.num_procs,
-                ensemble_enabled     = self.ensemble_enabled,
-                ensemble_size        = self.ensemble_size,
-                ensemble_models      = self.ensemble_models
+    def run_ngen_experiment(self, mode, gpkg_file, o_dir, file_par, id):
+        """
+        ngen_cal_type (mode): 'calibration', 'restart', or 'validation'
+        """
+
+        if mode in ['calibration', 'restart']:
+            sim_time = self.calibration_time
+            eval_time = self.calib_eval_time
+            start_time = pd.Timestamp(sim_time['start_time']).strftime("%Y%m%d%H%M")
+            restart_dir = self.restart_dir.replace("{*}", id)
+            ngen_cal_type = mode
+
+        elif mode == 'validation':
+            sim_time = self.validation_time
+            eval_time = self.valid_eval_time
+            start_time = pd.Timestamp(sim_time['start_time']).strftime("%Y%m%d%H%M")
+            restart_dir = self.restart_dir
+            ngen_cal_type = 'validation'
+
+        else:
+            raise ValueError(f"Unsupported mode (ngen_cal_type): {mode}")
+
+        troute_output_file = os.path.join(f"./troute_output_{start_time}.nc")
+
+
+        ConfigGen = configuration.ConfigurationCalib(
+            gpkg_file            = gpkg_file,
+            output_dir           = o_dir,
+            ngen_dir             = self.ngen_dir,
+            sandbox_dir          = self.sandbox_dir,
+            realization_file_par = file_par,
+            troute_output_file   = troute_output_file,
+            ngen_cal_type        = ngen_cal_type,
+            formulation          = self.formulation,
+            simulation_time      = sim_time,
+            evaluation_time      = eval_time,
+            ngen_cal_basefile    = self.config_calib,
+            restart_dir          = restart_dir,
+            num_proc             = self.num_procs,
+            ensemble_enabled     = self.ensemble_enabled,
+            ensemble_size        = self.ensemble_size,
+            ensemble_models      = self.ensemble_models
+        )
+
+        ConfigGen.write_calib_input_files()
+
+
+        # Run command
+
+        if mode in ['calibration', 'restart']:
+            run_command = "python -m ngen.cal configs/ngen-cal_calib_config.yaml"
+
+        elif mode == 'validation':
+            run_command = (
+                f"python {self.sandbox_dir}/src/python/validation.py "
+                f"-config configs/ngen-cal_valid_config.yaml"
             )
-            
-            ConfigGen.write_calib_input_files()
-
-            run_command = f"python {self.sandbox_dir}/src/python/validation.py -config configs/ngen-cal_valid_config.yaml"
 
             if self.ensemble_enabled:
-                run_command = (
-                    f"python {self.sandbox_dir}/src/python/validation.py "
-                    f"-config configs/ngen-cal_valid_config.yaml "
-                    f"-routing configs/troute_config.yaml"
-                )
+                run_command += " -routing configs/troute_config.yaml"
 
-            result = subprocess.call(run_command, shell=True)
+        return subprocess.call(run_command, shell=True)
 
-    
 
     def generate_partition_basin_file(self, ncats, gpkg_file):
 

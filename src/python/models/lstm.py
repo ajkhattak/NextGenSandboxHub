@@ -103,13 +103,19 @@ class LSTMConfigurationGenerator(ConfigurationGenerator):
         )
 
         attributes_file = base_file.get("attributes_file")
-        df_attr_div  = pd.read_parquet(attributes_file)
-        df_attr_div = df_attr_div.set_index("divide_id")
+        df_attr_div     = pd.read_parquet(attributes_file)
+        df_attr_div     = df_attr_div.set_index("divide_id")
+
+        static_attributes_input = base_file.get("static_attributes")
 
         with open(train_cfg_path, "r") as f:
             train_cfg = yaml.safe_load(f)
             
-        static_attributes = train_cfg['static_attributes']
+        static_attributes_training = train_cfg['static_attributes']
+
+        assert set(static_attributes_training) == set(static_attributes_input)
+
+        assert all(var in df_attr_div.columns for var in static_attributes_input), "Some static_attributes_input variables are missing!"
 
         gpkg_name = os.path.basename(self.ctx.gpkg_file).split(".")[0]
         gage_id = gpkg_name.split("_")[1]
@@ -124,25 +130,7 @@ class LSTMConfigurationGenerator(ConfigurationGenerator):
                 raise KeyError(f"{cat_name} not found in attributes parquet")
 
             centroid = self.ctx.gdf.loc[cat_name, "geometry"].centroid
-            """
-            # works when names in the training and .parquet files are consistent
-            attr_row = df_attr_div.loc[cat_name]
 
-            static_attr_values = {
-                attr: float(attr_row[attr])
-                for attr in static_attributes
-                if attr in attr_row
-            }
-
-            config = {
-                "train_cfg_file": train_cfg_path,
-                "basin_id": gage_id,
-                "verbose": 0,
-                "time_step": "1 hour",
-                "initial_state": "zero",
-                **static_attr_values
-            }
-            """
             config = {
                 "train_cfg_file": train_cfg_path,
                 "basin_id": gage_id,

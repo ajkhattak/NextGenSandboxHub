@@ -1,11 +1,14 @@
-area_sqkm: 427.77
-basin_id: '02064000'
-basin_name: FALLING RIVER NEAR NARUNA, VA
-elev_mean: 192.21
-initial_state: zero
-lat: 37.12681
-lon: -78.95974
-slope_mean: 9.95686
-time_step: 1 hour
-train_cfg_file: ./trained_neuralhydrology_models/nh_AORC_hourly_slope_elev_precip_temp_seq999_seed101_2801_191806/config.yml
-verbose: 0
+# template - the user needs to set the
+train_cfg_file: ./trained_neuralhydrology_models/persistent_hourly_test_2601_152630/config.yml
+attributes_file: /Users/ahmadjankhattak/Core/projects/nwm_bm_sims/lstm_bm_v2.3/model-2/bm_LSTM_1.0_attrs.parquet
+static_attributes:
+  - "ari_ix_mean"
+  - "slp_dg_mean"
+  - "centroid_y"
+  - "ims_pc_mean"
+  - "ele_mt_mean"
+  - "snd_pct"
+  - "cly_pct"
+  - "lka_pc_sse"
+  - "areasqkm"
+  - "for_pc_forest_sse"

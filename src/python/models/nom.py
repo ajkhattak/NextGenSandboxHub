@@ -46,6 +46,8 @@ class NOMConfigurationGenerator(ConfigurationGenerator):
         
         for catID in self.ctx.catids:
             cat_name = 'cat-' + str(catID)
+            fname_nom = f'noahowp_{tag}_{cat_name}.input'
+            
             centroid_x = str(self.ctx.gdf['geometry'][cat_name].centroid.x)
             centroid_y = str(self.ctx.gdf['geometry'][cat_name].centroid.y)
             soil_type  = str(self.ctx.gdf.loc[cat_name]['ISLTYP'])
@@ -55,13 +57,12 @@ class NOMConfigurationGenerator(ConfigurationGenerator):
                 veg_type_nlcd = json.loads(self.ctx.gdf.loc[cat_name]['IVGTYP_nlcd'])
                 veg_type_nlcd = pd.DataFrame(veg_type_nlcd, columns=['v', 'frequency'])
                 veg_type = veg_type_nlcd['v'][member_id - 1]
-            
+
+
+            nom_file = os.path.join(nom_dir, fname_nom)
             aspect = str(self.ctx.gdf.loc[cat_name]['aspect_mean'] * flat_domain)
 
             terrain_slope = str(self.ctx.gdf.loc[cat_name]['terrain_slope']*flat_domain)
-
-            fname_nom = f'noahowp_{tag}_{cat_name}.input'
-            nom_file = os.path.join(nom_dir, fname_nom)
 
             with open(nom_file, 'w') as file:
                 for line in lines:
