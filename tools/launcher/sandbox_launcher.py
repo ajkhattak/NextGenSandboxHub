@@ -369,8 +369,8 @@ def runner(use_slurm):
     
     for gage_id in mapping.keys():
 
-        print(f"--------------------------------")
-        print(f"###  Processing Gage: {gage_id}")
+        print(f"----------------------------------------------")
+        print(f"---------  Processing Gage: {gage_id} ---------")
 
         models_for_gage = get_models_for_gage(gage_id)
 
@@ -452,25 +452,30 @@ def runner(use_slurm):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-status", action="store_true",
-                        help="Print calibration/validation status for all gages and models without submitting jobs.")
-    
-    parser.add_argument("-local", action="store_true",
-                        help="Run locally without SLURM.")
+
+    parser.add_argument(
+        "mode",
+        choices=["run", "status"],
+        help="Run experiments or show status."
+    )
+
+    parser.add_argument(
+        "--backend",
+        choices=["slurm", "local"],
+        default="slurm",
+        help="Execution backend (default: slurm)."
+    )
+
     return parser.parse_args()
 
 if __name__ == "__main__":
     args = parse_args()
-    
+
     print(f"\n=== Sandbox Launcher Started @ {datetime.now()} ===")
 
-    # STATUS MODE
-    if args.status:
+    if args.mode == "status":
         check_status()
-        sys.exit(0)
-
-    use_slurm = not args.local
-
-    # NORMAL EXECUTION MODE
-    runner(use_slurm)
+    else:
+        use_slurm = args.backend == "slurm"
+        runner(use_slurm)
 

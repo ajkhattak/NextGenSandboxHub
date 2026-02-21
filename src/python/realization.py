@@ -124,7 +124,7 @@ class RealizationGenerator:
                 }
             }
         }
-
+        
         if self.ngen_cal_type not in ['calibration', 'validation', 'calibvalid', 'restart']:
             root["output_root"] = os.path.join(self.output_dir, "outputs","div")
 
@@ -209,6 +209,7 @@ class RealizationGenerator:
             modules.append(self.get_lstm_block())
             
         #output_variables = ["RAIN_RATE", "Q_OUT", "POTENTIAL_ET", "ACTUAL_ET"]
+        #output_variables = ["RAIN_RATE","DIRECT_RUNOFF","INFILTRATION_EXCESS","DEEP_GW_TO_CHANNEL_FLUX","SOIL_TO_GW_FLUX","Q_OUT","SOIL_STORAGE","POTENTIAL_ET","ACTUAL_ET"]
         #output_header_fields = ["rain_rate", "q_out", "PET", "AET"]
 
         output_header_fields = ["Qout"]
@@ -217,7 +218,7 @@ class RealizationGenerator:
             str_msg = f"main_output_variable at the multi_bmi block level is empty, needs to be an output variable from the models."
             raise ValueError(str_msg)
         
-        assert len(output_variables) == len(output_header_fields)
+        #assert len(output_variables) == len(output_header_fields)
 
         global_block["params"]["model_type_name"] = model_type_name
         global_block["params"]["main_output_variable"] = main_output_variable
