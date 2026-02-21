@@ -12,14 +12,15 @@ import geopandas as gpd
 import yaml
 import argparse
 import getpass
+from concurrent.futures import ProcessPoolExecutor, as_completed
+import multiprocessing
 
 # ===========================  Inputs ==========================================
 
-sandbox_config_file = "/scratch4/NCEPDEV/ohd/Ahmad.Jan.Khattak/Core/projects/nwm_v4_bm/launcher/basefiles/sandbox_config_base.yaml"
-calib_config_file   = "/scratch4/NCEPDEV/ohd/Ahmad.Jan.Khattak/Core/projects/nwm_v4_bm/launcher/basefiles/calib_config_base.yaml"
-map_config_file     = "/scratch4/NCEPDEV/ohd/Ahmad.Jan.Khattak/Core/projects/nwm_v4_bm/launcher/models_gages_map.yaml"
+sandbox_config_file = "/Users/ahmadjankhattak/Code/workflows/NextGenSandboxHub/tools/launcher/basefiles/sandbox_config_base.yaml"
+calib_config_file   = "/Users/ahmadjankhattak/Code/workflows/NextGenSandboxHub/tools/launcher/basefiles/calib_config_base.yaml"
+map_config_file     = "/Users/ahmadjankhattak/Code/workflows/NextGenSandboxHub/tools/launcher/models_gages_map.yaml"
 
-use_slurm = True
 
 # ==============================================================================
 # Load configuration files
@@ -85,7 +86,7 @@ def generate_config_files_for_gage(model_name, model_dir, gage_id, exp_config_di
     sandbox_cfg["general"]["output_dir"]    = str(output_dir / model_dir)
     sandbox_cfg["formulation"]["num_procs"] = num_cpus
     sandbox_cfg["formulation"]["models"]    = model_name
-    sandbox_cfg["simulation"]["gage_ids"]   = [gage_id]
+    sandbox_cfg["simulation"]["gage_ids_input"]   = [gage_id]
 
     # Create directories
     (exp_config_dir / gage_id).mkdir(parents=True, exist_ok=True)
@@ -201,7 +202,8 @@ def check_validation_exists(exp_info_dir, gage_id, status=False):
 # ====================== SLURM Submission ======================
 
 def run_experiment(model_name, model_dir, gage_id, job_name, exp_config_dir,
-                   exp_info_dir, current_iter, delay_seconds):
+                   exp_info_dir, current_iter, delay_seconds,
+                   use_slurm):
     """
     Submit the calibration/validation or restart job.
     """
@@ -217,29 +219,53 @@ def run_experiment(model_name, model_dir, gage_id, job_name, exp_config_dir,
     max_iter      = get_max_iter(exp_config_dir, gage_id)
     sb_cfg_file   = str(sandbox_main) if current_iter < max_iter else str(sandbox_val)
 
-    num_cpus      = get_num_cpus(exp_info_dir, gage_id)
-
-    cmd = [
-        "sbatch",
-        f"--cpus-per-task={num_cpus}",
-        f"--ntasks-per-node={num_cpus}",
-        f"--job-name={job_name}",
-        "--export=ALL,"
-        f"SANDBOX_FILE={sb_cfg_file},"
-        f"CALIB_FILE={calib_file},"
-        f"START_DELAY={delay_seconds}",
-        "launcher/submit_gage.slurm"
-    ]
-
-    # # Skip submission if validation exists — job is fully complete
-    validation_exists = check_validation_exists(exp_info_dir, gage_id)
-
-    if validation_exists:
+    # # Skip submission if validation already exists — job is fully complete
+    if check_validation_exists(exp_info_dir, gage_id):
         return
 
-    print(f"[{gage_id}] Submitting: {' '.join(cmd)}")
-    subprocess.run(cmd)
+    time.sleep(delay_seconds)
 
+    if use_slurm:
+        num_cpus = get_num_cpus(exp_info_dir, gage_id)
+
+        cmd = [
+            "sbatch",
+            f"--cpus-per-task={num_cpus}",
+            f"--ntasks-per-node={num_cpus}",
+            f"--job-name={job_name}",
+            "--export=ALL,"
+            f"SANDBOX_FILE={sb_cfg_file},"
+            f"CALIB_FILE={calib_file},"
+            f"START_DELAY={delay_seconds}",
+            "launcher/submit_gage.slurm"
+        ]
+
+        print(f"[{gage_id}] Submitting: {' '.join(cmd)}")
+        subprocess.run(cmd)
+    else:
+        # ===== LOCAL EXECUTION =====
+        cmd = [
+            "sandbox",
+            "-run",
+            "-i", str(sb_cfg_file),
+            "-j", str(calib_file)
+        ]
+
+        print(f"[{gage_id}] Running locally: {' '.join(cmd)}")
+        subprocess.run(cmd)
+
+def local_worker(args):
+    """
+    Wrapper for local parallel execution.
+    """
+    (model_name, model_dir, gage_id, job_name,
+     exp_config_dir, exp_info_dir,
+     current_iter, delay_seconds) = args
+
+    run_experiment(model_name, model_dir, gage_id, job_name,
+                   exp_config_dir, exp_info_dir,
+                   current_iter, delay_seconds,
+                   use_slurm=False)
 
 # ====================== Check Experiments Status ======================
 def check_status():
@@ -275,7 +301,8 @@ def launcher_exit(incomplete_exists):
     # Get wallclock in minutes; must be set in the submit_launcher.slurm
     wallclock_min_str = os.getenv("LAUNCHER_WALLCLOCK_MIN")
     if wallclock_min_str is None:
-        raise RuntimeError("Environment variable LAUNCHER_WALLCLOCK_MIN must be set, in the submit_launcher.slurm, before calling launcher_exit.")
+        raise RuntimeError("Environment variable LAUNCHER_WALLCLOCK_MIN must be set, \
+        in the submit_launcher.slurm, before calling launcher_exit.")
 
     wallclock_min = int(wallclock_min_str)
     buffer = 30 # seconds
@@ -331,13 +358,15 @@ def get_running_slurm_jobs():
 # ==============================================================================
 # Main function loops over all models x all gages
 # ==============================================================================
-def runner():
+def runner(use_slurm):
 
     incomplete_exists = False
 
     # Get all currently running/pending Slurm job names
-    running_jobs = get_running_slurm_jobs()
+    running_jobs = get_running_slurm_jobs() if use_slurm else set()
 
+    local_jobs = []
+    
     for gage_id in mapping.keys():
 
         print(f"--------------------------------")
@@ -378,30 +407,61 @@ def runner():
             # to avoid race for reading .nc forcing file. 5 seconds per mode, adjust as needed
             delay_seconds = m_idx * 5
 
-            run_experiment(model_name, model_dir, gage_id, job_name,
-                           exp_config_dir, exp_info_dir, current_iter,
-                           delay_seconds)
+            #run_experiment(model_name, model_dir, gage_id, job_name,
+            #               exp_config_dir, exp_info_dir, current_iter,
+            #               delay_seconds, use_slurm)
 
+            if use_slurm:
+                run_experiment(model_name, model_dir, gage_id, job_name,
+                               exp_config_dir, exp_info_dir,
+                               current_iter, delay_seconds,
+                               use_slurm=True)
+            else:
+                local_jobs.append((model_name, model_dir, gage_id, job_name,
+                                   exp_config_dir, exp_info_dir,
+                                   current_iter, delay_seconds
+                                   ))
 
         print(f"\n--- Finished Model: {model_name} ---\n")
 
+
+    if not use_slurm and local_jobs:
+
+        max_workers = min(4, multiprocessing.cpu_count())
+        print(f"\n[INFO] Running locally with up to {max_workers} parallel workers\n")
+
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(local_worker, job)
+                       for job in local_jobs]
+
+            for future in as_completed(futures):
+                try:
+                    future.result()
+                except Exception as e:
+                    print(f"[ERROR] Local job failed: {e}")
+                
     print("\n=== Launcher Finished ===\n")
 
 
     # Exit with special code: 99 = request SLURM requeue
-    launcher_exit(incomplete_exists)
+    if use_slurm:
+        launcher_exit(incomplete_exists)
+    else:
+        print("[INFO] Local execution finished.")
+        sys.exit(0)
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-status",
-                        action="store_true",
-                        help="Print calibration/validation status for all gages and models without submitting jobs."
-                        )
+    parser.add_argument("-status", action="store_true",
+                        help="Print calibration/validation status for all gages and models without submitting jobs.")
+    
+    parser.add_argument("-local", action="store_true",
+                        help="Run locally without SLURM.")
     return parser.parse_args()
 
 if __name__ == "__main__":
     args = parse_args()
-
+    
     print(f"\n=== Sandbox Launcher Started @ {datetime.now()} ===")
 
     # STATUS MODE
@@ -409,6 +469,8 @@ if __name__ == "__main__":
         check_status()
         sys.exit(0)
 
+    use_slurm = not args.local
+
     # NORMAL EXECUTION MODE
-    runner()
+    runner(use_slurm)
 

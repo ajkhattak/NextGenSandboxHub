@@ -51,11 +51,11 @@ class PETConfigurationGenerator(ConfigurationGenerator):
             if self.ctx.ensemble_enabled or "IVGTYP_nlcd" in self.ctx.gdf.columns:
                 veg_type_nlcd = json.loads(self.ctx.gdf.loc[cat_name]['IVGTYP_nlcd'])
                 veg_type_nlcd = pd.DataFrame(veg_type_nlcd, columns=['v', 'frequency'])
-                veg_type = veg_type_nlcd['v'][member_id - 1]
+                veg_type      = veg_type_nlcd['v'][member_id - 1]
 
             # Dynamcis variables
-            veg_height = self.ctx.vegetation_height[veg_type]
-            
+            veg_height = max(self.ctx.vegetation_height[veg_type], 0.5)
+
             # taken from evapotranpiration repo (see include/PETPenmanMonteithMethod.h)
             zero_plane_displacement_height_m   = 2.0 / 3.0 * veg_height 
             momentum_transfer_roughness_length = 0.1845 * zero_plane_displacement_height_m
