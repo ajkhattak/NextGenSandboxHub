@@ -14,6 +14,7 @@ class LSTMConfigurationGenerator(ConfigurationGenerator):
 
 
     def write_lstm_input_files_train1(self, member_id=1, tag="cfg"):
+        # this will be removed; use the function below for any modifications
         lstm_dir = os.path.join(self.ctx.output_dir, "configs", "lstm")
         self.create_directory(lstm_dir)
 
@@ -106,16 +107,23 @@ class LSTMConfigurationGenerator(ConfigurationGenerator):
         df_attr_div     = pd.read_parquet(attributes_file)
         df_attr_div     = df_attr_div.set_index("divide_id")
 
-        static_attributes_input = base_file.get("static_attributes")
-
+        #static_attributes_input = base_file.get("static_attributes")
+        #static_attributes_mapping = base_file.get("static_attributes", {})
+        
         with open(train_cfg_path, "r") as f:
             train_cfg = yaml.safe_load(f)
             
-        static_attributes_training = train_cfg['static_attributes']
+        static_attrs_lstm_training = train_cfg['static_attributes']
+        
+        static_attributes_cfg = base_file.get("static_attributes", {})
+        static_attrs_parquet_mapping = static_attributes_cfg.get("training", {})
+        static_attrs_bmi_mapping = static_attributes_cfg.get("bmi", {})
 
-        assert set(static_attributes_training) == set(static_attributes_input)
+        assert set(static_attrs_lstm_training) == set(static_attrs_parquet_mapping.keys())
 
-        assert all(var in df_attr_div.columns for var in static_attributes_input), "Some static_attributes_input variables are missing!"
+        assert all(col in df_attr_div.columns
+                   for col in static_attrs_parquet_mapping.values()
+                   ), "Some mapped attribute columns are missing in parquet!"
 
         gpkg_name = os.path.basename(self.ctx.gpkg_file).split(".")[0]
         gage_id = gpkg_name.split("_")[1]
@@ -136,6 +144,24 @@ class LSTMConfigurationGenerator(ConfigurationGenerator):
                 "basin_id": gage_id,
                 "verbose": 0,
                 "time_step": "1 hour",
+                "initial_state": "zero"
+            }
+
+            # Add training attributes
+            for lstm_name, parquet_col in static_attrs_parquet_mapping.items():
+                config[lstm_name] = float(df_attr_div.loc[cat_name][parquet_col])
+
+            # Add BMI attributes
+            for bmi_name, parquet_col in static_attrs_bmi_mapping.items():
+                config[bmi_name] = float(df_attr_div.loc[cat_name][parquet_col])
+
+
+            """
+            config = {
+                "train_cfg_file": train_cfg_path,
+                "basin_id": gage_id,
+                "verbose": 0,
+                "time_step": "1 hour",
                 "initial_state": "zero",
                 "ari_ix_mean" : float(df_attr_div.loc[cat_name]["ari_ix_mean"]),
                 "slp_dg_mean" : float(df_attr_div.loc[cat_name]["slp_dg_mean"]),
@@ -148,7 +174,7 @@ class LSTMConfigurationGenerator(ConfigurationGenerator):
                 "areasqkm"    : float(df_attr_div.loc[cat_name]["areasqkm"]),
                 "for_pc_forest_sse" : float(df_attr_div.loc[cat_name]["for_pc_forest"]),
             }
-
+            """
 
             with open(lstm_file, "w") as f:
                 yaml.dump(config, f, sort_keys=False)
