@@ -21,7 +21,7 @@ class CFEConfigurationGenerator(ConfigurationGenerator):
 
         with open(yaml_path, "r") as f:
             self.cfe_template = yaml.safe_load(f) or {}
-
+            
     def _write_input_files(self, member_id, tag):
         self.write_cfe_input_files(member_id=member_id, tag=tag)
 
@@ -39,7 +39,7 @@ class CFEConfigurationGenerator(ConfigurationGenerator):
         cfe_dir = os.path.join(self.ctx.output_dir, "configs/cfe")
         self.create_directory(cfe_dir, member_id)
 
-
+        
         for catID in self.ctx.catids:
 
             cat_name = f"cat-{catID}"
@@ -47,12 +47,15 @@ class CFEConfigurationGenerator(ConfigurationGenerator):
             cfe_file = os.path.join(cfe_dir, fname_cfe)
 
             dynamic_values = self._build_dynamic_values(cat_name, member_id)
-
+                
             cfe_params = []
 
             for key in self.cfe_template:
                 value = self.cfe_template[key]
 
+                if key in ["spatial"]:          # Skip, meta keys (not model params)
+                    continue
+    
                 # Skip keys that only matter for CFE-X
                 if key in ["a_Xinanjiang_inflection_point_parameter",
                            "b_Xinanjiang_shape_parameter",
@@ -91,7 +94,7 @@ class CFEConfigurationGenerator(ConfigurationGenerator):
     def _build_dynamic_values(self, cat_name, member_id):
 
         gdf = self.ctx.gdf
-
+        
         dynamic = {
             "soil_params.b": 1.1 if gdf["soil_b"][cat_name] == 1.0 else gdf["soil_b"][cat_name],
 
@@ -137,9 +140,8 @@ class CFEConfigurationGenerator(ConfigurationGenerator):
             })
 
     
-        # --------------------------
+
         # Surface partitioning logic
-        # --------------------------
         if "CFE-X" in self.ctx.formulation:
             soil_id = gdf["ISLTYP"][cat_name]
 
@@ -156,14 +158,57 @@ class CFEConfigurationGenerator(ConfigurationGenerator):
             })
         else:
             dynamic["surface_water_partitioning_scheme"] = "Schaake"
-            
 
-        # --------------------------
+
+        # Spatial parameters override uniform values
+        spatial_params = self.cfe_template.get("spatial", [])
+
+        for param in spatial_params:
+            dynamic[param] = self._apply_spatial_parameter(param, cat_name, member_id)
+
+
         # SFT logic
-        # --------------------------
         if "SFT" in self.ctx.formulation:
             dynamic.update({
                 "sft_coupled": True
             })
 
         return dynamic
+
+    def _apply_spatial_parameter(self, param, cat_name, member_id):
+
+        gdf = self.ctx.gdf
+        
+        if param == "refkdt":
+
+            if "IVGTYP_nlcd" not in gdf.columns:
+                raise ValueError("IVGTYP_nlcd column missing for spatial refkdt")
+
+            veg_type_nlcd = json.loads(gdf.loc[cat_name]['IVGTYP_nlcd'])
+            veg_type_nlcd = pd.DataFrame(veg_type_nlcd, columns=['v', 'frequency'])
+            veg_type = veg_type_nlcd['v'][member_id - 1]
+
+            refkdt_file = os.path.join(self.ctx.sandbox_dir , "configs/calib", "cfe_refkdt.yaml")
+
+            with open(refkdt_file, 'r') as file:
+                refkdt_data = yaml.safe_load(file)
+
+            classes = refkdt_data['refkdt']['classes']
+
+            class_veg = next(
+                (item for item in classes if item['usgs_id'] == veg_type),
+                None
+            )
+
+            if class_veg is None:
+                raise ValueError(f"No refkdt class found for vegetation {veg_type}")
+
+            return class_veg["init"]
+
+        # -------------------------------------------------
+        # Future spatial parameters go here
+        # -------------------------------------------------
+
+        else:
+            raise ValueError(f"Spatial logic not implemented for parameter '{param}'")
+        

@@ -1,0 +1,221 @@
+refkdt:
+
+  dataset: USGS_LULC
+  parameter: refkdt
+  description: >
+    Vegetation-dependent surface infiltration partitioning parameter
+    grouped by USGS land cover classification.
+
+  classes:
+
+    - usgs_id: 1
+      name: Urban and Built-Up Land
+      min: 0.5
+      max: 1.5
+      init: 1.0
+
+    - usgs_id: 2
+      name: Dryland Cropland and Pasture
+      min: 2.5
+      max: 3.5
+      init: 3.0
+
+    - usgs_id: 3
+      name: Irrigated Cropland
+      min: 3.0
+      max: 4.0
+      init: 3.2
+
+    - usgs_id: 4
+      name: Mixed Cropland
+      min: 2.5
+      max: 3.5
+      init: 3.0
+
+    - usgs_id: 5
+      name: Cropland/Grassland Mosaic
+      min: 2.5
+      max: 3.5
+      init: 3.0
+
+    - usgs_id: 6
+      name: Cropland/Woodland Mosaic
+      min: 3.5
+      max: 5.0
+      init: 4.0
+
+    - usgs_id: 7
+      name: Grassland
+      min: 2.5
+      max: 3.5
+      init: 3.0
+
+    - usgs_id: 8
+      name: Shrubland
+      min: 3.0
+      max: 4.5
+      init: 3.8
+
+    - usgs_id: 9
+      name: Mixed Shrub/Grass
+      min: 3.0
+      max: 4.0
+      init: 3.5
+
+    - usgs_id: 10
+      name: Savanna
+      min: 3.5
+      max: 5.0
+      init: 4.2
+
+    - usgs_id: 11
+      name: Deciduous Broadleaf Forest
+      min: 4.0
+      max: 6.0
+      init: 5.0
+
+    - usgs_id: 12
+      name: Deciduous Needleleaf Forest
+      min: 4.0
+      max: 6.0
+      init: 5.0
+
+    - usgs_id: 13
+      name: Evergreen Broadleaf Forest
+      min: 4.5
+      max: 6.5
+      init: 5.5
+
+    - usgs_id: 14
+      name: Evergreen Needleleaf Forest
+      min: 4.0
+      max: 6.0
+      init: 5.0
+
+    - usgs_id: 15
+      name: Mixed Forest
+      min: 4.0
+      max: 6.0
+      init: 5.0
+
+    - usgs_id: 16
+      name: Water Bodies
+      min: 0.0
+      max: 0.0
+      init: 0.0
+      note: No infiltration partitioning applied - all water added to runoff
+
+    - usgs_id: 17
+      name: Herbaceous Wetland
+      min: 5.0
+      max: 7.0
+      init: 6.0
+
+    - usgs_id: 18
+      name: Wooded Wetland
+      min: 5.0
+      max: 7.0
+      init: 6.0
+
+    - usgs_id: 19
+      name: Barren or Sparsely Vegetated
+      min: 1.5
+      max: 2.5
+      init: 2.0
+
+    - usgs_id: 20
+      name: Herbaceous Tundra
+      min: 2.0
+      max: 3.0
+      init: 2.5
+
+    - usgs_id: 21
+      name: Wooded Tundra
+      min: 3.5
+      max: 5.0
+      init: 4.2
+
+    - usgs_id: 22
+      name: Mixed Tundra
+      min: 2.5
+      max: 3.5
+      init: 3.0
+
+    - usgs_id: 23
+      name: Bare Ground Tundra
+      min: 1.0
+      max: 2.0
+      init: 1.5
+
+    - usgs_id: 24
+      name: Snow or Ice
+      min: 0.1
+      max: 0.5
+      init: 0.3
+
+    - usgs_id: 25
+      name: Playa
+      min: 0.5
+      max: 1.5
+      init: 1.0
+
+    - usgs_id: 26
+      name: Lava
+      min: 0.5
+      max: 2.0
+      init: 1.2
+
+    - usgs_id: 27
+      name: White Sand
+      min: 1.0
+      max: 2.0
+      init: 1.5
+
+
+# veg_refkdt_ranges = {
+
+#     # Urban / Impervious
+#     1:  {"range": (0.5, 1.5), "init": 1.0},  # Urban and Built-Up Land
+
+#     # Cropland / Herbaceous (Reference Class ~ NWM baseline)
+#     2:  {"range": (2.5, 3.5), "init": 3.0},  # Dryland Cropland and Pasture
+#     3:  {"range": (3.0, 4.0), "init": 3.2},  # Irrigated Cropland
+#     4:  {"range": (2.5, 3.5), "init": 3.0},  # Mixed Cropland
+#     5:  {"range": (2.5, 3.5), "init": 3.0},  # Cropland/Grassland Mosaic
+#     7:  {"range": (2.5, 3.5), "init": 3.0},  # Grassland
+#     20: {"range": (2.0, 3.0), "init": 2.5},  # Herbaceous Tundra
+
+#     # Crop/Wood Mix
+#     6:  {"range": (3.5, 5.0), "init": 4.0},  # Cropland/Woodland Mosaic
+
+#     # Shrub / Savanna
+#     8:  {"range": (3.0, 4.5), "init": 3.8},  # Shrubland
+#     9:  {"range": (3.0, 4.0), "init": 3.5},  # Mixed Shrub/Grass
+#     10: {"range": (3.5, 5.0), "init": 4.2},  # Savanna
+#     22: {"range": (2.5, 3.5), "init": 3.0},  # Mixed Tundra
+
+#     # Forest Systems (Higher Macroporosity)
+#     11: {"range": (4.0, 6.0), "init": 5.0},  # Deciduous Broadleaf Forest
+#     12: {"range": (4.0, 6.0), "init": 5.0},  # Deciduous Needleleaf Forest
+#     13: {"range": (4.5, 6.5), "init": 5.5},  # Evergreen Broadleaf Forest
+#     14: {"range": (4.0, 6.0), "init": 5.0},  # Evergreen Needleleaf Forest
+#     15: {"range": (4.0, 6.0), "init": 5.0},  # Mixed Forest
+#     21: {"range": (3.5, 5.0), "init": 4.2},  # Wooded Tundra
+
+#     # Wetlands (Very High Near-Surface Conductivity)
+#     17: {"range": (5.0, 7.0), "init": 6.0},  # Herbaceous Wetland
+#     18: {"range": (5.0, 7.0), "init": 6.0},  # Wooded Wetland
+
+#     # Bare / Sparse
+#     19: {"range": (1.5, 2.5), "init": 2.0},  # Barren or Sparsely Vegetated
+#     23: {"range": (1.0, 2.0), "init": 1.5},  # Bare Ground Tundra
+
+#     # Cryosphere / Special Surfaces
+#     24: {"range": (0.1, 0.5), "init": 0.3},  # Snow or Ice
+#     25: {"range": (0.5, 1.5), "init": 1.0},  # Playa
+#     26: {"range": (0.5, 2.0), "init": 1.2},  # Lava
+#     27: {"range": (1.0, 2.0), "init": 1.5},  # White Sand
+
+#     # Water (Handled Separately)
+#     16: {"range": (999.0, 999.0), "init": 999.0},  # Water Bodies (no infiltration partitioning)
+# }

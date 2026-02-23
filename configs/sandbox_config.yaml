@@ -56,7 +56,7 @@ formulation :
 
 simulation :
   task_type        : "<pick_option>" #------------------------------------- Supported options: calibvalid, calibration, validation, restart, control
-  gage_ids_input   :  "08020700"   #--------------------------------------- Provide a single gage id, or list of ids, or a .csv file (with columns gage_id and num_divides)
+  gage_ids_input   :  "01308000"   #--------------------------------------- Provide a single gage id, or list of ids, or a .csv file (with columns gage_id and num_divides)
   sim_name_suffix  :  "pet_cfe" #------------------------------------------ User specified name appended to the gage_id. For example, 01105000_pet_cfe
   #simulation_time : {"start_time" : "2016-10-01 00:00:00", "end_time" : "2018-09-30 23:00:00"} # only needed when task_type is control
   calibration_time : {"start_time" : "2016-10-01 00:00:00", "end_time" : "2018-09-30 23:00:00"} # Entire simulation period for calibration; including spinup period

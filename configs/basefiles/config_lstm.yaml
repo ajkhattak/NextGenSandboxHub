@@ -2,13 +2,16 @@
 train_cfg_file: ./trained_neuralhydrology_models/persistent_hourly_test_2601_152630/config.yml
 attributes_file: /Users/ahmadjankhattak/Core/projects/nwm_bm_sims/lstm_bm_v2.3/model-2/bm_LSTM_1.0_attrs.parquet
 static_attributes:
-  - "ari_ix_mean"
-  - "slp_dg_mean"
-  - "centroid_y"
-  - "ims_pc_mean"
-  - "ele_mt_mean"
-  - "snd_pct"
-  - "cly_pct"
-  - "lka_pc_sse"
-  - "areasqkm"
-  - "for_pc_forest_sse"
+  training:
+    ari_ix_mean: ari_ix_mean
+    slp_dg_mean: slp_dg_mean
+    centroid_y: lat_dec_deg
+    ims_pc_mean: ims_pc_mean
+    ele_mt_mean: ele_mt_mean
+    snd_pct: snd_pct
+    cly_pct: cly_pct
+    lka_pc_sse: lka_pc_sse
+    areasqkm: areasqkm
+    for_pc_forest_sse: for_pc_forest
+  bmi:
+    area_sqkm : areasqkm

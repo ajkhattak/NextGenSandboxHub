@@ -43,3 +43,7 @@ ice_content_threshold : 0.3
 
 num_timesteps: 1
 verbosity: 0
+
+# this section adds spatial hetereoneity to the parameters
+#spatial:
+#  - refkdt
