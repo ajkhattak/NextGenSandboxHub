@@ -22,19 +22,20 @@ subsetting :
   classification_method    : "fraction"  #----------------------------------- vegetation classfication method (majority or fraction). Defaults to 'majority' method
 
   # Note: only gage_ids that fall within the domain of the hydrofabric listed above will be subsetted
-  options :
-    use_gage_id :
-      use_gage_id  : TRUE #----------------------------------------------- TRUE or FALSE
-      gage_ids     : "01308000" #----------------------------------------- List of gage IDs, for instance, ["01105000","08070500"]
-    use_gage_file :
-      use_gage_file : FALSE  #-------------------------------------------- TRUE or FALSE
-      gage_file     : "<path_to_basin_ids_file>/basin_ids_file.csv" #----- Path to CSV file with column (set column name below) of basin gage IDs
-      column_name   : "USGS.ID" #----------------------------------------- Name of column of gage IDs
-    use_gpkg :
-      use_gpkg  : FALSE  #------------------------------------------------ TRUE or FALSE
-      gpkg_dir  : "<path_to_gpkgs_dir>" #--------------------------------- Path to base directory for all (already downloaded/processed) geopackages (or path to .gpkg file).
-      pattern   :  "gage_" #---------------------------------------------- Pattern of names, e.g., gage_<*> or hf_<*>
-      select    :  ["HUC_VPUID03W"]  #------------------------------------ Selected gages/gpkgs from the directory gpkg_dir
+  gages:
+    option: "ids"   # ------------------------------------------ OPTIONS: ids | file | gpkg
+
+    ids: ["01308000"] #----------------------------------------- List of gage IDs, for instance, ["01105000","08070500"]
+
+    file:
+      path: "<path_to_basin_ids_file>/basin_ids_file.csv" #----- Path to CSV file with column (set column name below) of basin gage IDs
+      column: "USGS.ID" #--------------------------------------- Name of column of gage IDs
+
+    gpkg:
+      dir: "<path_to_gpkgs_dir>" #------------------------------- Path to base directory for all (already downloaded/processed) geopackages (or path to .gpkg file).
+      pattern: "gage_" #----------------------------------------- Pattern of names, e.g., gage_<*> or hf_<*>
+      select: ["HUC_VPUID03W"] #--------------------------------- Selected gages/gpkgs from the directory gpkg_dir
+
 
 ########################################################################
 #forcing data is stored under <input_dir>/gage_id/data/forcing
@@ -66,6 +67,6 @@ simulation :
   restart_dir      : "<path_to_restart_dir>/{*}/202410042024_ngen_qaiklwj0_worker/" #----------- Restart experiment from the best iteration
   
   ensemble:
-    enabled: FALSE # ---------------------------------------------------------------- Ensemble ON/OFF (OPTIONS: TRUE/FALSE
+    enabled: FALSE # ---------------------------------------------------------------- Ensemble ON/OFF (OPTIONS: TRUE/FALSE)
     members: 2    # ---------------------------------------------------------------- Ensemble members (based on vegetation fraction)
     models : "PET"  # ---------------------------------------------------------------- Apply landcover-based tiling only to the listed model(s); other models in the formulation are executed normally. Multiple models, for example, ["PET", "CFE"]
