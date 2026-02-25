@@ -2,8 +2,8 @@
 #
 
 general:
-  input_dir  : "<path_to_input_directory>"  #-------------------------- user-specified input directory (all geopackage are stored to this dir)
-  output_dir : "<path_to_output_directory>" #-------------------------- user-specified output directory (all simulation outputs are stored here)
+  input_dir  : "<path_to_input_directory>"  #-------------------------- user-specified input directory (directory where all geopackage files are written when downloaded through the workflow, or where user-supplied gpkg files must be placed.)
+  output_dir : "<path_to_output_directory>" #-------------------------- user-specified output directory (directory where simulation outputs are written)
 
 
 ########################################################################
