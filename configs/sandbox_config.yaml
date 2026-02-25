@@ -66,6 +66,6 @@ simulation :
   restart_dir      : "<path_to_restart_dir>/{*}/202410042024_ngen_qaiklwj0_worker/" #----------- Restart experiment from the best iteration
   
   ensemble:
-    enabled: TRUE # ---------------------------------------------------------------- Ensemble ON/OFF
+    enabled: FALSE # ---------------------------------------------------------------- Ensemble ON/OFF (OPTIONS: TRUE/FALSE
     members: 2    # ---------------------------------------------------------------- Ensemble members (based on vegetation fraction)
     models : "PET"  # ---------------------------------------------------------------- Apply landcover-based tiling only to the listed model(s); other models in the formulation are executed normally. Multiple models, for example, ["PET", "CFE"]
