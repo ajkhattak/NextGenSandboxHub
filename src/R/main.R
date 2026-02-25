@@ -94,25 +94,36 @@ Setup <-function() {
   nlcd_data_path        <<- get_param(inputs, "subsetting$nlcd_data_path", FALSE)
   calculate_vegetation  <<- get_param(inputs, "subsetting$calculate_vegetation", FALSE)
   veg_method            <<- get_param(inputs, "subsetting$classification_method", "majority")
-
-  use_gage_id   <<- get_param(inputs, "subsetting$options$use_gage_id$use_gage_id", FALSE)
-  gage_ids      <<- get_param(inputs, "subsetting$options$use_gage_id$gage_ids", NULL)
   
-  use_gage_file <<- get_param(inputs, "subsetting$options$use_gage_file$use_gage_file", FALSE)
-  gage_file     <<- get_param(inputs, "subsetting$options$use_gage_file$gage_file", NULL)
-  column_name   <<- get_param(inputs, "subsetting$options$use_gage_file$column_name", "")
+  option <- get_param(inputs, "subsetting$gages$option", NULL)
   
-  use_gpkg       <<- get_param(inputs, "subsetting$options$use_gpkg$use_gpkg", FALSE)
-  gpkg_dir       <<- get_param(inputs, "subsetting$options$use_gpkg$gpkg_dir", NULL)
-  pattern        <<- get_param(inputs, "subsetting$options$use_gpkg$pattern", "Gage_")
-  selected_gpkgs <<- get_param(inputs, "subsetting$options$use_gpkg$select", NULL)
+  if (is.null(option)) stop("subsetting$gages$option must be defined. OPTIONS: ids | file | gpkg")
   
-  if (sum(use_gage_id, use_gage_file, use_gpkg) != 1){
-    print(glue("setup error: one condition needs to be TRUE, user provided: \n
-             use_gage_id   = {use_gage_id}, \n 
-             use_gage_file = {use_gage_file}, \n 
-             use_gpkg      = {use_gpkg}"))
-    return(1)
+  allowed <- c("ids", "file", "gpkg")
+  
+  if (!(option %in% allowed)) {
+    stop(glue("Invalid option '{option}'. Must be one of: {toString(allowed)}"))
+  }
+  
+  option_use_ids <<- option_use_file <<- option_use_gpkg <<- FALSE
+  
+  if (option == "ids") {
+    gage_ids <<- get_param(inputs, "subsetting$gages$ids", NULL)
+    if (is.null(gage_ids)) stop("ids must be provided when option = 'ids'")
+    option_use_ids <<- TRUE
+  }
+  
+  if (option == "file") {
+    gage_file   <<- get_param(inputs, "subsetting$gages$file$path", NULL)
+    column_name <<- get_param(inputs, "subsetting$gages$file$column", "")
+    option_use_file <<- TRUE
+  }
+  
+  if (option == "gpkg") {
+    gpkg_dir  <<- get_param(inputs, "subsetting$gages$gpkg$dir", NULL)
+    pattern   <<- get_param(inputs, "subsetting$gages$gpkg$pattern", "gage_")
+    selected_gpkgs  <<- get_param(inputs, "subsetting$gages$gpkg$select", NULL)
+    option_use_gpkg <<- TRUE
   }
   
   if (!file.exists(output_dir)) {
@@ -140,12 +151,12 @@ print ("SETUP DONE!")
 ################################ OPTIONS #######################################
 
 start_time <- Sys.time()
-if (use_gage_id == TRUE || use_gage_file == TRUE) {
+if (option_use_ids == TRUE || option_use_file == TRUE) {
   ################################ EXAMPLE 1 ###################################
   # For this example either provide a gage ID or a file to read gage IDs from
   # Modify this part according your settings
   
-  if (use_gage_file == TRUE) {
+  if (option_use_file == TRUE) {
     d = read.csv(gage_file,colClasses = c("character")) 
     gage_ids <- d[[column_name]]
       gage_ids <- zeroPad(gage_ids, 8)
@@ -166,7 +177,7 @@ if (use_gage_id == TRUE || use_gage_file == TRUE) {
                     )
   
   
-} else if (use_gpkg == TRUE) {
+} else if (option_use_gpkg == TRUE) {
   
   gage_files = list.files(gpkg_dir, full.names = TRUE, pattern = pattern)
 
