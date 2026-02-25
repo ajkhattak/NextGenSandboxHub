@@ -12,61 +12,6 @@ class LSTMConfigurationGenerator(ConfigurationGenerator):
     def _write_input_files(self, member_id, tag):
         self.write_lstm_input_files(member_id=member_id, tag=tag)
 
-
-    def write_lstm_input_files_train1(self, member_id=1, tag="cfg"):
-        # this will be removed; use the function below for any modifications
-        lstm_dir = os.path.join(self.ctx.output_dir, "configs", "lstm")
-        self.create_directory(lstm_dir)
-
-        lstm_basefile = os.path.join(
-            self.ctx.sandbox_dir,
-            "configs",
-            "basefiles",
-            "config_lstm.yaml"
-        )
-
-        if not os.path.exists(lstm_basefile):
-            raise FileNotFoundError(
-                f"Sample LSTM config file does not exist: {lstm_basefile}"
-            )
-
-        with open(lstm_basefile, "r") as f:
-            base_file = yaml.safe_load(f)
-
-        train_cfg_path = os.path.normpath(
-            os.path.join(
-                self.ctx.sandbox_dir,
-                "extern",
-                "lstm",
-                base_file.get("train_cfg_file"),
-            )
-        )
-
-        gpkg_name = os.path.basename(self.ctx.gpkg_file).split(".")[0]
-        gage_id = gpkg_name.split("_")[1]
-
-        for catID in self.ctx.catids:
-            cat_name = f"cat-{catID}"
-            fname = f"lstm_config_{cat_name}.yaml"
-
-            centroid = self.ctx.gdf.loc[cat_name, "geometry"].centroid
-
-            config = {
-                "train_cfg_file": train_cfg_path,
-                "area_sqkm": float(self.gdf.loc[cat_name, "divide_area"]),
-                "basin_id": gage_id,
-                "elev_mean": float(self.gdf.loc[cat_name, "elevation_mean"]),
-                "slope_mean": float(self.gdf.loc[cat_name, "terrain_slope"]),
-                "lat": float(centroid.y),
-                "lon": float(centroid.x),
-                "verbose": 0,
-                "time_step": "1 hour",
-                "initial_state": "zero",
-            }
-
-            with open(os.path.join(lstm_dir, fname), "w") as f:
-                yaml.dump(config, f, sort_keys=False)
-
     def write_lstm_input_files(self, member_id=1, tag="cfg"):
 
         if self.ctx.ensemble_enabled and "LSTM" in self.ctx.ensemble_models:
@@ -106,9 +51,6 @@ class LSTMConfigurationGenerator(ConfigurationGenerator):
         attributes_file = base_file.get("attributes_file")
         df_attr_div     = pd.read_parquet(attributes_file)
         df_attr_div     = df_attr_div.set_index("divide_id")
-
-        #static_attributes_input = base_file.get("static_attributes")
-        #static_attributes_mapping = base_file.get("static_attributes", {})
         
         with open(train_cfg_path, "r") as f:
             train_cfg = yaml.safe_load(f)
