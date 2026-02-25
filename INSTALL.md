@@ -110,7 +110,7 @@ For non-default input files, use
     OPTIONS = [-subset -forc -conf -run]
   ```
 - Option: `-subset` downloads geopackage(s) given a gage ID(s), extracts and locally compute TWI, GIUH, and Nash Cascade parameters; see `divide-attributes` in the gage_<basin_id>.gpkg file
-- Option: `-forc` downloads geopackage(s) given a gage ID(s)
+- Option: `-forc` downloads AORC forcings for geopackage(s)
 - Option: `-conf` generates configuration and realization files for the selected models/basins
 - Option: `-run` executes NextGen simulations with and without calibration
 
