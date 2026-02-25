@@ -144,12 +144,13 @@ class LSTMConfigurationGenerator(ConfigurationGenerator):
                 "basin_id": gage_id,
                 "verbose": 0,
                 "time_step": "1 hour",
-                "initial_state": "zero"
+                "initial_state": "zero",
+                "static_attributes": {}   # initialize
             }
 
             # Add training attributes
             for lstm_name, parquet_col in static_attrs_parquet_mapping.items():
-                config[lstm_name] = float(df_attr_div.loc[cat_name][parquet_col])
+                config["static_attributes"][lstm_name] = float(df_attr_div.loc[cat_name][parquet_col])
 
             # Add BMI attributes
             for bmi_name, parquet_col in static_attrs_bmi_mapping.items():
