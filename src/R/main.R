@@ -76,8 +76,8 @@ Setup <-function() {
   inputs = yaml.load_file(infile_config)
 
   output_dir    <<- inputs$general$input_dir
-  hf_version    <<- inputs$subsetting$hf_version
-  hf_gpkg_path  <<- inputs$subsetting$hf_gpkg_path
+  hf_version    <<- inputs$subsetting$hydrofabric$version
+  hf_gpkg_path  <<- inputs$subsetting$hydrofabric$gpkg_path
   
   source(paste0(sandbox_dir, "/src/R/install_load_libs.R"))
   source(glue("{sandbox_dir}/src/R/custom_functions.R"))
@@ -85,15 +85,15 @@ Setup <-function() {
   compute_divide_attributes <<- get_param(inputs, "subsetting$compute_divide_attributes", FALSE)
   
   # Newer DEM, better for oCONUS and other previously problematic basins
-  dem_input_file  <<- get_param(inputs, "subsetting$dem_input_file", "s3://lynker-spatial/gridded/3DEP/USGS_seamless_DEM_13.vrt")
+  dem_input_file  <<- get_param(inputs, "subsetting$dem$input_file", "s3://lynker-spatial/gridded/3DEP/USGS_seamless_DEM_13.vrt")
 
-  dem_output_dir  <<- get_param(inputs, "subsetting$dem_output_dir", "")
-  dem_aggregate_factor <<- get_param(inputs, "subsetting$dem_aggregate_factor", 3)
+  dem_output_dir  <<- get_param(inputs, "subsetting$dem$output_dir", "")
+  dem_aggregate_factor <<- get_param(inputs, "subsetting$dem$aggregate_factor", 3)
   
   # NLCD vegetation data parameters
-  nlcd_data_path        <<- get_param(inputs, "subsetting$nlcd_data_path", FALSE)
+  nlcd_data_path        <<- get_param(inputs, "subsetting$vegetation$nlcd_path", FALSE)
   calculate_vegetation  <<- get_param(inputs, "subsetting$calculate_vegetation", FALSE)
-  veg_method            <<- get_param(inputs, "subsetting$classification_method", "majority")
+  veg_method            <<- get_param(inputs, "subsetting$vegetation$classification_method", "majority")
   
   option <- get_param(inputs, "subsetting$gages$option", NULL)
   

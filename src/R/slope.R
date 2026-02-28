@@ -6,7 +6,10 @@
 # Function computes slope from a DEM to replace the hydrofabric slope values
 # DEFAULT UNITS = "degrees"
 
-slope_function <- function(div_infile, dem_output_dir) {
+slope_function <- function(div_infile) {
+  
+  dem_output_dir <- "dem"
+  
   div <- read_sf(div_infile, 'divides')
   
   # This was already run in twi_width.R
