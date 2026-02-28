@@ -7,8 +7,10 @@
 
 
 # Function computes Geomorphological Instantaneous Unit Hydrograph (GIUH)
-ComputeGIUH <- function(div_infile, dem_output_dir, vel_channel = 1, vel_overland = .5, 
+ComputeGIUH <- function(div_infile, vel_channel = 1, vel_overland = .5, 
                         vel_gully = .2, gully_threshold = 3) {
+  
+  dem_output_dir <- "dem"
   
   div <- read_sf(div_infile, 'divides')
   

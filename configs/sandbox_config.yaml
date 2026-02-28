@@ -10,16 +10,20 @@ general:
 # Subset a basin using hydrofabric; see src/R/main.R for further details
 # make sure to install yaml package using install.packages("yaml") if not installed already
 subsetting :
-  hf_version               : "2.2" #------------------------------------- Only enter version number, e.g. "2.2" or "2.1.1"
-  # Ensure that this gpkg matches the hf_version specified above:
-  hf_gpkg_path             : "<path_to>/conus_nextgen.gpkg"  #------------ For example, "<paht_to>/conus_nextgen.gpkg" # input
-  dem_output_dir           : "dem"    #----------------------------------- If set to null string, the dem.tif and associated files will be deleted at the end. If provide an absolute path, all .tif files will be moved to that directory.
-  dem_input_file           : "<path_to>/dem.vrt" #------------------------ Set to local dem.vrt file, if not available leave it empty # (OPTIONAL)
-  dem_aggregate_factor : 3 # --------------------------------------------- Aggregation factor to coarsen the DEM resolution; default is 3 for 10 cm DEM to get 30 x 30 m grids
+  hydrofabric:
+    version               : "2.2" #-------------------------------------- Only enter version number, e.g. "2.2" or "2.1.1"
+    # Ensure that this gpkg matches the hf_version specified above:
+    gpkg_path             : "<path_to>/conus_nextgen.gpkg"  #------------ For example, "<paht_to>/conus_nextgen.gpkg" # input
+  dem:
+    output_dir           : "dem"    #-------------------------------- If set to null string, the dem.tif and associated files will be deleted at the end. If provide an absolute path, all .tif files will be moved to that directory.
+    input_file           : "<path_to>/dem.vrt" #--------------------- Set to local dem.vrt file, if not available leave it empty # (OPTIONAL)
+    aggregate_factor : 3 # ------------------------------------------ Aggregation factor to coarsen the DEM resolution; default is 3 for 10 cm DEM to get 30 x 30 m grids
+
+  vegetation:
   # Path to NLCD data for vegetation type (IVGTYP) calculation
-  nlcd_data_path           : "<path_to>/Annual_NLCD_LndCov_2021_CU_C1V1.tif" # OPTIONAL
-  calculate_vegetation     : FALSE  #---------------------------------------- Set to FALSE to skip vegetation calculation # OPTIONAL
-  classification_method    : "fraction"  #----------------------------------- vegetation classfication method (majority or fraction). Defaults to 'majority' method
+    enabled                  : FALSE  #---------------------------------------- Set to FALSE to skip vegetation calculation # OPTIONAL
+    nlcd_path                : "<path_to>/Annual_NLCD_LndCov_2021_CU_C1V1.tif" # OPTIONAL
+    classification_method    : "fraction"  #----------------------------------- vegetation classfication method (majority or fraction). Defaults to 'majority' method
 
   # Note: only gage_ids that fall within the domain of the hydrofabric listed above will be subsetted
   gages:
@@ -40,8 +44,8 @@ subsetting :
 ########################################################################
 #forcing data is stored under <input_dir>/gage_id/data/forcing
 forcings : 
-  forcing_format  : ".nc" #--------------------------------------------- Format .nc or .csv (recommended option .nc)
-  forcing_time    : {"start_time" : "2016-10-01 00:00:00", "end_time" : "2020-09-30 23:00:00"} #---------- Forcing data time range [1-1-2016,12-31-2020]; simulation start/end times must fall within this period
+  format  : ".nc" #----------------------------------------------- Format .nc or .csv (recommended option .nc)
+  time    : {"start_time" : "2016-10-01 00:00:00", "end_time" : "2020-09-30 23:00:00"} #---------- Forcing data time range [1-1-2016,12-31-2020]; simulation start/end times must fall within this period
 
   domain            : "conus"        #------------------------------------ options = ["conus", "HI", "PR", 'AK']
 

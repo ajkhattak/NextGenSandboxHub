@@ -30,8 +30,8 @@ class ForcingProcessor:
         self.dsim             = self.config['formulation']
         self.verbosity        = self.dsim.get('verbosity', 0)
         self.dforcing         = self.config['forcings']
-        self.forcing_time     = self.dforcing["forcing_time"]
-        self.forcing_format   = self.dforcing.get('forcing_format', '.nc')
+        self.forcing_time     = self.dforcing["time"]
+        self.forcing_format   = self.dforcing.get('format', '.nc')
         sandbox_build_dir     = Path(os.environ.get("SANDBOX_BUILD_DIR"))
         self.forcing_venv_dir = self.dforcing.get('forcing_venv_dir', os.path.join(sandbox_build_dir, "venv", "venv_forcing"))
 

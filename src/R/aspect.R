@@ -5,7 +5,10 @@
 # ########################### Slope ########################
 # Function computes aspect from a DEM to replace the hydrofabric aspect values
 
-aspect_function <- function(div_infile, dem_output_dir) {
+aspect_function <- function(div_infile) {
+  
+  dem_output_dir <- "dem"
+  
   div <- read_sf(div_infile, 'divides')
 
   dem <- rast(glue("{dem_output_dir}/dem_corr.tif"))
