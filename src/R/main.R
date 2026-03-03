@@ -31,16 +31,8 @@
 ################################ SETUP #########################################
 # STEP #1: INSTALL REQUIRED PACKAGES 
 # - set sandbox_dir (basin_sandbox repository directory)
-# - set options for installing/reinstalling hydrofabric and other packages 
 # - set dem_infile (defaults to S3 .vrt file)
 # - set output_dir (geopackages and DEM files will be stored here)
-
-# - reinstall_hydrofabric    # Defaults to FALSE. TRUE updates/overwrites the existing hydrofabric
-# - reinstall_arrow          # Defaults to FALSE. old arrow package or arrow installed without S3 support can cause issues, 
-                             # typical error msg "Error: NotImplemented: Got S3 URI but Arrow compiled without S3 support"
-                             # setting it to TRUE to install arrow package with S3 support 
-                             # (see install_load_libs.R for more instructions)
-# - dem_infile = "/vsicurl/https://lynker-spatial.s3.amazonaws.com/gridded-resources/dem.vrt"
 
 # STEP 8a REQUIRED - download NLCD data for the domain of interest and set the path to the NLCD data
 # Links to recent NLCD data for each domain:
@@ -65,7 +57,7 @@ Setup <-function() {
   } else {
     sandbox_dir   <<- "<path_to_sandboxhub>"
     infile_config <-  "<path_to_sandboxhub>/configs/sandbox_config.yaml"
-  } 
+  }
 
   if (!file.exists(infile_config)) {
     print(paste0("input config file does not exist, provided: ", infile_config))
