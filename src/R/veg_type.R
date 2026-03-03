@@ -6,6 +6,12 @@
 # Calculate vegetation type(s) from NLCD and convert the veg type ID to Noah-MP (USGS) look table.
 # Supports either majority/mode class or fractional dominant N vegetation types.
 
+# Links to recent NLCD data for each domain:
+# - CONUS (2021): https://www.mrlc.gov/downloads/sciweb1/shared/mrlc/data-bundles/Annual_NLCD_LndCov_2021_CU_C1V1.zip
+# - Puerto Rico (2001): https://www.mrlc.gov/downloads/sciweb1/shared/mrlc/data-bundles/PR_landcover_wimperv_10-28-08_se5.zip
+# - Hawaii (2001): https://www.mrlc.gov/downloads/sciweb1/shared/mrlc/data-bundles/HI_landcover_wimperv_9-30-08_se5.zip
+# - Alaska (2011): https://www.mrlc.gov/downloads/sciweb1/shared/mrlc/data-bundles/NLCD_2016_Land_Cover_AK_20200724.zip
+
 # Function to calculate majority vegetation type from NLCD data on disk and convert to NWM codes
 # for veg type description see https://www.mrlc.gov/data/legends/national-land-cover-database-class-legend-and-description
 ComputeVegTypeNLCD <- function(div_infile, 
@@ -126,5 +132,5 @@ aggregate_nlcd_to_nwm <- function(row, nlcd_to_nwm_lookup) {
     arrange(desc(fraction))
 }
 
-#Majority is now computed in NWM space after NLCD→NWM aggregation, using the same fractional machinery as the fraction method.
-# Dominance must be computed after categorical aggregation, never before.
+#Majority is now computed in NWM space after NLCD to NWM aggregation
+# Dominance must be computed after categorical aggregation, not before.
