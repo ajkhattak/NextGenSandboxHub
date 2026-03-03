@@ -40,52 +40,55 @@ SANDBOX_BUILD_DIR, SANDBOX_DIR, SANDBOX_VENV
 ### <ins>  Step 2. Hydrofabric Installation
 Ensure R and Rtools are already installed before proceeding. There are two ways to install the required packages:
   #### Option 1: Using RStudio
-  1. Open RStudio
-  2. Load and run the installation script by sourcing it:
-     - Open `<path_to_sandboxhub>/src/R/install_load_libs.R` in RStudio.
-     - Click Source to execute the script.
-     - Alternatively, run the following command in the RStudio Console:
-       ```
-       source("~/<path_to_sandboxhub>/src/R/install_load_libs.R")
-       ```
+   - Open `<path_to_sandboxhub>/src/R/install_load_libs.R` in RStudio. Click Source to execute the script.
+   - Alternatively, run the following command in the RStudio Console:
+     ```
+     source("~/<path_to_sandboxhub>/src/R/install_load_libs.R")
+     ```
   #### Option 2: Using the Command Line
   Run the following command in a terminal or command prompt:
   ```
-   Rscript <path_to_sandboxhub>/src/R/install_load_libs.R
+   Rscript $SANDBOX_DIR/src/R/install_load_libs.R
   ```
 
-### <ins> Step 3. Hydrofabric Subsetting
-  - Dependency: Step 2
+### <ins> Step 3. Install NextGen (ngen) and Required Models
+> **Important:** Before continuing to later steps, you must install and build ngen and the required routing/models components.
+
+> **Note:** The sandbox workflow assumes that [ngen](https://github.com/NOAA-OWP/ngen) and models including [t-route](https://github.com/NOAA-OWP/t-route) have been built in the Python virtual environment created in Step 1.
+Please activate the sandbox environmental and follow the instructions in the [build_models](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/build_models.sh) script to build ngen and models.
+
+### <ins> Step 4. Setup configuration file
+Open the configuration file 
+```
+$SANDBOX_DIR/configs/sandbox_config.yaml
+```
+Review and update the blocks in [sandbox_config.yaml](configs/sandbox_config.yaml) to match your local environment. The file already contains detailed inline instructions for each configuration block.
+
+### <ins> Step 5. Hydrofabric Subsetting
+  - Dependency: Step 2 & Step 4
   - Download domain (CONUS or oCONUS) from [lynker-spatial](https://www.lynker-spatial.com/data?path=hydrofabric%2Fv2.2%2F), for instance conus/conus_nextgen.gpkg
-  - open `<path_to_sandboxhub>/configs/sandbox_config.yaml` [here](configs/sandbox_config.yaml) and adjust sandbox_dir, input_dir, output_dir, and subsetting according to your local settings
   - Now there are two options to proceed:
       - run `sandbox -subset`
       - or open `<path_to_sandboxhub>/src/R/main.R` in RStudio and source on main.R. Note Set file name `infile_config` [here](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/src/R/main.R#L53) 
     
-    Either one will install the hydrofabric and several other libraries, and if everything goes well, a basin geopackage will be subsetted and stored under `<input_dir>/<basin_id>/data/gage_<basin_id>.gpkg`
+    If everything goes well, a basin geopackage will be subsetted and stored under `<input_dir>/<gage_id>/data/gage_<gage_id>.gpkg`
 
-### <ins> Step 4. Forcing Data Download
-The workflow uses [CIROH_DL_NextGen](https://github.com/ajkhattak/CIROH_DL_NextGen) forcing_prep tool to donwload atmospheric forcing data. It uses a Python environment (`~/.venv_forcing`) that is created during the workflow setup step (Step 1). To download the forcing data run:
+### <ins> Step 6. Forcing Data Download
+The workflow uses [CIROH_DL_NextGen](https://github.com/ajkhattak/CIROH_DL_NextGen) forcing_prep tool to download atmospheric forcing data. To download the forcing data run:
 ```
-   sandbox -forc
+   sandbox -forc -i <sandbox_config_filename.yaml>
 ```
 
->===============================================================================
->### Note: Steps 5 and 6 require both the ngen and models builds. Please follow the instructions in the [build_models](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/build_models.sh) script to build ngen and models.
->================================================================================
-
-> **Note:** The sandbox workflow assumes that [ngen](https://github.com/NOAA-OWP/ngen) and models including [t-route](https://github.com/NOAA-OWP/t-route) have been built in the Python virtual environment created in Step 1.
-
-### <ins>  Step 5. Generate Configuration and Realization Files
-Setup the sandbox config file [here](configs/sandbox_config.yaml), especially the `formulation` and `simulation` blocks, then run:
+### <ins>  Step 7. Generate Configuration and Realization Files
+If you have not already done so, review and update the sandbox config file [here](configs/sandbox_config.yaml), particularly the `formulation` and `simulation` blocks, then run:
  ```
-    sandbox -conf
+    sandbox -conf 
  ```
 For non-default input files, use
  ```
     sandbox -conf -i <sandbox_config_filename.yaml> -j <calib_config_filename.yaml>
  ```
-### <ins> Step 6. Run Calibration/Validation Simulations
+### <ins> Step 8. Run Calibration/Validation Simulations
 Run the following command — assuming you have already set up the sandbox configuration file [here](configs/sandbox_config.yaml) and calibration configuration file [here](configs/calib_config.yaml), and have successfully completed the steps above.
  ```
     sandbox -run
@@ -95,10 +98,13 @@ For non-default input files, use
     sandbox -run -i <sandbox_config_filename.yaml> -j <calib_config_filename.yaml>
  ```
 #### Summary
-1. Subset divide using hydrofabric
-2. Download forcing data
-3. Generate configuration files
-4. Run Simulations: Using
+1. Install Sandbox virtual environemnt
+2. Install hydrofabric
+3. Install ngen and models
+4. Subset divide
+5. Download forcing data
+6. Generate configuration files
+7. Run Simulations: Using
   ```
     sandbox option
     OPTIONS = [-subset -forc -conf -run]
