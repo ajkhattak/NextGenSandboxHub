@@ -7,12 +7,12 @@
 # main script that loops over all the gage IDs and computes giuh/twi etc.
 DriverGivenGageIDs <- function(gage_ids, 
                                output_dir,
+                               dem_aggregate_factor,
                                dem_input_file = NULL,
                                dem_output_dir = "",
                                compute_divide_attributes = FALSE,
                                nlcd_data_path = "",
                                calculate_vegetation = FALSE,
-                               dem_aggregate_factor = 3,
                                veg_method = NULL
                                ) 
   {
@@ -43,8 +43,7 @@ ProcessCatchmentID <- function(id) {
   wbt_wd(getwd())
 
   # DEM and related files (such as projected/corrected DEMs, and specific contributing area rasters are stored here)
-  dem_dir = "dem"
-  dir.create(dem_dir, recursive = TRUE, showWarnings = FALSE)
+  dir.create("dem", recursive = TRUE, showWarnings = FALSE)
   dir.create("data", recursive = TRUE, showWarnings = FALSE)
 
   failed <- TRUE
@@ -53,7 +52,6 @@ ProcessCatchmentID <- function(id) {
     cat ("Processing catchment: ", id, "\n")
     RunDriver(gage_id = id,
               dem_input_file = dem_input_file,
-              dem_output_dir = dem_dir,
               compute_divide_attributes = compute_divide_attributes,
               dem_aggregate_factor = dem_aggregate_factor,
               veg_method = veg_method
@@ -90,12 +88,12 @@ ProcessCatchmentID <- function(id) {
 DriverGivenGPKG <- function(gage_files, 
                             gpkg_dir, 
                             output_dir,
-                            dem_output_dir = "",
+                            dem_aggregate_factor,
+                            dem_output_dir,
                             dem_input_file = NULL,
                             compute_divide_attributes = FALSE,
                             nlcd_data_path = "",
                             calculate_vegetation = FALSE,
-                            dem_aggregate_factor = 3,
                             veg_method = NULL
                             ) 
   {
@@ -138,8 +136,8 @@ ProcessGPKG <- function(gfile, failed_dir) {
 
   # DEM and related files (such as projected/corrected DEMs, and specific contributing 
   # area rasters are stored here)
-  dem_dir = "dem"
-  dir.create(dem_dir, recursive = TRUE, showWarnings = FALSE)
+  
+  dir.create("dem", recursive = TRUE, showWarnings = FALSE)
   dir.create("data", recursive = TRUE, showWarnings = FALSE)
   file.copy(gfile, "data")
 
@@ -154,7 +152,6 @@ ProcessGPKG <- function(gfile, failed_dir) {
 
     RunDriver(is_gpkg_provided = TRUE,
               loc_gpkg_file = local_gpkg_file,
-              dem_output_dir = dem_dir,
               dem_input_file = dem_input_file,
               compute_divide_attributes = compute_divide_attributes,
               dem_aggregate_factor = dem_aggregate_factor,
@@ -194,7 +191,6 @@ ProcessGPKG <- function(gfile, failed_dir) {
 RunDriver <- function(gage_id = NULL, 
                       is_gpkg_provided = FALSE, 
                       dem_input_file = NULL,
-                      dem_output_dir,
                       loc_gpkg_file = "",
                       compute_divide_attributes = FALSE,
                       twi_pre_computed_option = FALSE,
@@ -241,9 +237,11 @@ RunDriver <- function(gage_id = NULL,
             layers = c("divides", "flowpaths", "network", "nexus")
         }
         if (domain != "conus"){ # If the gage is in oCONUS, query using flowpath id
+
           flowpath_id <- sf::read_sf(hf_gpkg, query = glue::glue(
             "SELECT hf_id FROM hydrolocations WHERE hl_reference || '-' || hl_link = 'Gages-{gage_id}'"
           ))$hf_id
+
           hfsubsetR::get_subset(comid = flowpath_id,
                                 outfile = outfile,
                                 gpkg = hf_gpkg,
@@ -284,6 +282,7 @@ RunDriver <- function(gage_id = NULL,
 
   # check if the divide-attributes layer has the same number of rows as the divides layer
   if (!compute_divide_attributes) {
+
     check_divs  <- st_read(outfile, layer = 'divides')
     check_attrs <- st_read(outfile, layer = 'divide-attributes')
 
@@ -303,7 +302,7 @@ RunDriver <- function(gage_id = NULL,
     }
 
   }
- 
+
   ## Stop if .gpkg does not exist
 
   if (!file.exists(outfile)) {
@@ -336,16 +335,16 @@ RunDriver <- function(gage_id = NULL,
   ############################### GENERATE TWI ##################################
   # STEP #5: Generate TWI and width function and write to the geopackage
   # Note: The default distribution = 'quantiles'
-
+  
   start.time <- Sys.time()
-  dem_corr_file <- glue("{dem_output_dir}/dem_corr.tif")
+  dem_corr_file <- glue("dem/dem_corr.tif")
 
   if (file.exists(dem_corr_file)) {
     message("dem/dem_corr.tif file exists, so skipping this step..")
   } else {
     message("DEM correction file does not exist.")
-    GetDEM(div_infile = outfile, dem_input_file, dem_output_dir,
-           buffer_m = 2000, aggregate_factor = dem_aggregate_factor)
+    GetDEM(div_infile = outfile, dem_input_file, buffer_m = 2000, 
+           aggregate_factor = dem_aggregate_factor)
   }
 
 
@@ -354,10 +353,12 @@ RunDriver <- function(gage_id = NULL,
 
   print("STEP: Computing TWI and Width function .................")
   start.time <- Sys.time()
-  twi <- ComputeTWI(div_infile = outfile, dem_output_dir = dem_output_dir,
-                    distribution = 'simple', nclasses = 30)
+  
+  twi <- ComputeTWI(div_infile = outfile,
+                    distribution = 'simple', 
+                    nclasses = 30)
 
-  width_dist <- ComputeWidth(div_infile = outfile, dem_output_dir = dem_output_dir)
+  width_dist <- ComputeWidth(div_infile = outfile)
 
   twi_dat_values = data.frame(ID = twi$divide_id, twi = twi$fun.twi,
                               width_dist = width_dist$fun.downslope_fp_length)
@@ -394,7 +395,7 @@ RunDriver <- function(gage_id = NULL,
   vel_gully       <- 0.2 # meter per second
   gully_threshold <- 30.0 # m (longest , closer to 10-30 m, Refs) 
 
-  giuh_compute <- ComputeGIUH(div_infile = outfile, dem_output_dir = dem_output_dir, 
+  giuh_compute <- ComputeGIUH(div_infile = outfile, 
                               vel_channel, vel_overland, vel_gully, gully_threshold)
 
   #giuh_compute[2,] %>% t()
@@ -434,11 +435,11 @@ RunDriver <- function(gage_id = NULL,
 
   #######################. COMPUTE TERRAIN SLOPE ###########################
   # STEP #8: Take slope from the slope grid calculated in the TWI function
-  slope <-  slope_function(div_infile = outfile, dem_output_dir = dem_output_dir)
+  slope <-  slope_function(div_infile = outfile)
 
   #######################. COMPUTE ASPECT ###########################
   # STEP #8b: Compute aspect from the DEM 
-  aspect <-  aspect_function(div_infile = outfile, dem_output_dir = dem_output_dir)
+  aspect <-  aspect_function(div_infile = outfile)
   ####################### WRITE MODEL ATTRIBUTE FILE ###########################
   # STEP #9: Append GIUH, TWI, width function, slope, and Nash cascade N and K parameters
   # to model attributes layers
@@ -478,9 +479,7 @@ RunDriver <- function(gage_id = NULL,
   reprojection_function(outfile)
 }
 
-clean_move_dem_dir <- function(id = id,
-                               output_dir = output_dir,
-                               dem_output_dir = dem_output_dir) {
+clean_move_dem_dir <- function(id, output_dir, dem_output_dir) {
 
   dem_target <- glue("{dem_output_dir}/{id}")
   dem_source <- glue("{output_dir}/{id}/dem")
