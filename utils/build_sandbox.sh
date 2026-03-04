@@ -16,13 +16,12 @@ BASH_FILE="${BASH_FILE:-$HOME/.zshrc}" # <- change this to your local settings o
 echo "$BUILD_SANDBOX"       # empty
 echo "$BASH_FILE"           # still defaults to ~/.zshrc
 
-PYTHON_VERSION="python3.11"
 
 ######## PATHS #########
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SANDBOX_DIR="$(dirname "$SCRIPT_DIR")"
-SANDBOX_BUILD_DIR="$SANDBOX_DIR/sandbox_build"
+SANDBOX_BUILD_DIR="$(dirname "$SANDBOX_DIR")/sandbox_build"
 NGEN_DIR="$SANDBOX_BUILD_DIR/ngen"
 
 VENV_SANDBOX_PATH="$SANDBOX_BUILD_DIR/venv/venv_sandbox_py3.11"
@@ -45,12 +44,26 @@ source "$BASH_FILE"
 
 #####################################################
 build_sandbox()
-{    
-    # Check if python3.11 is available
-    if ! command -v $PYTHON_VERSION &>/dev/null; then
-        echo "ErrorMsg: $PYTHON_VERSION is not installed or not in your PATH."
+{
+
+    # FIND PYTHON >= 3.11
+    for cmd in python3 python; do
+        if command -v "$cmd" &>/dev/null; then
+            if "$cmd" -c "import sys; sys.exit(0 if sys.version_info >= (3,11) else 1)" &>/dev/null; then
+                PYTHON_CMD="$cmd"
+                break
+            fi
+        fi
+    done
+
+    if [ -z "$PYTHON_CMD" ]; then
+        echo "ErrorMsg: Python >= 3.11 is required and not found in PATH."
         return 1
     fi
+
+    PY_VERSION=$("$PYTHON_CMD" -c "import sys; print(sys.version.split()[0])")
+    echo "Using Python: $PYTHON_CMD ($PY_VERSION)"
+
 
     # -------------------------------
     # USE CONDA IF AVAILABLE
@@ -86,7 +99,7 @@ build_sandbox()
         # -------------------------------
 	echo "Conda not found -- building sandbox virtual python environment ($VENV_SANDBOX_PATH)"
         mkdir -p "$VENV_SANDBOX_PATH"
-        $PYTHON_VERSION -m venv "$VENV_SANDBOX_PATH"
+        $PYTHON_CMD -m venv "$VENV_SANDBOX_PATH"
         source "$VENV_SANDBOX_PATH/bin/activate"
         pip install -U pip==24.0 "setuptools>=64.0,<69.0" wheel
 
@@ -127,13 +140,16 @@ build_sandbox()
     ############################################
     echo "Creating virtual python environment for forcing downloader ($VENV_FORCING_PATH)"
     mkdir -p "$VENV_FORCING_PATH"
-    $PYTHON_VERSION -m venv "$VENV_FORCING_PATH"
+    $PYTHON_CMD -m venv "$VENV_FORCING_PATH"
     source "$VENV_FORCING_PATH/bin/activate"
     
     pip install -U pip==25.0
     pip install -r ./doc/env/requirements_forcing.txt
     deactivate
-
+ 
+    echo "sourcing bash file"
+    source $BASH_FILE
+    
     ############################################
     # LSTM
     ############################################
