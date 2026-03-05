@@ -10,7 +10,7 @@ DriverGivenGageIDs <- function(gage_ids,
                                dem_aggregate_factor,
                                dem_input_file = NULL,
                                dem_output_dir = "",
-                               compute_divide_attributes = FALSE,
+                               compute_divide_attributes = TRUE,
                                nlcd_data_path = "",
                                calculate_vegetation = FALSE,
                                veg_method = NULL
@@ -91,7 +91,7 @@ DriverGivenGPKG <- function(gage_files,
                             dem_aggregate_factor,
                             dem_output_dir,
                             dem_input_file = NULL,
-                            compute_divide_attributes = FALSE,
+                            compute_divide_attributes = TRUE,
                             nlcd_data_path = "",
                             calculate_vegetation = FALSE,
                             veg_method = NULL
@@ -192,8 +192,7 @@ RunDriver <- function(gage_id = NULL,
                       is_gpkg_provided = FALSE, 
                       dem_input_file = NULL,
                       loc_gpkg_file = "",
-                      compute_divide_attributes = FALSE,
-                      twi_pre_computed_option = FALSE,
+                      compute_divide_attributes = TRUE,
                       dem_aggregate_factor = 3,
                       veg_method = NULL
                       ) {
@@ -218,61 +217,52 @@ RunDriver <- function(gage_id = NULL,
       } else {
         domain <- "conus"
       }
+    
+    # If the gpkg exists, use that for subsetting
+    layers = c("divides", "flowpaths", "network", "nexus",
+               "flowpath-attributes","divide-attributes")
+    
+    if (hf_version == "2.2") {
+      if (file.exists(hf_gpkg_path)) {
+        print('USING LOCAL GPKG FILE FOR SUBSETTING')
+        hf_gpkg <- hf_gpkg_path
+      } else {
+        print('USING REMOTE GPKG FILE FOR SUBSETTING')
+        hf_gpkg = NULL
+      }
 
-      # If the gpkg exists, use that for subsetting
-      if (hf_version == "2.2") {
+      if (domain != "conus") { # If the gage is in oCONUS, query using flowpath id
 
-        if (file.exists(hf_gpkg_path)) {
-          print('USING LOCAL GPKG FILE FOR SUBSETTING')
-          hf_gpkg <- hf_gpkg_path
-        } else {
-          print('USING REMOTE GPKG FILE FOR SUBSETTING')
-          hf_gpkg = NULL
-        }
+        flowpath_id <- sf::read_sf(hf_gpkg, query = glue::glue(
+          "SELECT hf_id FROM hydrolocations WHERE hl_reference || '-' || hl_link = 'Gages-{gage_id}'"
+        ))$hf_id
 
-        layers = c("divides", "flowpaths", "network", "nexus",
-                   "flowpath-attributes","divide-attributes")
-
-        if (compute_divide_attributes) {
-            layers = c("divides", "flowpaths", "network", "nexus")
-        }
-        if (domain != "conus"){ # If the gage is in oCONUS, query using flowpath id
-
-          flowpath_id <- sf::read_sf(hf_gpkg, query = glue::glue(
-            "SELECT hf_id FROM hydrolocations WHERE hl_reference || '-' || hl_link = 'Gages-{gage_id}'"
-          ))$hf_id
-
-          hfsubsetR::get_subset(comid = flowpath_id,
-                                outfile = outfile,
-                                gpkg = hf_gpkg,
-                                hf_version = hf_version,
-                                lyrs = layers,
-                                type = 'nextgen',
-                                overwrite = TRUE)
-        } else{ # If the gage is in CONUS, query using hl_uri
-          hfsubsetR::get_subset(hl_uri = glue("gages-{gage_id}"),
-                                outfile = outfile,
-                                gpkg = hf_gpkg,
-                                hf_version = hf_version,
-                                lyrs = layers,
-                                type = 'nextgen',
-                                overwrite = TRUE)
-        }
-      } else if (hf_version == "2.1.1") {
-        layers = c("divides", "flowlines", "network", "nexus",
-                   "flowpath-attributes","model-attributes")
-        
-        if (compute_divide_attributes) {
-          layers = c("divides", "flowlines", "network", "nexus")
-        }
-
-        hfsubsetR::get_subset(nldi_feature = list(featureSource="nwissite", featureID=glue("USGS-{gage_id}")),
-                              outfile = outfile, 
-                              hf_version = hf_version, 
-                              domain = "conus",
+        hfsubsetR::get_subset(comid = flowpath_id,
+                              outfile = outfile,
+                              gpkg = hf_gpkg,
+                              hf_version = hf_version,
                               lyrs = layers,
+                              type = 'nextgen',
+                              overwrite = TRUE)
+      } else { # If the gage is in CONUS, query using hl_uri
+        hfsubsetR::get_subset(hl_uri = glue("gages-{gage_id}"),
+                              outfile = outfile,
+                              gpkg = hf_gpkg,
+                              hf_version = hf_version,
+                              lyrs = layers,
+                              type = 'nextgen',
                               overwrite = TRUE)
       }
+    } else if (hf_version == "2.1.1") {
+      
+      hfsubsetR::get_subset(nldi_feature = list(featureSource="nwissite", featureID=glue("USGS-{gage_id}")),
+                            outfile = outfile, 
+                            hf_version = hf_version, 
+                            domain = "conus",
+                            lyrs = layers,
+                            overwrite = TRUE)
+      }
+    
     time.taken <- as.numeric(Sys.time() - start.time, units = "secs") #end.time - start.time
     print (paste0("Time (geopackage) = ", time.taken))
 
@@ -281,7 +271,7 @@ RunDriver <- function(gage_id = NULL,
   }
 
   # check if the divide-attributes layer has the same number of rows as the divides layer
-  if (!compute_divide_attributes) {
+  if (compute_divide_attributes) {
 
     check_divs  <- st_read(outfile, layer = 'divides')
     check_attrs <- st_read(outfile, layer = 'divide-attributes')
@@ -301,6 +291,9 @@ RunDriver <- function(gage_id = NULL,
       stop()
     }
 
+  } else {
+    print(glue("compute_divide_attributes is FALSE... returning"))
+    return()
   }
 
   ## Stop if .gpkg does not exist
@@ -310,47 +303,19 @@ RunDriver <- function(gage_id = NULL,
     stop()
     }
 
-
-  ########################## MODELS' ATTRIBUTES ##################################
-  # STEP #4: Add models' attributes
-  ########################## MODELS' ATTRIBUTES ##################################
-  # STEP #4: Add models' attributes from the parquet file to the geopackage
-  # this TRUE will be changed once synchronized HF bugs are fixed
-
-  if(compute_divide_attributes) {
-     #print layers before appending model attributes
-     layers_before_cfe_attr <- sf::st_layers(outfile)
-     print (layers_before_cfe_attr$name)
-     start.time <- Sys.time()
-
-     d_attr <- GetModelAttributes(div_infile = outfile, hf_version = hf_version)
-
-     time.taken <- as.numeric(Sys.time() - start.time, units = "secs") #end.time - start.time
-     print (paste0("Time (model attrs) = ", time.taken))
-   } else {
-     d_attr <- read_sf(outfile, 'divide-attributes')
-   }
-
-
-  ############################### GENERATE TWI ##################################
-  # STEP #5: Generate TWI and width function and write to the geopackage
-  # Note: The default distribution = 'quantiles'
+  ############################### GET DEM ##################################
   
   start.time <- Sys.time()
-  dem_corr_file <- glue("dem/dem_corr.tif")
-
-  if (file.exists(dem_corr_file)) {
-    message("dem/dem_corr.tif file exists, so skipping this step..")
-  } else {
-    message("DEM correction file does not exist.")
-    GetDEM(div_infile = outfile, dem_input_file, buffer_m = 2000, 
+  
+  GetDEM(div_infile = outfile, dem_input_file, buffer_m = 2000, 
            aggregate_factor = dem_aggregate_factor)
-  }
-
 
   time.taken <- as.numeric(Sys.time() - start.time, units = "secs") #end.time - start.time
   print (paste0("Time (dem func) = ", time.taken))
 
+  ############################### GENERATE TWI ##################################
+  # Note: The default distribution = 'quantiles'
+  
   print("STEP: Computing TWI and Width function .................")
   start.time <- Sys.time()
   
@@ -368,26 +333,13 @@ RunDriver <- function(gage_id = NULL,
   colnames(twi_dat_values) <- c('divide_id', 'twi', 'width_dist')
   names(twi_dat_values)
 
-
-  ### NOTES: Pre-computed TWI
-  # Note 1: model attributes layer ships with pre-computed TWI distribution with four equal quantiles
-  #d_attr$twi_dist_4
-
-  # Note 2: The user can also compute their own distribution from the pre-computed TWI using the dataset
-  # available at s3://lynker-spatial/gridded-resources/twi.vrt
-
-  if (twi_pre_computed_option) {
-    twi_pre_computed <- twi_pre_computed_function(div_infile = outfile, distribution = 'simple',
-                                                  nclasses = 30)
-  }
-
   time.taken <- as.numeric(Sys.time() - start.time, units = "secs")
   print (paste0("Time (twi func) = ", time.taken))
-
+  
   ############################### GENERATE GIUH ################################
-  # STEP #6: Generate GIUH and write to the geopackage
   # There are many "model" options to specify the velocity.
   # Here we are using a simple approach: constant velocity as a function of upstream drainage area.
+  
   print("STEP: Computing GIUH.................")
   start.time <- Sys.time()
   vel_channel     <- 1.0  # meter/second
@@ -396,9 +348,10 @@ RunDriver <- function(gage_id = NULL,
   gully_threshold <- 30.0 # m (longest , closer to 10-30 m, Refs) 
 
   giuh_compute <- ComputeGIUH(div_infile = outfile, 
-                              vel_channel, vel_overland, vel_gully, gully_threshold)
-
-  #giuh_compute[2,] %>% t()
+                              vel_channel, 
+                              vel_overland, 
+                              vel_gully, 
+                              gully_threshold)
   
   # write GIUH layer to the geopackage
   giuh_dat_values = data.frame(ID = giuh_compute$divide_id, giuh = giuh_compute$fun.giuh_minute)
@@ -408,7 +361,6 @@ RunDriver <- function(gage_id = NULL,
   print (paste0("Time (giuh ftn) = ", time.taken))
 
   #######################. COMPUTE NASH CASCADE PARAMS ###########################
-  # STEP #7: Generate Nash cascade parameters for surface runoff
 
   print("STEP: Computing Nash Cascade parameters .............")
   start.time <- Sys.time()
@@ -418,7 +370,7 @@ RunDriver <- function(gage_id = NULL,
   print (paste0("Time (nash func) = ", time.taken))
 
   ####################### CALCULATE VEGETATION TYPE ############################
-  # STEP #8a: Calculate vegetation type from NLCD data if enabled
+  # Calculate vegetation type from NLCD data if enabled
   divides_with_veg <- NULL
   if (calculate_vegetation && nlcd_data_path != "" && file.exists(nlcd_data_path)) {
     print("STEP: Computing vegetation type from NLCD data .................")
@@ -434,20 +386,23 @@ RunDriver <- function(gage_id = NULL,
   }
 
   #######################. COMPUTE TERRAIN SLOPE ###########################
-  # STEP #8: Take slope from the slope grid calculated in the TWI function
+  # Take slope from the slope grid calculated in the TWI function
+  print("STEP: Computing SLOPE .................")
   slope <-  slope_function(div_infile = outfile)
 
   #######################. COMPUTE ASPECT ###########################
-  # STEP #8b: Compute aspect from the DEM 
+  # Compute aspect from the DEM 
+  print("STEP: Computing ASPECT .................")
   aspect <-  aspect_function(div_infile = outfile)
+
   ####################### WRITE MODEL ATTRIBUTE FILE ###########################
-  # STEP #9: Append GIUH, TWI, width function, slope, and Nash cascade N and K parameters
+  # Append GIUH, TWI, width function, slope, and Nash cascade N and K parameters
   # to model attributes layers
+  
+  d_attr <- read_sf(outfile, 'divide-attributes')
 
   d_attr$giuh <- giuh_dat_values$giuh             # append GIUH column to the model attributes layer
-
   d_attr$twi  <- twi_dat_values$twi               # append TWI column to the model attributes layer
-
   d_attr$width_dist <- twi_dat_values$width_dist  # append width distribution column to the model attributes layer
 
   d_attr$N_nash_surface <- nash_params_surface$N_nash
@@ -477,48 +432,5 @@ RunDriver <- function(gage_id = NULL,
   }
   # Reproject to ensure all .gpkgs end up in Albers projection (EPSG:5070)
   reprojection_function(outfile)
-}
-
-clean_move_dem_dir <- function(id, output_dir, dem_output_dir) {
-
-  dem_target <- glue("{dem_output_dir}/{id}")
-  dem_source <- glue("{output_dir}/{id}/dem")
-
-  if (is.null(dem_output_dir) || dem_output_dir == "") {
-
-    message("DEM output directory is set to empty or null in the configuration file; deleting DEM.")
-    if (dir.exists(dem_source)) {
-      unlink(dem_source, recursive = TRUE)
-    }
-
-  } else if (dem_output_dir == "dem") {
-    message("DEM output dir is 'dem' - no action taken")
-
-  } else {
-
-    # if dem_output_dir does not exist, then create it
-    if (!dir.exists(dem_output_dir)) {
-      dir.create(dem_output_dir, recursive = TRUE, showWarnings = FALSE)
-      message(glue("Created dem_output_dir: {dem_output_dir}"))
-    }
-
-    # move DEM if it exists
-    if (dir.exists(dem_source)) {
-
-      if (dir.exists(dem_target)) {
-        unlink(dem_target, recursive = TRUE)
-      }
-
-      dir.create(dirname(dem_target), recursive = TRUE, showWarnings = FALSE)
-      file.rename(dem_source, dem_target)
-
-      message(glue("Moved DEM to {dem_target}"))
-
-    } else {
-      message(glue("DEM source does not exist: {dem_source}"))
-    }
-
-  }
-
 }
 

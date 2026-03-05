@@ -12,7 +12,7 @@ Detailed instructions on how to install, configure, and get the NextGenSandboxHu
      - HPC system: load a compatible Python module, e.g., Python ≥ 3.11. For an example HPC setup, see [setup_hpc.sh](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/setup_hpc.sh)
   3. Build the Sandbox workflow:
      ```
-     BASH_FILE=~/.zshrc BUILD=ON ./utils/build_sandbox.sh
+     BASH_FILE=~/.zshrc BUILD=ON source ./utils/build_sandbox.sh
      ```
 
 >**NOTE:** The script installs a python env named `.venv_sandbox_py3.11` (see utils/build_sandbox.sh [here](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/build_sandbox.sh#L18)). This environment MUST be activated before performing any of the following steps.
