@@ -123,6 +123,9 @@ ComputeWidth <- function(div_infile) {
   # of a point to the catchment outlet
   downslope_fp_distance_cat_outlet <- rast_fp_temp - rasterized_fp_min
   
+  writeRaster(downslope_fp_distance_cat_outlet, glue("{dem_output_dir}/downslope_fp_distance_cat_outlet.tif"),
+              overwrite=TRUE)
+  
   # channel cumulative distribution of area with distance
   width_dist <- execute_zonal(data = downslope_fp_distance_cat_outlet,
                               geom = div,
@@ -148,36 +151,3 @@ ComputeWidth <- function(div_infile) {
 
   return(width_dist)
 }
-
-
-### Pre-computed TWI values provided by the hydrofabric team
-twi_pre_computed_function <- function(div_infile, distribution = 'quantiles', nclasses = 5) {
-  
-  div <- sf::read_sf(div_infile, 'divides')
-  
-  #twi <- dap("/vsis3/lynker-spatial/gridded-resources/twi.vrt", AOI = sf::read_sf(div_path,'divides'))  
-  
-  twi <- dap("/vsis3/lynker-spatial/gridded-resources/twi.vrt", AOI = div)
-  
-  # truncate negative values
-  twi[twi < 0] <- 0
-  twi[twi > 50] <- 50
-  
-  if (distribution == 'quantiles') {
-    twi_cat <- execute_zonal(data = twi,
-                             geom = div,
-                             ID = "divide_id",
-                             fun = equal_population_distribution,
-                             groups = nclasses)
-  }
-  else if (distribution == 'simple') {
-    twi_cat <- execute_zonal(data = twi,
-                             geom = div,
-                             ID = "divide_id",
-                             fun = zonal::distribution,
-                             breaks = nclasses)
-  }
-  
-  return(twi_cat)
-}
-

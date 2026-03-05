@@ -8,6 +8,13 @@ GetDEM <- function(div_infile,
                    buffer_m = 2000,
                    aggregate_factor = 3) {
   
+  dem_corr_file <- glue("dem/dem_corr.tif")
+  
+  if (file.exists(dem_corr_file)) {
+    message("dem/dem_corr.tif file exists, so skipping DEM processing...")
+    return()
+  }
+  
   cat("=== Starting DEM processing ===\n")
   cat(glue("DEM input file1: {dem_input_file}\n"))
   
@@ -83,7 +90,6 @@ GetDEM <- function(div_infile,
   
   # ----------------------------
   # Remove negative values
-  # ----------------------------
   
   dem[dem < 0] <- 0
   
@@ -110,6 +116,7 @@ GetDEM <- function(div_infile,
   dem_corr_file <- file.path(dem_output_dir, "dem_corr.tif")
   wbt_breach_depressions(dem = dem_proj_file,
                          output = dem_corr_file)
+  
   cat(glue("Depressions breached: {dem_corr_file}\n"))
   
   cat("=== DEM processing complete ===\n")

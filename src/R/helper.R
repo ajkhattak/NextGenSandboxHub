@@ -69,61 +69,6 @@ corrected_distrib_func = function(value, coverage_fraction, breaks = 10, constra
   
 }
 
-
-
-
-# Add model attribtes to the geopackage
-GetModelAttributes <- function(div_infile, hf_version = '2.1.1') {
-  print ("ADD MODEL ATTRIBUTES FUNCTION")
-  if (hf_version == "2.2") {
-    print ("TODO: add divide attributes for HF v2.2.. stopping")
-    stop()
-  }
-  else if (hf_version == "2.1.1"){
-    base = 's3://lynker-spatial/hydrofabric/v2.1.1/nextgen/conus'    
-  }
-
-  # net has divide_id, id, and vupid that are used for filtering below
-  #net = as_sqlite(div_infile, "network") 
-  net = hfsubsetR::as_ogr(div_infile, "network")
-
-  # Courtesy of Mike Johnson
-  print ("Extracting model-attributes from .parquet file on S3 bucket")
-  model_attr <- arrow::open_dataset(glue('{base}_model-attributes')) |>
-    dplyr::inner_join(dplyr::collect(dplyr::distinct(dplyr::select(net, divide_id, vpuid)))) |> 
-    dplyr::collect() 
-
-  print ("Extracting flowpath-attributes from .parquet file on S3 bucket")
-  flowpath_attr <- arrow::open_dataset(glue('{base}_flowpath-attributes')) |>
-    dplyr::inner_join(dplyr::collect(dplyr::distinct(dplyr::select(net, id, vpuid)))) |> 
-    dplyr::collect()
-
-  #cat ("m_attr: ", nrow(model_attr))
-  stopifnot(nrow(model_attr) > 0)
-  stopifnot(nrow(flowpath_attr) > 0)
-  
-  # Write the attributes to a new table in the hydrofabric subset GPKG
-
-  sf::st_write(model_attr, div_infile, layer = "model-attributes", append = FALSE)
-  sf::st_write(flowpath_attr, div_infile, layer = "flowpath-attributes", append = FALSE)    
-  
-
-  return(model_attr)
-  
-  #### Method 2 - could be done this way too
-  #net = as_sqlite(outfile, "network") |> 
-  #  select('id', 'divide_id', 'vpuid') |> 
-  #  collect()
-  
-  #model_attr <- open_dataset(glue('s3://lynker-spatial/hydrofabric/v{hf_version}/nextgen/conus_model-attributes')) |>
-  #  filter(vpuid %in% unique(net$vpuid), divide_id %in% unique(net$divide_id)) |> 
-  #  collect() 
-  
-  #flowpath_attr <- open_dataset(glue('s3://lynker-spatial/hydrofabric/v{hf_version}/nextgen/conus_flowpath-attributes')) |>
-  #  filter(vpuid %in% unique(net$vpuid), divide_id %in% unique(net$id)) |> 
-  #  collect()
-}
-
 # get parameter function check if a param is provided otherwise a default value
 get_param <- function(input, param, default_value) {
 
@@ -186,4 +131,47 @@ circular_mean <- function (values, coverage_fraction) {
 
   ifelse(val < 0, 180 + (val + 180), val)
 
+}
+
+clean_move_dem_dir <- function(id, output_dir, dem_output_dir) {
+  
+  dem_target <- glue("{dem_output_dir}/{id}")
+  dem_source <- glue("{output_dir}/{id}/dem")
+  
+  if (is.null(dem_output_dir) || dem_output_dir == "") {
+    
+    message("DEM output directory is set to empty or null in the configuration file; deleting DEM.")
+    if (dir.exists(dem_source)) {
+      unlink(dem_source, recursive = TRUE)
+    }
+    
+  } else if (dem_output_dir == "dem") {
+    message("DEM output dir is 'dem' - no action taken")
+    
+  } else {
+    
+    # if dem_output_dir does not exist, then create it
+    if (!dir.exists(dem_output_dir)) {
+      dir.create(dem_output_dir, recursive = TRUE, showWarnings = FALSE)
+      message(glue("Created dem_output_dir: {dem_output_dir}"))
+    }
+    
+    # move DEM if it exists
+    if (dir.exists(dem_source)) {
+      
+      if (dir.exists(dem_target)) {
+        unlink(dem_target, recursive = TRUE)
+      }
+      
+      dir.create(dirname(dem_target), recursive = TRUE, showWarnings = FALSE)
+      file.rename(dem_source, dem_target)
+      
+      message(glue("Moved DEM to {dem_target}"))
+      
+    } else {
+      message(glue("DEM source does not exist: {dem_source}"))
+    }
+    
+  }
+  
 }
