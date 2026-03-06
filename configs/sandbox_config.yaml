@@ -47,8 +47,8 @@ forcings :
   format  : ".nc" #----------------------------------------------- Format .nc or .csv (recommended option .nc)
   time    : {"start_time" : "2016-10-01 00:00:00", "end_time" : "2020-09-30 23:00:00"} #---------- Forcing data time range [1-1-2016,12-31-2020]; simulation start/end times must fall within this period
 
-  domain            : "conus"        #------------------------------------ options = ["conus", "HI", "PR", 'AK']
-
+  domain  : "conus"  #-------------------------------------------- options = ["conus", "HI", "PR", 'AK']
+  select  : "01308000"       #-------------------------------------------- Provide a single gage id, or list of ids, or a .csv file (with columns gage_id and num_divides) or "all" to download data for all gages in the input_dir
 ########################################################################
 formulation :
   #ngen_dir         : "<path_to_ngen_dir>" #------------------------------- OPTIONAL: Path to NextGen base directory. For instance, <path_to_ngen>/ngen. Defaults is <path_to_sandbox>/extern/ngen

@@ -139,13 +139,33 @@ build_sandbox()
     # FORCING
     ############################################
     echo "Creating virtual python environment for forcing downloader ($VENV_FORCING_PATH)"
-    mkdir -p "$VENV_FORCING_PATH"
-    $PYTHON_CMD -m venv "$VENV_FORCING_PATH"
-    source "$VENV_FORCING_PATH/bin/activate"
-    
-    pip install -U pip==25.0
-    pip install -r ./doc/env/requirements_forcing.txt
-    deactivate
+
+    if command -v conda >/dev/null 2>&1; then
+	echo "Conda detected. Creating conda environment: $VENV_FORCING_PATH"
+	source "$(conda info --base)/etc/profile.d/conda.sh"
+
+	conda create -y -p "$VENV_FORCING_PATH" python=3.11 pip
+
+	conda activate "$VENV_FORCING_PATH"
+
+	pip install -U pip==25.0
+	pip install -r ./doc/env/requirements_forcing.txt
+
+	conda deactivate
+
+    else
+	echo "Conda not found -- building forcing virtual python environment ($VENV_FORCING_PATH)"
+
+	mkdir -p "$VENV_FORCING_PATH"
+
+	$PYTHON_CMD -m venv "$VENV_FORCING_PATH"
+	source "$VENV_FORCING_PATH/bin/activate"
+
+	pip install -U pip==25.0
+	pip install -r ./doc/env/requirements_forcing.txt
+
+	deactivate
+    fi
  
     echo "sourcing bash file"
     source $BASH_FILE
