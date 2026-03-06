@@ -19,7 +19,8 @@ class ForcingProcessor:
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        self.get_gpkg_dirs()
+        #self.get_gpkg_dirs()
+        self.gpkg_dirs = self.load_gage_ids()
         
     def load_config(self):
         with open(self.config_file, 'r') as file:
@@ -32,6 +33,8 @@ class ForcingProcessor:
         self.dforcing         = self.config['forcings']
         self.forcing_time     = self.dforcing["time"]
         self.forcing_format   = self.dforcing.get('format', '.nc')
+        self.selected_gages   = self.dforcing.get('select', 'all')
+
         sandbox_build_dir     = Path(os.environ.get("SANDBOX_BUILD_DIR"))
         self.forcing_venv_dir = self.dforcing.get('forcing_venv_dir', os.path.join(sandbox_build_dir, "venv", "venv_forcing"))
 
@@ -48,6 +51,7 @@ class ForcingProcessor:
         failed = False
 
         for gpkg in self.gpkg_dirs:
+            print (f"Processing gage: {gpkg}")
             result = self.forcing_generate_catchment(gpkg)
             if result:
                 failed = True
@@ -85,15 +89,53 @@ class ForcingProcessor:
             print("Correcting forcing data ...")
             self.forcing_data_correction(fdir)
 
+    def load_gage_ids(self):
 
-    def get_gpkg_dirs(self):
         all_dirs = glob.glob(os.path.join(self.input_dir, '*/'), recursive=True)
         assert all_dirs, f"No directories found in the input directory {self.input_dir}."
-        self.gpkg_dirs = [
+        gpkg_dirs = [
             g for g in all_dirs
             if os.path.exists(os.path.join(g, 'data')) and glob.glob(os.path.join(g, 'data', '*.gpkg'))
         ]
 
+        # map gage_id -> directory
+        gage_dir_map = {Path(d).name: d for d in gpkg_dirs}
+
+        if self.selected_gages is "all":
+            print ("Gages to be processed: ", gpkg_dirs)
+            return gpkg_dirs
+
+        if isinstance(self.selected_gages, str) and self.selected_gages.lower().endswith(".csv"):
+            path = Path(self.selected_gages)
+
+            if not path.is_file():
+                raise FileNotFoundError(f"gage_ids file not found: {path}")
+
+            df = pd.read_csv(path, dtype=str)
+
+            if 'gage_id' not in df.columns:
+                raise ValueError("CSV must contain a 'gage_id' column")
+
+            selected_ids = df['gage_id'].tolist()
+
+        elif isinstance(self.selected_gages, str):
+            selected_ids = [self.selected_gages]
+
+        elif isinstance(self.selected_gages, (list, tuple, set)):
+            selected_ids = [str(x) for x in self.selected_gages]
+
+        else:
+            raise TypeError("forcing: 'select' must be a CSV path, a string ID, or a list of IDs")
+
+        # ---------- filter directories ----------
+        selected_dirs = [gage_dir_map[g] for g in selected_ids if g in gage_dir_map]
+
+        if not selected_dirs:
+            raise ValueError(f"No matching gage directories found for: {selected_ids}")
+
+        print("Selected gage directories:", selected_dirs)
+
+        return selected_dirs
 
     def write_forcing_input_files(self, forcing_dir):
 
