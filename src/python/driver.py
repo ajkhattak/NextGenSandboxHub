@@ -51,13 +51,12 @@ class Driver:
         # Forcing block
         dforcing = d['forcings']
 
-        self.forcing_time   = dforcing["forcing_time"]
-        self.forcing_format = dforcing.get('forcing_format', '.nc')
+        self.forcing_time   = dforcing["time"]
+        self.forcing_format = dforcing.get('format', '.nc')
         forcing_start_yr    = pd.Timestamp(self.forcing_time['start_time']).year
         forcing_end_yr      = pd.Timestamp(self.forcing_time['end_time']).year + 1
         forcing_dir         = os.path.join(self.input_dir, "{*}", f'data/forcing/{forcing_start_yr}_to_{forcing_end_yr}')
         self.forcing_dir    = dforcing.get("forcing_dir", forcing_dir)
-        self.forcing_format = dforcing.get('forcing_format', '.nc')
         self.domain         = dforcing.get('domain', 'conus')
         self.is_corrected_forcing = dforcing.get('is_corrected_forcing', True)
 
@@ -112,15 +111,24 @@ class Driver:
         if (densemble):
             self.ensemble_enabled = bool(densemble.get('enabled'))
             self.ensemble_size    = int(densemble.get('members') or 1)
-            self.ensemble_models  = densemble.get('models')
+            self.ensemble_models  = densemble.get('models').upper()
             
             if self.ensemble_enabled:
                 assert self.ensemble_size > 1, (
                     "Ensemble size must be greater than 1 when ensemble is enabled"
                 )
+
+                # Convert to lists and strip whitespace
+                formulation_list  = [m.strip() for m in self.formulation.split(",") if m.strip()]
+                ensemble_list     = [m.strip() for m in self.ensemble_models.split(",") if m.strip()]
+
+                for m1 in ensemble_list:
+                    if m1 not in formulation_list:
+                        raise ValueError(f"{m1} is not a valid ensemble member, not included in the formulation {self.formulation}")
             else:
                 self.ensemble_size = 1
                 self.ensemble_models = []
+
         else:
             self.ensemble_enabled = False
             self.ensemble_size    = 1
