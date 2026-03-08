@@ -32,6 +32,7 @@ N_nash_surface       : null
 K_nash_surface       : null                        # [h-1]
 nash_storage_surface : null
 retention_depth_nash_surface : 0.0
+Kinf_nash_surface       : 0.0
 
 a_Xinanjiang_inflection_point_parameter : null
 b_Xinanjiang_shape_parameter            : null

@@ -83,8 +83,8 @@ Setup <-function() {
   dem_aggregate_factor <<- get_param(inputs, "subsetting$dem$aggregate_factor", 3)
   
   # NLCD vegetation data parameters
-  nlcd_data_path        <<- get_param(inputs, "subsetting$vegetation$nlcd_path", FALSE)
-  calculate_vegetation  <<- get_param(inputs, "subsetting$calculate_vegetation", FALSE)
+  veg_calc_enabled      <<- get_param(inputs, "subsetting$vegetation$enabled", FALSE)
+  veg_nlcd_path         <<- get_param(inputs, "subsetting$vegetation$nlcd_path", FALSE)
   veg_method            <<- get_param(inputs, "subsetting$vegetation$classification_method", "majority")
   
   option <- get_param(inputs, "subsetting$gages$option", NULL)
@@ -161,11 +161,11 @@ if (option_use_ids == TRUE || option_use_file == TRUE) {
                     output_dir = output_dir,
                     dem_output_dir = dem_output_dir,
                     dem_input_file = dem_input_file,
-                    nlcd_data_path = nlcd_data_path,
-                    calculate_vegetation = calculate_vegetation,
+                    veg_calc_enabled  = veg_calc_enabled,
+                    veg_nlcd_path     = veg_nlcd_path, 
+                    veg_method        = veg_method,
                     compute_divide_attributes = compute_divide_attributes,
-                    dem_aggregate_factor = dem_aggregate_factor,
-                    veg_method = veg_method
+                    dem_aggregate_factor = dem_aggregate_factor
                     )
   
   
@@ -207,11 +207,11 @@ if (option_use_ids == TRUE || option_use_file == TRUE) {
                   output_dir = output_dir,
                   dem_output_dir = dem_output_dir,
                   dem_input_file = dem_input_file,
-                  nlcd_data_path = nlcd_data_path,
-                  calculate_vegetation = calculate_vegetation,
+                  veg_calc_enabled  = veg_calc_enabled,
+                  veg_nlcd_path     = veg_nlcd_path, 
+                  veg_method        = veg_method,
                   compute_divide_attributes = compute_divide_attributes,
-                  dem_aggregate_factor = dem_aggregate_factor,
-                  veg_method = veg_method
+                  dem_aggregate_factor = dem_aggregate_factor
                   )
 }
 

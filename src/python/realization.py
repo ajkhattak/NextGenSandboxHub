@@ -627,8 +627,7 @@ class RealizationGenerator:
             params = {
                 "ice_fraction_schaake(1,double,m,node)": 0.0,
                 "ice_fraction_xinanjiang(1,double,1,node)": 0.0,
-                "soil_moisture_profile(1,double,1,node)": 0.0,
-                "NoahPET(1,double,1,node)": -999.9
+                "soil_moisture_profile(1,double,1,node)": 0.0
             }
         elif "LASAM" in self.formulation and not "SFT" in self.formulation:
             params = {
@@ -653,7 +652,7 @@ class RealizationGenerator:
             }
         elif "TOPMODEL" in self.formulation:
             params = {
-                "NoahPET(1,double,1,node)": -999.9
+                "tmp(1,double,1,node)": -999.9
             }
         elif "LSTM" in self.formulation:
             return block
