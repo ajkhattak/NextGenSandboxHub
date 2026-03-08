@@ -11,9 +11,9 @@ DriverGivenGageIDs <- function(gage_ids,
                                dem_input_file = NULL,
                                dem_output_dir = "",
                                compute_divide_attributes = TRUE,
-                               nlcd_data_path = "",
-                               calculate_vegetation = FALSE,
-                               veg_method = NULL
+                               veg_calc_enabled = NULL,
+                               veg_nlcd_path    = NULL, 
+                               veg_method       = NULL
                                ) 
   {
   
@@ -54,7 +54,9 @@ ProcessCatchmentID <- function(id) {
               dem_input_file = dem_input_file,
               compute_divide_attributes = compute_divide_attributes,
               dem_aggregate_factor = dem_aggregate_factor,
-              veg_method = veg_method
+              veg_calc_enabled = veg_calc_enabled,
+              veg_nlcd_path    = veg_nlcd_path, 
+              veg_method       = veg_method
               )
 
     failed <- FALSE
@@ -155,7 +157,9 @@ ProcessGPKG <- function(gfile, failed_dir) {
               dem_input_file = dem_input_file,
               compute_divide_attributes = compute_divide_attributes,
               dem_aggregate_factor = dem_aggregate_factor,
-              veg_method = veg_method
+              veg_calc_enabled = veg_calc_enabled,
+              veg_nlcd_path    = veg_nlcd_path, 
+              veg_method       = veg_method
               )
 
     failed <- FALSE
@@ -194,7 +198,9 @@ RunDriver <- function(gage_id = NULL,
                       loc_gpkg_file = "",
                       compute_divide_attributes = TRUE,
                       dem_aggregate_factor = 3,
-                      veg_method = NULL
+                      veg_calc_enabled = NULL,
+                      veg_nlcd_path    = NULL, 
+                      veg_method       = NULL
                       ) {
 
   print ("RUN DRIVER FUNCTION")
@@ -372,16 +378,16 @@ RunDriver <- function(gage_id = NULL,
   ####################### CALCULATE VEGETATION TYPE ############################
   # Calculate vegetation type from NLCD data if enabled
   divides_with_veg <- NULL
-  if (calculate_vegetation && nlcd_data_path != "" && file.exists(nlcd_data_path)) {
+  if (veg_calc_enabled && file.exists(veg_nlcd_path)) {
     print("STEP: Computing vegetation type from NLCD data .................")
     start.time <- Sys.time()
 
     # Calculate vegetation type
-    divides_with_veg <- ComputeVegTypeNLCD(outfile, nlcd_data_path, veg_method, nclasses = 2)
+    divides_with_veg <- ComputeVegTypeNLCD(outfile, veg_nlcd_path, veg_method, nclasses = 2)
 
     time.taken <- as.numeric(Sys.time() - start.time, units = "secs")
     print (paste0("Time (vegetation calc) = ", time.taken))
-  } else if (calculate_vegetation) {
+  } else if (veg_calc_enabled) {
     print("WARNING: Vegetation calculation requested but NLCD data path not provided or file does not exist")
   }
 

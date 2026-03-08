@@ -164,8 +164,8 @@ class CFEConfigurationGenerator(ConfigurationGenerator):
         spatial_params = self.cfe_template.get("spatial", [])
 
         for param in spatial_params:
-            dynamic[param] = self._apply_spatial_parameter(param, cat_name, member_id)
-
+            dynamic[param], roughness_factor = self._apply_spatial_parameter(param, cat_name, member_id)
+            dynamic["K_nash_surface"] = dynamic["K_nash_surface"] * roughness_factor
 
         # SFT logic
         if "SFT" in self.ctx.formulation:
@@ -203,7 +203,7 @@ class CFEConfigurationGenerator(ConfigurationGenerator):
             if class_veg is None:
                 raise ValueError(f"No refkdt class found for vegetation {veg_type}")
 
-            return class_veg["init"]
+            return class_veg["init"], class_veg["runoff_resistance_factor"]
 
         # -------------------------------------------------
         # Future spatial parameters go here

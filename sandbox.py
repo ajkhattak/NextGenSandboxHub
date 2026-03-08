@@ -115,18 +115,28 @@ def Sandbox(args, sandbox_config, calib_config):
     
 
 def main():
-    try:
-        parser = argparse.ArgumentParser()
-        parser.add_argument("-subset", action='store_true',    help="Subset basin (generate .gpkg files)")
-        parser.add_argument("-forc",   action='store_true',    help="Download forcing data")
-        parser.add_argument("-conf",   action='store_true',    help="Generate config files")
-        parser.add_argument("-run",    action='store_true',    help="Run NextGen simulations")
-        parser.add_argument("-i",      dest="sandbox_infile", type=str, required=False,  help="sandbox config file")
-        parser.add_argument("-j",      dest="calib_infile",   type=str, required=False,  help="caliberation config file")
-        args = parser.parse_args()
-    except SystemExit:
-        print("Formulations supported:\n" + "\n".join(formulations_supported))
-        print("[INFO]: Formulations that omit T-ROUTE are allowed (e.g., PET, CFE-S), as it is appended automatically; however, all other formulation components must be specified exactly as supported.")
+    
+    parser = argparse.ArgumentParser(description="NextGen SandboxHub workflow")
+    parser.add_argument("--subset", action='store_true',    help="Subset basin")
+    parser.add_argument("--forc",   action='store_true',    help="Download forcing data")
+    parser.add_argument("--conf",   action='store_true',    help="Generate config files")
+    parser.add_argument("--run",    action='store_true',    help="Run NextGen simulations")
+    parser.add_argument("-i",       dest="sandbox_infile",  type=str, required=False, metavar="FILE", help="sandbox config file")
+    parser.add_argument("-j",       dest="calib_infile",    type=str, required=False, metavar="FILE", help="caliberation config file")
+
+    parser.add_argument("--formulations", action="store_true", help="List supported formulations and exit")
+    
+    args = parser.parse_args()
+
+    if args.formulations:
+        print("Formulations supported:\n")
+        print("\n".join(formulations_supported))
+        print(
+            "\n[INFO]: Formulations that omit T-ROUTE are allowed "
+            "(e.g., PET, CFE-S), as it is appended automatically; "
+            "however, all other formulation components must be "
+            "specified exactly as supported."
+        )
         sys.exit(0)
 
     if (args.sandbox_infile):
