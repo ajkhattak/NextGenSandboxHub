@@ -7,9 +7,9 @@ Detailed instructions on how to install, configure, and get the NextGenSandboxHu
      ```
      git clone https://github.com/ajkhattak/NextGenSandboxHub && cd NextGenSandboxHub
      ```
-  2. Ensure Python 3.11 is available:
+  2. Ensure conda or Python (>=3.11) is available:
      - Local machine: check Python version.
-     - HPC system: load a compatible Python module, e.g., Python ≥ 3.11. For an example HPC setup, see [setup_hpc.sh](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/setup_hpc.sh)
+     - HPC system: load conda or a compatible Python module, e.g., Python ≥ 3.11.
   3. Build the Sandbox workflow:
      ```
      BASH_FILE=~/.zshrc BUILD=ON source ./utils/build_sandbox.sh
@@ -38,24 +38,27 @@ SANDBOX_BUILD_DIR, SANDBOX_DIR, SANDBOX_VENV
    ```
   
 ### <ins>  Step 2. Hydrofabric Installation
-Ensure R and Rtools are already installed before proceeding. There are two ways to install the required packages:
-  #### Option 1: Using RStudio
+There are two ways to install the required packages:
+  #### Option 1: Using the Command Line (recommended for HPC machines, load R module)
+  Run the following command in a terminal or command prompt:
+  ```
+   Rscript $SANDBOX_DIR/src/R/install_load_libs.R
+  ```
+  
+  #### Option 2: Using RStudio
+  Ensure R and Rtools are already installed before proceeding.
    - Open `<path_to_sandboxhub>/src/R/install_load_libs.R` in RStudio. Click Source to execute the script.
    - Alternatively, run the following command in the RStudio Console:
      ```
      source("~/<path_to_sandboxhub>/src/R/install_load_libs.R")
      ```
-  #### Option 2: Using the Command Line
-  Run the following command in a terminal or command prompt:
-  ```
-   Rscript $SANDBOX_DIR/src/R/install_load_libs.R
-  ```
+  
 
 ### <ins> Step 3. Install NextGen (ngen) and Required Models
 > **Important:** Before continuing to later steps, you must install and build ngen and the required routing/models components.
 
 > **Note:** The sandbox workflow assumes that [ngen](https://github.com/NOAA-OWP/ngen) and models including [t-route](https://github.com/NOAA-OWP/t-route) have been built in the Python virtual environment created in Step 1.
-Please activate the sandbox environmental and follow the instructions in the [build_models](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/build_models.sh) script to build ngen and models.
+Please activate the sandbox environmental and follow the instructions in the [build_models](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/build_models.sh) script to build ngen and models. For an example HPC setup, see [setup_hpc.sh](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/setup_hpc.sh).
 
 ### <ins> Step 4. Setup configuration file
 Open the configuration file 
@@ -68,7 +71,7 @@ Review and update the blocks in [sandbox_config.yaml](configs/sandbox_config.yam
   - Dependency: Step 2 & Step 4
   - Download domain (CONUS or oCONUS) from [lynker-spatial](https://www.lynker-spatial.com/data?path=hydrofabric%2Fv2.2%2F), for instance conus/conus_nextgen.gpkg
   - Now there are two options to proceed:
-      - run `sandbox -subset`
+      - run `sandbox --subset`
       - or open `<path_to_sandboxhub>/src/R/main.R` in RStudio and source on main.R. Note Set file name `infile_config` [here](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/src/R/main.R#L53) 
     
     If everything goes well, a basin geopackage will be subsetted and stored under `<input_dir>/<gage_id>/data/gage_<gage_id>.gpkg`
@@ -76,7 +79,7 @@ Review and update the blocks in [sandbox_config.yaml](configs/sandbox_config.yam
 ### <ins> Step 6. Forcing Data Download
 The workflow uses [CIROH_DL_NextGen](https://github.com/ajkhattak/CIROH_DL_NextGen) forcing_prep tool to download atmospheric forcing data. To download the forcing data run:
 ```
-   sandbox -forc -i <sandbox_config_filename.yaml>
+   sandbox --forc -i <sandbox_config_filename.yaml>
 ```
 
 ### <ins>  Step 7. Generate Configuration and Realization Files
@@ -86,16 +89,16 @@ If you have not already done so, review and update the sandbox config file [here
  ```
 For non-default input files, use
  ```
-    sandbox -conf -i <sandbox_config_filename.yaml> -j <calib_config_filename.yaml>
+    sandbox --conf -i <sandbox_config_filename.yaml> -j <calib_config_filename.yaml>
  ```
 ### <ins> Step 8. Run Calibration/Validation Simulations
 Run the following command — assuming you have already set up the sandbox configuration file [here](configs/sandbox_config.yaml) and calibration configuration file [here](configs/calib_config.yaml), and have successfully completed the steps above.
  ```
-    sandbox -run
+    sandbox --run
  ```
 For non-default input files, use
  ```
-    sandbox -run -i <sandbox_config_filename.yaml> -j <calib_config_filename.yaml>
+    sandbox --run -i <sandbox_config_filename.yaml> -j <calib_config_filename.yaml>
  ```
 #### Summary
 1. Install Sandbox virtual environemnt
@@ -107,11 +110,11 @@ For non-default input files, use
 7. Run Simulations: Using
   ```
     sandbox option
-    OPTIONS = [-subset -forc -conf -run]
+    OPTIONS = [--subset --forc --conf --run]
   ```
-- Option: `-subset` downloads geopackage(s) given a gage ID(s), extracts and locally compute TWI, GIUH, and Nash Cascade parameters; see `divide-attributes` in the gage_<basin_id>.gpkg file
-- Option: `-forc` downloads AORC forcings for geopackage(s)
-- Option: `-conf` generates configuration and realization files for the selected models/basins
-- Option: `-run` executes NextGen simulations with and without calibration
+- Option: `--subset` downloads geopackage(s) given a gage ID(s), extracts and locally compute TWI, GIUH, and Nash Cascade parameters; see `divide-attributes` in the gage_<basin_id>.gpkg file
+- Option: `--forc` downloads AORC forcings for geopackage(s)
+- Option: `--conf` generates configuration and realization files for the selected models/basins
+- Option: `--run` executes NextGen simulations with and without calibration
 
 Note: These options can be run individually or combined together, for example, `sandbox -subset -conf -run`. The `-subset` is an expensive step, should be run once to get the desired basin geopacakge and associated model parameters.

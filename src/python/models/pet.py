@@ -51,7 +51,11 @@ class PETConfigurationGenerator(ConfigurationGenerator):
             if self.ctx.ensemble_enabled or "IVGTYP_nlcd" in self.ctx.gdf.columns:
                 veg_type_nlcd = json.loads(self.ctx.gdf.loc[cat_name]['IVGTYP_nlcd'])
                 veg_type_nlcd = pd.DataFrame(veg_type_nlcd, columns=['v', 'frequency'])
-                veg_type      = veg_type_nlcd['v'][member_id - 1]
+                
+                if len(veg_type_nlcd["frequency"]) == 1:
+                    veg_type      = veg_type_nlcd['v'][0]
+                else:
+                    veg_type      = veg_type_nlcd['v'][member_id - 1]
 
             # Dynamcis variables
             veg_height = max(self.ctx.vegetation_height[veg_type], 0.5)
