@@ -225,6 +225,9 @@ class ConfigurationContext:
             df = pd.DataFrame(veg_type_nlcd, columns=['v', 'frequency'])
             frequencies = df['frequency'].tolist()
 
+            if len(frequencies) !=  self.ensemble_size:
+                frequencies.append(0)
+
             rows.append([cat_name] + frequencies)
            
         columns = ['divide_id'] + [f'weight_{i+1}' for i in range(self.ensemble_size)]
@@ -522,7 +525,7 @@ class ConfigurationCalib:
                         key = "CFE"
                     if key == "NOM":
                         key = "NoahOWP"
-                        continue
+                        #continue
                     if key == "SNOW17":
                         key = "Snow17"
                     if key == "SAC-SMA":

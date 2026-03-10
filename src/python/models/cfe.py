@@ -186,7 +186,11 @@ class CFEConfigurationGenerator(ConfigurationGenerator):
 
             veg_type_nlcd = json.loads(gdf.loc[cat_name]['IVGTYP_nlcd'])
             veg_type_nlcd = pd.DataFrame(veg_type_nlcd, columns=['v', 'frequency'])
-            veg_type = veg_type_nlcd['v'][member_id - 1]
+            #veg_type = veg_type_nlcd['v'][member_id - 1]
+            if len(veg_type_nlcd["frequency"]) == 1:
+                veg_type      = veg_type_nlcd['v'][0]
+            else:
+                veg_type      = veg_type_nlcd['v'][member_id - 1]
 
             refkdt_file = os.path.join(self.ctx.sandbox_dir , "configs/calib", "cfe_refkdt.yaml")
 
