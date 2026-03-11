@@ -22,8 +22,8 @@ class Generate:
     def __init__(self, sandbox_dir, gpkg_file, forcing_dir, ngen_dir,
                  sim_time, formulation, formulations_supported, output_dir,
                  forcing_format, ngen_cal_type, schema, domain,
-                 ensemble_enabled=False, ensemble_size=1,
-                 ensemble_models = None):
+                 ensemble_enabled=False, ensemble_models = None
+                 ):
         
         self.sandbox_dir = sandbox_dir
         self.gpkg_file   = gpkg_file
@@ -41,7 +41,7 @@ class Generate:
 
 
         self.ensemble_enabled = ensemble_enabled
-        self.ensemble_size    = ensemble_size if ensemble_enabled else 1
+        self.ensemble_size    = len([m.strip() for m in ensemble_models.split(",")]) #ensemble_size if ensemble_enabled else 1
         self.ensemble_models  = ensemble_models
         
         if not os.path.exists(self.gpkg_file):
@@ -89,7 +89,6 @@ class Generate:
             ngen_cal_type=self.ngen_cal_type,
             schema_type=self.schema,
             ensemble_enabled=self.ensemble_enabled,
-            ensemble_size=self.ensemble_size,
             ensemble_models=self.ensemble_models
         )
 
@@ -119,7 +118,6 @@ class Generate:
             ngen_cal_type      = self.ngen_cal_type,
             domain             = self.domain,
             ensemble_enabled   = self.ensemble_enabled,
-            ensemble_size      =  self.ensemble_size,
             ensemble_member_id = member_id,
             ensemble_models    = self.ensemble_models,
             verbosity          = 1

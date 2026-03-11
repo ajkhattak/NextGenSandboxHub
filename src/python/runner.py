@@ -87,31 +87,20 @@ class Runner:
         self.sim_name_suffix = suffix
 
         densemble = dsim.get('ensemble') or None
-
         if (densemble):
             self.ensemble_enabled = bool(densemble.get('enabled'))
-            self.ensemble_size    = int(densemble.get('members') or 1)
-            self.ensemble_models  = densemble.get('models')
+            
             if self.ensemble_enabled:
-                assert self.ensemble_size > 1, (
-                    "Ensemble size must be greater than 1 when ensemble is enabled"
-                )
-                # Convert to lists and strip whitespace
-                formulation_list  = [m.strip() for m in self.formulation.split(",") if m.strip()]
-                ensemble_list     = [m.strip() for m in self.ensemble_models.split(",") if m.strip()]
-
-                for m1 in ensemble_list:
-                    if m1 not in formulation_list:
-                        raise ValueError(f"{m1} is not a valid ensemble member, not included in the formulation {self.formulation}")
+                self.ensemble_models  = self.formulation.replace("T-ROUTE", "").replace(" ,", ",").strip(", ").strip()
+                self.ensemble_calib_params_groups = densemble.get('calib_params_groups')
             else:
-                self.ensemble_size    = 1
-                self.ensemble_models  = []
+                self.ensemble_models = []
 
         else:
             self.ensemble_enabled = False
-            self.ensemble_size    = 1
             self.ensemble_models  = []
-
+        print ("SE2 ", self.ensemble_models)
+        
     def load_gage_ids(self, gage_ids_input):
         num_cats = -99
         if gage_ids_input is None:
@@ -281,8 +270,8 @@ class Runner:
             restart_dir          = restart_dir,
             num_proc             = self.num_procs,
             ensemble_enabled     = self.ensemble_enabled,
-            ensemble_size        = self.ensemble_size,
-            ensemble_models      = self.ensemble_models
+            ensemble_models      = self.ensemble_models,
+            ensemble_calib_params_groups = self.ensemble_calib_params_groups
         )
 
         ConfigGen.write_calib_input_files()

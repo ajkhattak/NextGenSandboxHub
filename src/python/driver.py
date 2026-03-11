@@ -97,7 +97,6 @@ class Driver:
                 raise ValueError("validation_time is not provided or is not a valid dictionary.")
 
             self.simulation_time = dsim["validation_time"]
-            #self.valid_eval_time = dsim["valid_eval_time"]
         elif self.task_type == 'control':
             if "simulation_time" not in dsim or not isinstance(dsim["simulation_time"], dict):
                 raise ValueError("task_type is CONTROL, but simulation_time is not provided or is not a valid dictionary.")
@@ -110,30 +109,18 @@ class Driver:
 
         if (densemble):
             self.ensemble_enabled = bool(densemble.get('enabled'))
-            self.ensemble_size    = int(densemble.get('members') or 1)
-            self.ensemble_models  = densemble.get('models').upper()
             
             if self.ensemble_enabled:
-                assert self.ensemble_size > 1, (
-                    "Ensemble size must be greater than 1 when ensemble is enabled"
-                )
+                self.ensemble_models  = self.formulation.replace("T-ROUTE", "").replace(" ,", ",").strip(", ").strip() #densemble.get('models').upper()
 
-                # Convert to lists and strip whitespace
-                formulation_list  = [m.strip() for m in self.formulation.split(",") if m.strip()]
-                ensemble_list     = [m.strip() for m in self.ensemble_models.split(",") if m.strip()]
-
-                for m1 in ensemble_list:
-                    if m1 not in formulation_list:
-                        raise ValueError(f"{m1} is not a valid ensemble member, not included in the formulation {self.formulation}")
+                ensemble_calib_params_groups = densemble.get('calib_params_groups')
             else:
                 self.ensemble_size = 1
                 self.ensemble_models = []
 
         else:
             self.ensemble_enabled = False
-            self.ensemble_size    = 1
             self.ensemble_models  = []
-
 
 
     def load_gage_ids(self, gage_ids_input):
@@ -289,7 +276,6 @@ class Driver:
                                     schema = self.schema_type,
                                     domain = self.domain,
                                     ensemble_enabled = self.ensemble_enabled,
-                                    ensemble_size    = self.ensemble_size,
                                     ensemble_models  = self.ensemble_models
                                     )
 
