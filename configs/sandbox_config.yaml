@@ -72,5 +72,6 @@ simulation :
   
   ensemble:
     enabled: FALSE # ---------------------------------------------------------------- Ensemble ON/OFF (OPTIONS: TRUE/FALSE)
-    members: 2    # ---------------------------------------------------------------- Ensemble members (based on vegetation fraction)
-    models : "PET"  # ---------------------------------------------------------------- Apply landcover-based tiling only to the listed model(s); other models in the formulation are executed normally. Multiple models, for example, ["PET", "CFE"]
+    calib_params_groups: #------------------------------------------- scope of calibratable parameters: local = tile-specific, global = shared across tiles
+      NOM : local
+      CFE-S : global

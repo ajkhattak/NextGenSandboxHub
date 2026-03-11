@@ -23,7 +23,7 @@ from pathlib import Path
 class RealizationGenerator:
     def __init__(self, ngen_dir, forcing_dir,  output_dir, formulation,
                  simulation_time, forcing_format, verbosity, ngen_cal_type,
-                 domain, ensemble_enabled, ensemble_size, ensemble_member_id,
+                 domain, ensemble_enabled, ensemble_member_id,
                  ensemble_models):
         
         self.ngen_dir    = ngen_dir
@@ -38,7 +38,7 @@ class RealizationGenerator:
         self.lib_files       = self.get_lib_files()
         self.domain          = domain.lower()
         self.ensemble_enabled    = ensemble_enabled
-        self.ensemble_size       =  ensemble_size
+        self.ensemble_size       = len([m.strip() for m in ensemble_models.split(",")])
         self.ensemble_member_id  = ensemble_member_id
 
         if isinstance(ensemble_models, str):

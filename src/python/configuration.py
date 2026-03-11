@@ -67,7 +67,6 @@ class ConfigurationContext:
                  ngen_dir, formulation, simulation_time,
                  verbosity, ngen_cal_type, schema_type = None,
                  ensemble_enabled = False,
-                 ensemble_size    = 1,
                  ensemble_models  = None):
 
         self.sandbox_dir        = sandbox_dir
@@ -81,7 +80,7 @@ class ConfigurationContext:
         self.ngen_cal_type      = ngen_cal_type
         self.schema_type        = schema_type
         self.ensemble_enabled   = ensemble_enabled
-        self.ensemble_size      = ensemble_size
+        self.ensemble_size      = len([m.strip() for m in ensemble_models.split(",")])
         self.ensemble_models    = ensemble_models
 
         self.soil_params_NWM_dir = os.path.join(self.ngen_dir,"extern/noah-owp-modular/noah-owp-modular/parameters")
@@ -229,9 +228,9 @@ class ConfigurationContext:
                 frequencies.append(0)
 
             rows.append([cat_name] + frequencies)
-           
-        columns = ['divide_id'] + [f'weight_{i+1}' for i in range(self.ensemble_size)]
 
+        columns = ['divide_id'] + [f'weight_{i+1}' for i in range(self.ensemble_size)]
+       
         out_df = pd.DataFrame(rows, columns=columns)
 
         # Save file
@@ -325,57 +324,12 @@ class CompositeConfigurationGenerator(ConfigurationGenerator):
             gen.write_input_files(member_id, tag)
 
 
-"""
-    def write_forcing_input_files(self,
-                                  forcing_basefile,
-                                  forcing_time,
-                                  forcing_format):
-
-        if not os.path.exists(forcing_basefile):
-            sys.exit(f"Sample forcing yaml file does not exist, provided is {forcing_basefile}")
-
-        with open(forcing_basefile, 'r') as file:
-            d = yaml.safe_load(file)
-
-        time_sim = json.loads(forcing_time)
-        start_yr = pd.Timestamp(time_sim['start_time']).year
-        end_yr   = pd.Timestamp(time_sim['end_time']).year
-
-        if start_yr > end_yr:
-            sys.exit(f"end_time ({end_yr})is less than the start_time ({start_yr}")
-
-        if start_yr <= end_yr:
-            end_yr = end_yr + 1
-
-        d['gpkg'] = self.gpkg_file
-        d["years"] = [start_yr, end_yr]
-        d["out_dir"] = os.path.join(os.path.dirname(self.gpkg_file), "forcing")
-
-        out_dir = Path(d['out_dir']) / f'{start_yr}_to_{end_yr}'
-        are_identical = out_dir.resolve() == Path(self.forcing_dir).resolve()
-
-        if not are_identical:
-            raise RuntimeError(f"Directory mismatch: out_dir={out_dir} is not the same as forcing_dir={self.forcing_dir}.")
-
-        if not os.path.exists(d["out_dir"]):
-            os.makedirs("data/forcing")
-
-        if forcing_format == '.csv':
-            d['netcdf'] = False
-
-        with open(os.path.join(d["out_dir"], "config_forcing.yaml"), 'w') as file:
-            yaml.dump(d, file, default_flow_style=False, sort_keys=False)
-
-        return os.path.join(d["out_dir"], "config_forcing.yaml")
-
-"""
 class ConfigurationCalib:
     def __init__(self, gpkg_file, output_dir, ngen_dir, sandbox_dir, realization_file_par,
                  troute_output_file, ngen_cal_basefile, ngen_cal_type, formulation,
                  restart_dir, simulation_time, evaluation_time, num_proc,
-                 ensemble_enabled,
-                 ensemble_size,
-                 ensemble_models):
+                 ensemble_enabled, ensemble_models,
+                 ensemble_calib_params_groups):
         
         self.gpkg_file          = gpkg_file
         self.output_dir         = output_dir
@@ -390,9 +344,10 @@ class ConfigurationCalib:
         self.troute_output_file = troute_output_file
         self.restart_dir        = restart_dir
         self.ensemble_enabled   = ensemble_enabled 
-        self.ensemble_size      = ensemble_size
+        self.ensemble_size      = len([m.strip() for m in ensemble_models.split(",")])
         self.ensemble_models    = ensemble_models
         self.realization_file_par = realization_file_par
+        self.ensemble_calib_params_groups = ensemble_calib_params_groups
         
     def get_flowpath_attributes(self):
 
@@ -407,6 +362,7 @@ class ConfigurationCalib:
         gdf_fp_cols = gdf_fp_attr[[waterbody_id, gage_id]]
         basin_gage = gdf_fp_cols[gdf_fp_cols[gage_id].notna()]
         basin_gage_id = basin_gage[waterbody_id].tolist()
+
         return basin_gage_id
         
     def write_calib_input_files(self):
@@ -460,25 +416,25 @@ class ConfigurationCalib:
         # Add calibratable parameter blocks
         for model in self.formulation.split(","):
             model = model.strip()
-            for key, name in model_param_map.items():
-                param_values = base_file.get(name, [])
+            if model not in model_param_map:
+                continue
+            name = model_param_map[model]
+            param_values = base_file.get(name, [])
 
-                    
-                if (self.ensemble_models is not None
-                    and key in model
-                    and model in self.ensemble_models):
-                    new_params = []
-                    for i in range(self.ensemble_size):
-                        for p in param_values:
-                            # create a deep copy to avoid reference issues
-                            new_param = dict(p)
-                            new_param["name"] = f"{p['name']}_tile_{i+1}"
-                            new_params.append(new_param)
+            if (self.ensemble_enabled
+                and self.ensemble_calib_params_groups.get(model) == "local"):
+                new_params = []
 
-                    df_new[f"{name}"] = new_params
-                elif key in model:
-                    df_new[f"{name}"] = param_values
+                for i in range(self.ensemble_size):
+                    for p in param_values:
+                        new_param = dict(p)                            # create a deep copy to avoid reference issues
+                        new_param["name"] = f"{p['name']}_tile_{i+1}"
+                        new_params.append(new_param)
 
+                df_new[name] = new_params
+
+            else:
+                df_new[name] = param_values
 
         df_new["model"] = {
             "type": "ngen",
@@ -525,7 +481,6 @@ class ConfigurationCalib:
                         key = "CFE"
                     if key == "NOM":
                         key = "NoahOWP"
-                        #continue
                     if key == "SNOW17":
                         key = "Snow17"
                     if key == "SAC-SMA":
@@ -592,15 +547,6 @@ class ConfigurationCalib:
 
             best_params_set = df_parq[best_itr]
             calib_params = best_params_set.index.to_list()
-
-            """
-            for block_name in base_file:
-                if '_params' in block_name:    
-                    for par in base_file[block_name]:
-                        if par['name'] in calib_params:
-                            par['init'] = float(best_params_set[par['name']]) #modify in place
-                            print ("pp ", par['name'], par['init'])
-            """
             
             for block_name in df_new:
                 if '_params' in block_name:    
