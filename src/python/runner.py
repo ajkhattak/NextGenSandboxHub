@@ -95,11 +95,13 @@ class Runner:
                 self.ensemble_calib_params_groups = densemble.get('calib_params_groups')
             else:
                 self.ensemble_models = []
+                self.ensemble_calib_params_groups = {}
 
         else:
             self.ensemble_enabled = False
             self.ensemble_models  = []
-        print ("SE2 ", self.ensemble_models)
+            self.ensemble_calib_params_groups = {}
+
         
     def load_gage_ids(self, gage_ids_input):
         num_cats = -99

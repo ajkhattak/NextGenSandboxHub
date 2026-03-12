@@ -39,9 +39,8 @@ class Generate:
         self.forcing_format  = forcing_format
         self.ngen_cal_type   = ngen_cal_type
 
-
         self.ensemble_enabled = ensemble_enabled
-        self.ensemble_size    = len([m.strip() for m in ensemble_models.split(",")]) #ensemble_size if ensemble_enabled else 1
+        self.ensemble_size = len([m.strip() for m in ensemble_models.split(",")]) if self.ensemble_enabled else 1
         self.ensemble_models  = ensemble_models
         
         if not os.path.exists(self.gpkg_file):

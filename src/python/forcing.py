@@ -19,7 +19,6 @@ class ForcingProcessor:
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        #self.get_gpkg_dirs()
         self.gpkg_dirs = self.load_gage_ids()
         
     def load_config(self):
@@ -101,7 +100,7 @@ class ForcingProcessor:
         # map gage_id -> directory
         gage_dir_map = {Path(d).name: d for d in gpkg_dirs}
 
-        if self.selected_gages is "all":
+        if self.selected_gages == "all":
             print ("Gages to be processed: ", gpkg_dirs)
             return gpkg_dirs
 
@@ -192,10 +191,26 @@ class ForcingProcessor:
         for name in ds.data_vars:
             if ds[name].isnull().any():
                 if self.verbosity >= 2:
-                    print(f"Missing data: NaNs found in {name}.")
+                    print(f"Missing data: NaNs found in {name}. Applying nearest neighbor")
                 ds[name] = ds[name].interpolate_na(dim='time', method='nearest')
             elif self.verbosity >= 2:
                 print(f"Looks good. No NaNs found in {name}.")
+
+            # Fix negative radiation values
+            if name in ['DLWRF_surface', 'DSWRF_surface']:
+                neg_mask = ds[name] < 0
+
+                if neg_mask.any():
+                    if self.verbosity >= 2:
+                        neg_count = int(neg_mask.sum())
+                        print(f"{neg_count} negative values found in {name}. Applying linear interpolation.")
+
+                    # set negatives to NaN
+                    ds[name] = ds[name].where(~neg_mask)
+
+                    # interpolate along time
+                    ds[name] = ds[name].interpolate_na(dim='time', method='linear')
+
         path = Path(nc_file)
         new_file = Path(fdir) / (path.stem + "_corrected.nc")
         ds.to_netcdf(new_file)
