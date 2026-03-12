@@ -80,7 +80,7 @@ class ConfigurationContext:
         self.ngen_cal_type      = ngen_cal_type
         self.schema_type        = schema_type
         self.ensemble_enabled   = ensemble_enabled
-        self.ensemble_size      = len([m.strip() for m in ensemble_models.split(",")])
+        self.ensemble_size = len([m.strip() for m in ensemble_models.split(",")]) if self.ensemble_enabled else 1
         self.ensemble_models    = ensemble_models
 
         self.soil_params_NWM_dir = os.path.join(self.ngen_dir,"extern/noah-owp-modular/noah-owp-modular/parameters")
@@ -343,8 +343,8 @@ class ConfigurationCalib:
         self.ngen_cal_basefile  = ngen_cal_basefile
         self.troute_output_file = troute_output_file
         self.restart_dir        = restart_dir
-        self.ensemble_enabled   = ensemble_enabled 
-        self.ensemble_size      = len([m.strip() for m in ensemble_models.split(",")])
+        self.ensemble_enabled   = ensemble_enabled
+        self.ensemble_size = len([m.strip() for m in ensemble_models.split(",")]) if self.ensemble_enabled else 1
         self.ensemble_models    = ensemble_models
         self.realization_file_par = realization_file_par
         self.ensemble_calib_params_groups = ensemble_calib_params_groups

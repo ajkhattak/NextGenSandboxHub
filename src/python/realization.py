@@ -38,7 +38,7 @@ class RealizationGenerator:
         self.lib_files       = self.get_lib_files()
         self.domain          = domain.lower()
         self.ensemble_enabled    = ensemble_enabled
-        self.ensemble_size       = len([m.strip() for m in ensemble_models.split(",")])
+        self.ensemble_size = len([m.strip() for m in ensemble_models.split(",")]) if self.ensemble_enabled else 1
         self.ensemble_member_id  = ensemble_member_id
 
         if isinstance(ensemble_models, str):
