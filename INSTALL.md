@@ -58,7 +58,10 @@ There are two ways to install the required packages:
 > **Important:** Before continuing to later steps, you must install and build ngen and the required routing/models components.
 
 > **Note:** The sandbox workflow assumes that [ngen](https://github.com/NOAA-OWP/ngen) and models including [t-route](https://github.com/NOAA-OWP/t-route) have been built in the Python virtual environment created in Step 1.
-Please activate the sandbox environmental and follow the instructions in the [build_models](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/build_models.sh) script to build ngen and models. For an example HPC setup, see [setup_hpc.sh](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/setup_hpc.sh).
+Please activate the sandbox environmental and follow the instructions in the [build_models](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/build_models.sh) script to build ngen and models. For an example HPC setup, see [setup_hpc.sh](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/setup_hpc.sh). After loading the required modules and setting up the environment variables, run the following command:
+```
+./utils/build_sandbox.sh
+```
 
 ### <ins> Step 4. Setup configuration file
 Open the configuration file 
@@ -70,9 +73,12 @@ Review and update the blocks in [sandbox_config.yaml](configs/sandbox_config.yam
 ### <ins> Step 5. Hydrofabric Subsetting
   - Dependency: Step 2 & Step 4
   - Download domain (CONUS or oCONUS) from [lynker-spatial](https://www.lynker-spatial.com/data?path=hydrofabric%2Fv2.2%2F), for instance conus/conus_nextgen.gpkg
-  - Now there are two options to proceed:
-      - run `sandbox --subset`
-      - or open `<path_to_sandboxhub>/src/R/main.R` in RStudio and source on main.R. Note Set file name `infile_config` [here](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/src/R/main.R#L53) 
+  - From command line run:
+    ```
+    sandbox --subset -i <sandbox_config_filename.yaml>
+    ```
+  - Using RStudio
+      - open `<path_to_sandboxhub>/src/R/main.R` in RStudio and source on main.R. Note Set file name `infile_config` [here](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/src/R/main.R#L53) 
     
     If everything goes well, a basin geopackage will be subsetted and stored under `<input_dir>/<gage_id>/data/gage_<gage_id>.gpkg`
 
@@ -85,18 +91,10 @@ The workflow uses [CIROH_DL_NextGen](https://github.com/ajkhattak/CIROH_DL_NextG
 ### <ins>  Step 7. Generate Configuration and Realization Files
 If you have not already done so, review and update the sandbox config file [here](configs/sandbox_config.yaml), particularly the `formulation` and `simulation` blocks, then run:
  ```
-    sandbox -conf 
- ```
-For non-default input files, use
- ```
     sandbox --conf -i <sandbox_config_filename.yaml> -j <calib_config_filename.yaml>
  ```
 ### <ins> Step 8. Run Calibration/Validation Simulations
-Run the following command — assuming you have already set up the sandbox configuration file [here](configs/sandbox_config.yaml) and calibration configuration file [here](configs/calib_config.yaml), and have successfully completed the steps above.
- ```
-    sandbox --run
- ```
-For non-default input files, use
+Run the following command — assuming you have already set up the sandbox configuration file [here](configs/sandbox_config.yaml) and calibration configuration file [here](configs/calib_config.yaml), and have successfully completed the steps above.S
  ```
     sandbox --run -i <sandbox_config_filename.yaml> -j <calib_config_filename.yaml>
  ```
