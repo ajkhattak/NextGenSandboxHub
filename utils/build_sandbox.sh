@@ -19,8 +19,7 @@ echo "$BASH_FILE"           # still defaults to ~/.zshrc
 
 ######## PATHS #########
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SANDBOX_DIR="$(dirname "$SCRIPT_DIR")"
+SANDBOX_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SANDBOX_BUILD_DIR="$(dirname "$SANDBOX_DIR")/sandbox_build"
 NGEN_DIR="$SANDBOX_BUILD_DIR/ngen"
 
@@ -29,9 +28,10 @@ VENV_FORCING_PATH="$SANDBOX_BUILD_DIR/venv/venv_forcing"
 
 mkdir -p "$SANDBOX_BUILD_DIR"
 
-echo "Script dir        : $SCRIPT_DIR"
 echo "Sandbox dir       : $SANDBOX_DIR"
 echo "Sandbox build dir : $SANDBOX_BUILD_DIR"
+echo "Sandbox VENV      : $VENV_SANDBOX_PATH"
+echo "Forcing VENV      : $VENV_FORCING_PATH"
 
 append_if_missing() {
     local line="$1"
@@ -144,7 +144,7 @@ build_sandbox()
 	echo "Conda detected. Creating conda environment: $VENV_FORCING_PATH"
 	source "$(conda info --base)/etc/profile.d/conda.sh"
 
-	conda create -y -p "$VENV_FORCING_PATH" python=3.11 pip
+	conda create -y -p "$VENV_FORCING_PATH" python=3.11
 
 	conda activate "$VENV_FORCING_PATH"
 
