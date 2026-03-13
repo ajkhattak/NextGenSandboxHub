@@ -10,8 +10,33 @@ import yaml
 import argparse
 from pathlib import Path
 import sandbox
+import platform
 
 sandbox_dir = Path(sandbox.__file__).resolve().parent
+sys.path.insert(0, str(sandbox_dir))
+
+# Only configure R environment on HPC (Linux)
+if platform.system() == "Linux":
+
+    sandbox_env = os.environ.get("SANDBOX_DIR")
+    if not sandbox_env:
+        raise RuntimeError(
+            "SANDBOX_DIR environment variable is not set. "
+            "Please export SANDBOX_DIR before running this script."
+        )
+
+    subset_env = Path(sandbox_env) / "rvenv" / "vevn_subset"
+
+    rscript = subset_env / "bin" / "Rscript"
+
+    os.environ["R_LIBS_USER"] = str(subset_env / "lib" / "R" / "library")
+    os.environ["PROJ_LIB"] = str(subset_env / "share" / "proj")
+    os.environ["PATH"] = f"{subset_env}/bin:" + os.environ.get("PATH", "")
+
+else:
+    # macOS / local development
+    rscript = Path("Rscript")  # assume system R
+
 
 from src.python import forcing, driver, runner
 
@@ -44,7 +69,6 @@ def CheckSandboxVENV():
         sys.exit(1)
 
 
-
 formulations_supported = [
     "NOM,CFE-S,T-ROUTE",
     "PET,CFE-S,T-ROUTE",
@@ -72,7 +96,8 @@ def Sandbox(args, sandbox_config, calib_config):
     
     if (args.subset):
         print ("Generating geopackages...")
-        subset_basin = f"Rscript {sandbox_dir}/src/R/main.R {sandbox_config} {sandbox_dir}"
+
+        subset_basin = f"{rscript} {sandbox_dir}/src/R/main.R {sandbox_config} {sandbox_dir}"
         status = subprocess.call(subset_basin,shell=True)
 
         if (status):

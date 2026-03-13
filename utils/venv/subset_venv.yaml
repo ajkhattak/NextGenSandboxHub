@@ -1,0 +1,42 @@
+name: rgeo
+channels:
+  - conda-forge
+
+dependencies:
+  - r-base=4.4.1
+  - r-terra
+  - r-sf
+  - r-exactextractr
+  - r-raster
+  - r-dplyr
+  - r-glue
+  - r-ggplot2
+  - r-jsonlite
+  - r-yaml
+  - r-pbapply
+  - r-dataretrieval
+  - r-remotes
+  - r-Metrics
+  - gdal
+  - proj
+  - geos
+  - udunits2
+
+  - r-readr
+  - r-lubridate
+  - r-data.table
+  - r-vroom
+  - r-tzdb
+  - r-timechange
+
+  # networking
+  - r-curl
+  - r-httr
+  - r-httr2
+  - r-xml2
+
+  # optional / helpers for GitHub packages
+  - r-arrow
+  - r-dbplyr
+  - r-collapse
+  - r-santoku

@@ -3,11 +3,18 @@
 ################################################################################
 #install.packages("renv")
 #renv::init()
+os_type <- Sys.info()[["sysname"]]
+
+#custom_lib <- .libPaths()[1]
+
+#dir.create(custom_lib, recursive = TRUE, showWarnings = FALSE)
+#.libPaths(custom_lib)
+
+options(repos = c(CRAN = "https://cloud.r-project.org"))
 
 if (Sys.info()['sysname'] == "Windows") {
   options(download.file.method = "curl", download.file.extra="-k -L")
 }
-
 
 cran_packages <- c(
   "whitebox", "Metrics", "dplyr", "glue", "raster",
@@ -19,7 +26,6 @@ github_packages <- c(
   "owp-spatial/hfsubsetR",
   "mikejohnson51/zonal"
 )
-
 
 installed <- rownames(installed.packages())
 
@@ -36,13 +42,67 @@ if (!requireNamespace("remotes", quietly = TRUE)) {
 for (repo in github_packages) {
   pkg <- basename(repo)
   if (!requireNamespace(pkg, quietly = TRUE)) {
-    remotes::install_github(repo, upgrade = "never")
+    remotes::install_github(repo, upgrade = "never", dependencies = TRUE, build_vignettes = FALSE, Ncpus = 4)
   }
 }
 
-if (!whitebox::check_whitebox_binary()) {
-  whitebox::install_whitebox()
-}
+# WhiteboxTools install (still sets env dynamically)
+if (os_type == "Linux") {
+  sandbox_dir <- Sys.getenv("SANDBOX_DIR")
+
+  # Ensure it exists
+  if (sandbox_dir == "" || is.na(sandbox_dir)) {
+   stop("SANDBOX_DIR environment variable is not set. Please export SANDBOX_DIR before running this script.")
+ }
+
+ wbt_expected <- file.path(
+   sandbox_dir,
+   "rvenv/vevn_subset/lib/R/library/WBT/whitebox_tools"
+   )
+
+  if (file.exists(wbt_expected)) {
+
+    Sys.setenv(WHITEBOX_EXE = wbt_expected)
+    whitebox::wbt_init(exe_path = wbt_expected)
+    message("Using existing WhiteboxTools: ", wbt_expected)
+  } else {
+
+    message("WhiteboxTools not found. Installing...")
+
+    custom_lib <- file.path(
+      sandbox_dir,
+      "rvenv/vevn_subset/lib/R/library"
+    )
+
+    whitebox::install_whitebox(pkg_dir = custom_lib, force = TRUE)
+
+    if (file.exists(wbt_expected)) {
+     Sys.setenv(WHITEBOX_EXE = wbt_expected)
+     whitebox::wbt_init(exe_path = wbt_expected)
+     message("WhiteboxTools installed at: ", wbt_expected)
+    } else {
+     stop("WhiteboxTools installation failed!")
+   }
+
+ }
+} else if (os_type == "Darwin") {
+   if (!whitebox::check_whitebox_binary()) {
+    whitebox::install_whitebox()
+    }
+  }
+
+#if (!whitebox::check_whitebox_binary()) {
+#  whitebox::install_whitebox(pkg_dir = custom_lib, force = TRUE)
+#  wbt_path <- list.files(custom_lib, pattern = "whitebox_tools$", recursive = TRUE, full.names = TRUE)
+#  if (length(wbt_path) > 0) {
+#    Sys.setenv(WHITEBOX_EXE = wbt_path[1])
+#    whitebox::wbt_init(exe_path = Sys.getenv("WHITEBOX_EXE"))
+#    message("WhiteboxTools executable set to: ", Sys.getenv("WHITEBOX_EXE"))
+#  } else {
+#    warning("Could not locate WhiteboxTools binary after install!")
+#  }
+#}
+
 
 suppressPackageStartupMessages({
   library(zonal)
