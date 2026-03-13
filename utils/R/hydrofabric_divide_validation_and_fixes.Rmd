@@ -181,7 +181,7 @@ results <- lapply(gpkg_files, check_divs_attrs_consistency,
 ```
 
 ################################################################################
-# Split hydrofabric into VPUs, easy for processing and computing divide attributes such as GIUH, TWIs 
+# Split hydrofabric into VPUs, easy for processing and computing divide attributes such as GIUH, TWIs, ...
 ```{r}
 # Set the following paths
 base_hf_gpkg <- "/Users/ahmadjankhattak/Core/input_data/hf2.2_gpkgs/conus_nextgen_updated_fixed.gpkg"
@@ -340,10 +340,10 @@ fill_missing_divide_attrs(infile, outfile)
 
 
 ################################################################################
-# Fix Stray Divide Geometries
+# Fix Stray/dangling Divide Geometries
 ```{r}
 
-# Identifies and corrects stray divide geometries, including semi-closed
+# Identifies and corrects stray/dangling divide geometries, including semi-closed
 # polygons and divides with open or dangling endpoints.
  
 fix_divides_geometry <- function(
