@@ -17,12 +17,13 @@ import shutil
 from src.python import configuration
 
 class Runner:
-    def __init__(self, sandbox_dir, config_workflow, config_calib
+    def __init__(self, sandbox_dir, config_workflow, config_calib, dryrun
                  ):
         self.os_name         = platform.system()
         self.sandbox_dir     = Path(sandbox_dir)
         self.config_workflow = config_workflow
         self.config_calib    = config_calib
+        self.dryrun          = dryrun
 
         self.load_configuration()
 
@@ -197,8 +198,12 @@ class Runner:
             if self.os_name == "Darwin":
                 run_cmd = f'PYTHONEXECUTABLE=$(which python) {run_cmd}'
 
-            print(f"Run command: {run_cmd}", flush=True)
-            result = subprocess.call(run_cmd, shell=True)
+            if not self.dryrun:
+                print(f"Run command: {run_cmd}", flush=True)
+                result = subprocess.call(run_cmd, shell=True)
+            else:
+                print("Dry run: no simulation executed.")
+
 
     def run_ngen_with_calibration(self, basin):
         id, ncats = basin
@@ -293,7 +298,12 @@ class Runner:
             if self.ensemble_enabled:
                 run_command += " -routing configs/troute_config.yaml"
 
-        return subprocess.call(run_command, shell=True)
+        if not self.dryrun:
+            return subprocess.call(run_command, shell=True)
+        else:
+            print("Dry run: no simulation executed.")
+
+            return
 
 
     def generate_partition_basin_file(self, ncats, gpkg_file):

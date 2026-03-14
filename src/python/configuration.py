@@ -344,7 +344,7 @@ class ConfigurationCalib:
         self.troute_output_file = troute_output_file
         self.restart_dir        = restart_dir
         self.ensemble_enabled   = ensemble_enabled
-        self.ensemble_size = len([m.strip() for m in ensemble_models.split(",")]) if self.ensemble_enabled else 1
+        self.ensemble_size      = len([m.strip() for m in ensemble_models.split(",")]) if self.ensemble_enabled else 1
         self.ensemble_models    = ensemble_models
         self.realization_file_par = realization_file_par
         self.ensemble_calib_params_groups = ensemble_calib_params_groups
@@ -405,14 +405,25 @@ class ConfigurationCalib:
             df_new["general"]["restart"] = True
 
         model_param_map = {
-            "CFE-S":    "cfes_params",
-            "CFE-X":    "cfex_params",
             "TOPMODEL": "topmodel_params",
             "NOM":      "noahowp_params",
             "SNOW17":   "snow17_params",
             "SAC-SMA":  "sacsma_params"
         }
-        
+
+        if "CFE" in self.formulation:
+            yaml_path = os.path.join(self.sandbox_dir, "configs/basefiles/config_cfe.yaml")
+
+            if not os.path.exists(yaml_path):
+                raise FileNotFoundError(f"Missing CFE basefile: {yaml_path}")
+
+            with open(yaml_path, "r") as f:
+                cfe_template = yaml.safe_load(f)
+
+            model_param_map["CFE"] = "cfes_params"
+            if cfe_template["surface_water_partitioning_scheme"].lower() == "xinanjiang":
+                model_param_map["CFE"] = "cfex_params"
+            
         # Add calibratable parameter blocks
         for model in self.formulation.split(","):
             model = model.strip()
