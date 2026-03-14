@@ -8,8 +8,7 @@ import numpy as np
 from src.python.registry import register_model
 from src.python.configuration import ConfigurationGenerator
 
-@register_model("CFE-S")
-@register_model("CFE-X")
+@register_model("CFE")
 class CFEConfigurationGenerator(ConfigurationGenerator):
     def __init__(self, ctx):
         super().__init__(ctx)
@@ -55,13 +54,13 @@ class CFEConfigurationGenerator(ConfigurationGenerator):
 
                 if key in ["spatial"]:          # Skip, meta keys (not model params)
                     continue
-    
+
                 # Skip keys that only matter for CFE-X
                 if key in ["a_Xinanjiang_inflection_point_parameter",
                            "b_Xinanjiang_shape_parameter",
                            "x_Xinanjiang_shape_parameter",
                            "urban_decimal_fraction"
-                           ] and "CFE-X" not in self.ctx.formulation:
+                           ] and self.cfe_template["surface_water_partitioning_scheme"].lower() == "schaake":
                     continue
 
                 if key in ["sft_coupled", "ice_content_threshold"] and "SFT" not in self.ctx.formulation:
@@ -139,10 +138,8 @@ class CFEConfigurationGenerator(ConfigurationGenerator):
                 "nash_storage_surface": [0.0] * N
             })
 
-    
-
         # Surface partitioning logic
-        if "CFE-X" in self.ctx.formulation:
+        if self.cfe_template["surface_water_partitioning_scheme"].lower() == "xinanjiang":
             soil_id = gdf["ISLTYP"][cat_name]
 
             dynamic.update({
@@ -156,8 +153,8 @@ class CFEConfigurationGenerator(ConfigurationGenerator):
                 "urban_decimal_fraction":
                 gdf["impervious_mean"][cat_name],
             })
-        else:
-            dynamic["surface_water_partitioning_scheme"] = "Schaake"
+        #else:
+        #    dynamic["surface_water_partitioning_scheme"] = "Schaake"
 
 
         # Spatial parameters override uniform values

@@ -62,17 +62,12 @@ class RealizationGenerator:
                 else f"realization_{realization_name}.json"
             )
         )
-        
-        if "CFE-S" in self.formulation:
-            surface_water_partitioning_scheme = "Schaake"
-        elif "CFE-X" in self.formulation:
-            surface_water_partitioning_scheme = "Xinanjiang"
 
         if not os.path.exists(self.forcing_dir):
             sys.exit(f"Forcing directory does not exist: {self.forcing_dir}")
 
         cfe_dir = os.path.join(self.output_dir, "configs", "cfe")
-        if 'CFE-S' in self.formulation and not os.path.exists(cfe_dir):
+        if 'CFE' in self.formulation and not os.path.exists(cfe_dir):
             print(f"CFE config files directory does not exist. {cfe_dir}")
             sys.exit(0)
 

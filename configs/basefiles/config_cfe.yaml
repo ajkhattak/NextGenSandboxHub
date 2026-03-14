@@ -23,8 +23,7 @@ N_nash_subsurface       : 2
 K_lf                    : 0.01           # []
 nash_storage_subsurface : [0.0,0.0]
 
-surface_water_partitioning_scheme : null           # Schaake (CFE-S) or Xinanjiang (CFE-X) these are picked based on the model
-                                                   # specified in the sandbox config file; don't change it from null
+surface_water_partitioning_scheme : Schaake        # Schaake (CFE-S) or Xinanjiang (CFE-X)
 surface_runoff_scheme             : NASH_CASCADE   # GIUH for CFEv1.0 and NASH_CASCADE for CFEv2.0
 
 giuh_ordinates       : null
