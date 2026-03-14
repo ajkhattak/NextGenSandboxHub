@@ -211,6 +211,21 @@ class ForcingProcessor:
                     # interpolate along time
                     ds[name] = ds[name].interpolate_na(dim='time', method='linear')
 
+            # Fix <200K values in air Temperature
+            if name in ['TMP_2maboveground']:
+                neg_mask = ds[name] < 200
+
+                if neg_mask.any():
+                    if self.verbosity >= 2:
+                        neg_count = int(neg_mask.sum())
+                        print(f"{neg_count} negative values found in {name}. Applying linear interpolation.")
+
+                    # set negatives to NaN
+                    ds[name] = ds[name].where(~neg_mask)
+
+                    # interpolate along time
+                    ds[name] = ds[name].interpolate_na(dim='time', method='linear')
+
         path = Path(nc_file)
         new_file = Path(fdir) / (path.stem + "_corrected.nc")
         ds.to_netcdf(new_file)
