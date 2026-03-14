@@ -88,7 +88,7 @@ formulations_supported = [
 ]
 
 
-def Sandbox(args, sandbox_config, calib_config):
+def Sandbox(args, sandbox_config, calib_config, dryrun=False):
     
     if (args.subset):
         print ("Generating geopackages...")
@@ -124,7 +124,7 @@ def Sandbox(args, sandbox_config, calib_config):
     if (args.run):
         print ("Calling Runner...")
 
-        _runner = runner.Runner(sandbox_dir, sandbox_config, calib_config)
+        _runner = runner.Runner(sandbox_dir, sandbox_config, calib_config, dryrun)
         status  = _runner.run()
 
         if (status):
@@ -145,6 +145,7 @@ def main():
     parser.add_argument("-i",       dest="sandbox_infile",  type=str, required=False, metavar="FILE", help="sandbox config file")
     parser.add_argument("-j",       dest="calib_infile",    type=str, required=False, metavar="FILE", help="caliberation config file")
 
+    parser.add_argument("--dryrun", action="store_true",         help="caliberation config file")
     parser.add_argument("--formulations", action="store_true", help="List supported formulations and exit")
     
     args = parser.parse_args()
@@ -177,7 +178,8 @@ def main():
             sys.exit(0)
     else:
         calib_config = f"{sandbox_dir}/configs/calib_config.yaml"
-    
+
+
     if (len(sys.argv) < 2):
         print ("No arguments are provide")
         sys.exit(0)
@@ -185,4 +187,4 @@ def main():
     # check if expected Python virtual env exists and activated
     CheckSandboxVENV()
 
-    Sandbox(args, sandbox_config, calib_config)
+    Sandbox(args, sandbox_config, calib_config, args.dryrun)
