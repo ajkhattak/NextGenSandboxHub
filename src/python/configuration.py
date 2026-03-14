@@ -28,7 +28,7 @@ except:
 
 os_name = platform.system()
 
-from src.python.registry import MODELS_REGISTRY #, register_model
+from src.python.registry import MODELS_REGISTRY
 
 def _load_formulations():
     # Import formulation modules here so they register themselves
