@@ -35,18 +35,18 @@ mamba activate "${SANDBOX_DIR}/rvenv/mamba"
 
 # Create main R environment
 
-if [ ! -d "${SANDBOX_DIR}/rvenv/vevn_subset" ]; then
-mamba env create -y -p "${SANDBOX_DIR}/rvenv/vevn_subset" -f "${SANDBOX_DIR}/rgeo_env.yml"
+if [ ! -d "${SANDBOX_DIR}/rvenv/venv_subset" ]; then
+mamba env create -y -p "${SANDBOX_DIR}/rvenv/venv_subset" -f "${SANDBOX_DIR}/utils/venv/venv_subset.yaml"
 fi
 
 # Activate main environment
-mamba activate "${SANDBOX_DIR}/rvenv/vevn_subset"
+mamba activate "${SANDBOX_DIR}/rvenv/venv_subset"
 
 
 # Install additional R packages via conda
 
 mamba install -y \
--p "${SANDBOX_DIR}/rvenv/vevn_subset" \
+-p "${SANDBOX_DIR}/rvenv/venv_subset" \
 -c conda-forge \
 r-rcpp r-gifski r-sourcetools r-rnaturalearth \
 r-later r-promises r-httpuv r-shiny r-leaflet \

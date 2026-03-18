@@ -11,15 +11,30 @@
 ###### Config #######
 BUILD_SANDBOX=${BUILD:-ON}
 
-BASH_FILE="${BASH_FILE:-$HOME/.zshrc}" # <- change this to your local settings or provide it as env variable
+# Detect shell config file (with optional override)
+if [ -n "$BASH_FILE" ]; then
+    TARGET_FILE="$BASH_FILE"
+else
+    if [ -n "$ZSH_VERSION" ]; then
+        TARGET_FILE="$HOME/.zshrc"
+    elif [ -n "$BASH_VERSION" ]; then
+        TARGET_FILE="$HOME/.bashrc"
+    else
+        echo "Unsupported shell"
+        return 1
+    fi
+fi
 
-echo "$BUILD_SANDBOX"       # empty
-echo "$BASH_FILE"           # still defaults to ~/.zshrc
+echo "BUILD_SANDBOX: $BUILD_SANDBOX"
+echo "BASH_FILE  : $TARGET_FILE"
 
 
 ######## PATHS #########
 
-SANDBOX_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SANDBOX_DIR="$(
+  cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd
+)"
+
 SANDBOX_BUILD_DIR="$(dirname "$SANDBOX_DIR")/sandbox_build"
 NGEN_DIR="$SANDBOX_BUILD_DIR/ngen"
 
@@ -35,11 +50,18 @@ echo "Forcing VENV      : $VENV_FORCING_PATH"
 
 append_if_missing() {
     local line="$1"
-    grep -qxF "$line" "$BASH_FILE" || echo "$line" >> "$BASH_FILE"
+    grep -qxF "$line" "$TARGET_FILE" || echo "$line" >> "$TARGET_FILE"
 }
 
-# reload the updated bash profile
-source "$BASH_FILE"
+append_if_missing "export SANDBOX_DIR='$SANDBOX_DIR'"
+append_if_missing "export SANDBOX_BUILD_DIR='$SANDBOX_BUILD_DIR'"
+append_if_missing "export NGEN_DIR='$NGEN_DIR'"
+
+
+
+# reload the updated bash profile to apply the changes immediately
+echo "Reloading bash file..."
+source "$TARGET_FILE"
 
 
 #####################################################
@@ -108,10 +130,6 @@ build_sandbox()
 	fi
 
     fi
-
-    append_if_missing "export SANDBOX_DIR='$SANDBOX_DIR'"
-    append_if_missing "export SANDBOX_BUILD_DIR='$SANDBOX_BUILD_DIR'"
-    append_if_missing "export NGEN_DIR='$NGEN_DIR'"
     
     pip install -e .
 
@@ -168,7 +186,7 @@ build_sandbox()
     fi
  
     echo "sourcing bash file"
-    source $BASH_FILE
+    #source $BASH_FILE
     
     ############################################
     # LSTM
