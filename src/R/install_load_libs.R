@@ -48,11 +48,11 @@ for (repo in github_packages) {
 
 # WhiteboxTools install (still sets env dynamically)
 if (os_type == "Linux") {
-  sandbox_dir <- Sys.getenv("SANDBOX_DIR")
+  sandbox_dir <- Sys.getenv("SANDBOX_BUILD_DIR")
 
   # Ensure it exists
   if (sandbox_dir == "" || is.na(sandbox_dir)) {
-   stop("SANDBOX_DIR environment variable is not set. Please export SANDBOX_DIR before running this script.")
+   stop("SANDBOX_BUILD_DIR environment variable is not set. Please export SANDBOX_BUILD_DIR before running this script.")
  }
 
  wbt_expected <- file.path(

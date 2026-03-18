@@ -63,7 +63,7 @@ SANDBOX_BUILD_DIR, SANDBOX_DIR, SANDBOX_VENV
 > **Note:** The sandbox workflow assumes that [ngen](https://github.com/NOAA-OWP/ngen) and models including [t-route](https://github.com/NOAA-OWP/t-route) have been built in the Python virtual environment created in Step 1.
 Please activate the sandbox environmental and follow the instructions in the [build_models](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/build_models.sh) script to build ngen and models. For an example HPC setup, see [setup_hpc.sh](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/setup_hpc.sh). After loading the required modules and setting up the environment variables, run the following command:
 ```
-./utils/build_sandbox.sh
+./utils/build_models.sh
 ```
 
 ### <ins> Step 4. Setup configuration file
