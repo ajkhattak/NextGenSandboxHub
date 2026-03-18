@@ -18,16 +18,16 @@ sys.path.insert(0, str(sandbox_dir))
 # Only configure R environment on HPC (Linux)
 if platform.system() == "Linux":
 
-    sandbox_env = os.environ.get("SANDBOX_DIR")
-    if not sandbox_env:
+    sandbox_build_dir = os.environ.get("SANDBOX_BUILD_DIR")
+    if not sandbox_build_dir:
         raise RuntimeError(
-            "SANDBOX_DIR environment variable is not set. "
-            "Please export SANDBOX_DIR before running this script."
+            "SANDBOX_BUILD_DIR environment variable is not set. "
+            "Please export SANDBOX_BUILD_DIR before running this script."
         )
 
-    subset_env = Path(sandbox_env) / "rvenv" / "vevn_subset"
+    venv_subset = Path(sandbox_build_dir) / "rvenv" / "venv_subset"
 
-    rscript = subset_env / "bin" / "Rscript"
+    rscript = subset_venv / "bin" / "Rscript"
 
     os.environ["R_LIBS_USER"] = str(subset_env / "lib" / "R" / "library")
     os.environ["PROJ_LIB"] = str(subset_env / "share" / "proj")
