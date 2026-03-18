@@ -48,15 +48,15 @@ for (repo in github_packages) {
 
 # WhiteboxTools install (still sets env dynamically)
 if (os_type == "Linux") {
-  sandbox_dir <- Sys.getenv("SANDBOX_BUILD_DIR")
+  sandbox_build_dir <- Sys.getenv("SANDBOX_BUILD_DIR")
 
   # Ensure it exists
-  if (sandbox_dir == "" || is.na(sandbox_dir)) {
+  if (sandbox_build_dir == "" || is.na(sandbox_build_dir)) {
    stop("SANDBOX_BUILD_DIR environment variable is not set. Please export SANDBOX_BUILD_DIR before running this script.")
  }
 
  wbt_expected <- file.path(
-   sandbox_dir,
+   sandbox_build_dir,
    "rvenv/vevn_subset/lib/R/library/WBT/whitebox_tools"
    )
 
@@ -70,7 +70,7 @@ if (os_type == "Linux") {
     message("WhiteboxTools not found. Installing...")
 
     custom_lib <- file.path(
-      sandbox_dir,
+      sandbox_build_dir,
       "rvenv/vevn_subset/lib/R/library"
     )
 
