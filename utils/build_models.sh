@@ -218,13 +218,3 @@ if [ "$BUILD_TROUTE" == "ON" ]; then
     echo "Troute build: ${BUILD_TROUTE}"
     build_troute
 fi
-
-
-#if [ "$model" == "ngen-cal" ] && [ "$BUILD_CALIB" == "ON" ]; then
-#    git clone https://github.com/NOAA-OWP/ngen-cal extern/${model}
-#    pip install -e extern/${model}/python/ngen_cal
-#    # or try installing this way
-#    #pip install "git+https://github.com/noaa-owp/ngen-cal@master#egg=ngen_cal&subdirectory=python/ngen_cal"
-#    #pip install "git+https://github.com/aaraney/ngen-cal@forcing-hotfix#egg=ngen_cal&subdirectory=python/ngen_cal"
-#    #cd ${wkdir}
-#fi
