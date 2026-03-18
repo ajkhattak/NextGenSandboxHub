@@ -27,11 +27,11 @@ if platform.system() == "Linux":
 
     venv_subset = Path(sandbox_build_dir) / "rvenv" / "venv_subset"
 
-    rscript = subset_venv / "bin" / "Rscript"
+    rscript = venv_subset / "bin" / "Rscript"
 
-    os.environ["R_LIBS_USER"] = str(subset_env / "lib" / "R" / "library")
-    os.environ["PROJ_LIB"] = str(subset_env / "share" / "proj")
-    os.environ["PATH"] = f"{subset_env}/bin:" + os.environ.get("PATH", "")
+    os.environ["R_LIBS_USER"] = str(venv_subset / "lib" / "R" / "library")
+    os.environ["PROJ_LIB"] = str(venv_subset / "share" / "proj")
+    os.environ["PATH"] = f"{venv_subset}/bin:" + os.environ.get("PATH", "")
 
 else:
     # macOS / local development
