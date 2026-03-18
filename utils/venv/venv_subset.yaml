@@ -1,4 +1,4 @@
-name: rgeo
+name: venv_subset
 channels:
   - conda-forge
 

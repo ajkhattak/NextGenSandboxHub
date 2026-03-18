@@ -12,7 +12,7 @@ Detailed instructions on how to install, configure, and get the NextGenSandboxHu
      - HPC system: load conda or a compatible Python module, e.g., Python ≥ 3.11.
   3. Build the Sandbox workflow:
      ```
-     BASH_FILE=~/.zshrc BUILD=ON source ./utils/build_sandbox.sh
+     source ./utils/build_sandbox.sh
      ```
 
 >**NOTE:** The script installs a python env named `.venv_sandbox_py3.11` (see utils/build_sandbox.sh [here](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/build_sandbox.sh#L18)). This environment MUST be activated before performing any of the following steps.
@@ -38,14 +38,17 @@ SANDBOX_BUILD_DIR, SANDBOX_DIR, SANDBOX_VENV
    ```
   
 ### <ins>  Step 2. Hydrofabric Installation
-There are two ways to install the required packages:
-  #### Option 1: Using the Command Line (recommended for HPC machines, load R module)
-  Run the following command in a terminal or command prompt:
+  #### HPC machines (load conda module)
+  Run the following command in a terminal:
   ```
-   Rscript $SANDBOX_DIR/src/R/install_load_libs.R
+  ./utils/build_venv_subset.sh
+  ```
+  #### macOS
+  ```
+  Rscript $SANDBOX_DIR/src/R/install_load_libs.R
   ```
   
-  #### Option 2: Using RStudio
+  #### Using RStudio
   Ensure R and Rtools are already installed before proceeding.
    - Open `<path_to_sandboxhub>/src/R/install_load_libs.R` in RStudio. Click Source to execute the script.
    - Alternatively, run the following command in the RStudio Console:
