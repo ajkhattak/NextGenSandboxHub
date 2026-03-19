@@ -28,10 +28,11 @@ subsetting :
 ########################################################################
 #forcing data is stored under <input_dir>/gage_id/data/forcing
 forcings : 
-  forcing_format    : ".nc" #-------------------------------------------- Format .nc or .csv (recommended option .nc)
-  forcing_time      : {"start_time" : "2016-10-01 00:00:00", "end_time" : "2016-11-30 23:00:00"} #---------- Time (must cover the simulation times)
-  domain            : "conus"        #------------------------------------ options = ["conus", "HI", "PR", 'AK']
-
+  format  : ".nc"
+  time    : {"start_time" : "2016-10-01 00:00:00", "end_time" : "2017-09-30 23:00:00"}
+  domain  : "conus"
+  select  : "01308000"
+  
 ########################################################################
 formulation :
   models            : "PET, CFE-S, T-route"
