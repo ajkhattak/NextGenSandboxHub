@@ -1,5 +1,4 @@
 # Sandbox configuration sample file
-#
 
 general:
   input_dir  : "./input/data"  
@@ -7,24 +6,24 @@ general:
 
 # make sure to install yaml package using install.packages("yaml") if not installed already
 subsetting :
-  hf_version               : "2.2" 
-  hf_gpkg_path             : "<path_to>/conus_nextgen.gpkg"  
-  dem_output_dir           : "<path_to>/dem" 
-  #dem_input_file           : "<path_to>/dem.vrt"
+  hydrofabric:
+    version               : "2.2"
+    gpkg_path             : "<path_to>/conus_nextgen.gpkg" 
+  dem:
+    output_dir           : "dem"
+    #input_file           : "<path_to>/dem.vrt"
+    aggregate_factor : 3
 
-  # Note: only gage_ids that fall within the domain of the hydrofabric listed above will be subsetted
-  options :
-    use_gage_id :
-      use_gage_id  : TRUE #----------------------------------------------- TRUE or FALSE
-      gage_ids     : "01308000" #----------------------------------------- List of gage IDs, for instance, ["01105000","08070500"]
-    use_gage_file :
-      use_gage_file : FALSE  #-------------------------------------------- TRUE or FALSE
-      gage_file     : "<path_to_basin_ids_file>/basin_ids_file.csv" #----- Path to CSV file with column (set column name below) of basin gage IDs
-      column_name   : "USGS.ID" #----------------------------------------- Name of column of gage IDs
-    use_gpkg :
-      use_gpkg  : FALSE  #------------------------------------------------ TRUE or FALSE
-      gpkg_dir  : "<path_to_gpkgs_dir>" #--------------------------------- Path to base directory for all (already downloaed) geopackages
-      pattern   :  "gage_" #---------------------------------------------- Pattern of names, e.g., gage_<*> or hf_<*>
+  vegetation:
+    enabled                  : FALSE  
+    nlcd_path                : "<path_to>/Annual_NLCD_LndCov_2021_CU_C1V1.tif" 
+    classification_method    : "fraction"
+
+  gages:
+    option: "ids"
+
+    ids: ["01308000"]
+
 
 ########################################################################
 #forcing data is stored under <input_dir>/gage_id/data/forcing

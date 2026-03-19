@@ -105,14 +105,14 @@ build_sandbox()
 	# To remove conda env long prefix 
 	conda config --set env_prompt '({name})'
 
-	pip install -U pip setuptools wheel
+	pip install -U pip "setuptools>=64.0,<69.0" wheel
         # Optional: safe numba/llvmlite from conda-forge
         conda install -y -c conda-forge numba==0.63 llvmlite
 	conda install -y pycares=4.11.0 # need for ngen-cal
 
 	#Save how to activate (use conda activate)
-	if ! grep -qxF "export SANDBOX_VENV='$VENV_SANDBOX_PATH'" "$BASH_FILE"; then
-            echo "export SANDBOX_VENV='$VENV_SANDBOX_PATH'" >> "$BASH_FILE"
+	if ! grep -qxF "export SANDBOX_VENV='$VENV_SANDBOX_PATH'" "$TARGET_FILE"; then
+            echo "export SANDBOX_VENV='$VENV_SANDBOX_PATH'" >> "$TARGET_FILE"
 	fi
 
     else
@@ -125,8 +125,8 @@ build_sandbox()
         source "$VENV_SANDBOX_PATH/bin/activate"
         pip install -U pip==24.0 "setuptools>=64.0,<69.0" wheel
 
-	if ! grep -qxF "export SANDBOX_VENV='$VENV_SANDBOX_PATH/bin/activate'" "$BASH_FILE"; then
-            echo "export SANDBOX_VENV='$VENV_SANDBOX_PATH/bin/activate'" >> "$BASH_FILE"
+	if ! grep -qxF "export SANDBOX_VENV='$VENV_SANDBOX_PATH/bin/activate'" "$TARGET_FILE"; then
+            echo "export SANDBOX_VENV='$VENV_SANDBOX_PATH/bin/activate'" >> "$TARGET_FILE"
 	fi
 
     fi
@@ -184,9 +184,6 @@ build_sandbox()
 
 	deactivate
     fi
- 
-    echo "sourcing bash file"
-    #source $BASH_FILE
     
     ############################################
     # LSTM
