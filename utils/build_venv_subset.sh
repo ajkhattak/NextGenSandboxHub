@@ -7,6 +7,8 @@ set -euo pipefail
 # Disable conda plugins (faster and avoids conflicts on HPC)
 export CONDA_NO_PLUGINS=true
 
+export CONDA_SOLVER=classic
+
 # initialize conda/mamba for non-interactive shell
 eval "$(conda shell.bash hook)"
 
@@ -31,7 +33,9 @@ fi
 
 eval "$("${SANDBOX_BUILD_DIR}/rvenv/mamba/bin/mamba" shell hook --shell bash)"
 
+set +u
 mamba activate "${SANDBOX_BUILD_DIR}/rvenv/mamba"
+set -u
 
 # Create main R environment
 
@@ -40,18 +44,20 @@ mamba env create -y -p "${SANDBOX_BUILD_DIR}/rvenv/venv_subset" -f "${SANDBOX_DI
 fi
 
 # Activate main environment
+set +u
 mamba activate "${SANDBOX_BUILD_DIR}/rvenv/venv_subset"
+set -u
 
 
 # Install additional R packages via conda
-
+set +u
 mamba install -y \
 -p "${SANDBOX_BUILD_DIR}/rvenv/venv_subset" \
 -c conda-forge \
 r-rcpp r-gifski r-sourcetools r-rnaturalearth \
 r-later r-promises r-httpuv r-shiny r-leaflet \
 r-units r-maptiles r-fst r-leaflet.extras r-ncdf4
-
+set -u
 # Run R dependency installer
 Rscript "${SANDBOX_DIR}/src/R/install_load_libs.R"
 
