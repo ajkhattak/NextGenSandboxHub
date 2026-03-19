@@ -18,10 +18,7 @@ Detailed instructions on how to install, configure, and get the NextGenSandboxHu
 >**NOTE:** The script installs a python env named `.venv_sandbox_py3.11` (see utils/build_sandbox.sh [here](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/build_sandbox.sh#L18)). This environment MUST be activated before performing any of the following steps.
 
 ### <ins>  Sandbox Virtual Environment Activation
-During the Sandbox build step, the following environment variables are appended to your shell configuration file (.bashrc, .bash_profile, or equivalent) for easy navigation and environment activation: 
-```
-SANDBOX_BUILD_DIR, SANDBOX_DIR, SANDBOX_VENV
-```
+During the Sandbox build step, `SANDBOX_DIR, SANDBOX_BUILD_DIR, SANDBOX_VENV` environment variables are appended to your shell configuration file (.bashrc, .bash_profile, or equivalent) for easy navigation and environment activation.
 
 **Activate the virtual environment:**
  - Navigate to the sandbox directory
@@ -38,18 +35,17 @@ SANDBOX_BUILD_DIR, SANDBOX_DIR, SANDBOX_VENV
    ```
   
 ### <ins>  Step 2. Hydrofabric Installation
-  #### HPC machines (load conda module)
+  #### Option #1: HPC machines (load conda module) or macOS
   Run the following command in a terminal:
   ```
   ./utils/build_venv_subset.sh
   ```
-  #### macOS
+  #### Option #2: macOS
+  Ensure R and Rtools are already installed before proceeding.
   ```
   Rscript $SANDBOX_DIR/src/R/install_load_libs.R
   ```
-  
-  #### Using RStudio
-  Ensure R and Rtools are already installed before proceeding.
+  #### Option #3: Using RStudio on macOS/Windows
    - Open `<path_to_sandboxhub>/src/R/install_load_libs.R` in RStudio. Click Source to execute the script.
    - Alternatively, run the following command in the RStudio Console:
      ```
