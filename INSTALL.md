@@ -47,31 +47,30 @@ During the Sandbox build step, `SANDBOX_DIR, SANDBOX_BUILD_DIR, SANDBOX_VENV` en
   ```
   #### Option #3: Using RStudio on macOS/Windows
    - Open `<path_to_sandboxhub>/src/R/install_load_libs.R` in RStudio. Click Source to execute the script.
-   - Alternatively, run the following command in the RStudio Console:
-     ```
-     source("~/<path_to_sandboxhub>/src/R/install_load_libs.R")
-     ```
-  
+   - Alternatively, run the following command in the RStudio Console: `source("~/<path_to_sandboxhub>/src/R/install_load_libs.R")`
 
 ### <ins> Step 3. Install NextGen (ngen) and Required Models
 > **Important:** Before continuing to later steps, you must install and build ngen and the required routing/models components.
 
 > **Note:** The sandbox workflow assumes that [ngen](https://github.com/NOAA-OWP/ngen) and models including [t-route](https://github.com/NOAA-OWP/t-route) have been built in the Python virtual environment created in Step 1.
-Please activate the sandbox environmental and follow the instructions in the [build_models](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/build_models.sh) script to build ngen and models. For an example HPC setup, see [setup_hpc.sh](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/setup_hpc.sh). After loading the required modules and setting up the environment variables, run the following command:
+Please activate the sandbox environment and follow the instructions in the [build_models](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/build_models.sh) script to build ngen and models. For an example HPC setup, see [setup_hpc.sh](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/setup_hpc.sh). After loading the required modules and setting up the environment variables, run the following command:
 ```
 ./utils/build_models.sh
 ```
+### <ins>Verification Test
+Run the following command to verify that everything has been set up successfully. Download conus geopackage file from [lynker-spatial](https://www.lynker-spatial.com/data?path=hydrofabric%2Fv2.2%2F).
+```
+   python test/sandbox_test.py --all
+```
 
 ### <ins> Step 4. Setup configuration file
-Open the configuration file 
-```
-$SANDBOX_DIR/configs/sandbox_config.yaml
-```
+Open the configuration file `$SANDBOX_DIR/configs/sandbox_config.yaml`
+
 Review and update the blocks in [sandbox_config.yaml](configs/sandbox_config.yaml) to match your local environment. The file already contains detailed inline instructions for each configuration block.
 
 ### <ins> Step 5. Hydrofabric Subsetting
   - Dependency: Step 2 & Step 4
-  - Download domain (CONUS or oCONUS) from [lynker-spatial](https://www.lynker-spatial.com/data?path=hydrofabric%2Fv2.2%2F), for instance conus/conus_nextgen.gpkg
+  - Download domain (CONUS or oCONUS) from [lynker-spatial](https://www.lynker-spatial.com/data?path=hydrofabric%2Fv2.2%2F), for instance, conus/conus_nextgen.gpkg
   - From command line run:
     ```
     sandbox --subset -i <sandbox_config_filename.yaml>
@@ -93,25 +92,7 @@ If you have not already done so, review and update the sandbox config file [here
     sandbox --conf -i <sandbox_config_filename.yaml> -j <calib_config_filename.yaml>
  ```
 ### <ins> Step 8. Run Calibration/Validation Simulations
-Run the following command — assuming you have already set up the sandbox configuration file [here](configs/sandbox_config.yaml) and calibration configuration file [here](configs/calib_config.yaml), and have successfully completed the steps above.S
+Run the following command — assuming you have already set up the sandbox configuration file [here](configs/sandbox_config.yaml) and calibration configuration file [here](configs/calib_config.yaml).
  ```
     sandbox --run -i <sandbox_config_filename.yaml> -j <calib_config_filename.yaml>
  ```
-#### Summary
-1. Install Sandbox virtual environemnt
-2. Install hydrofabric
-3. Install ngen and models
-4. Subset divide
-5. Download forcing data
-6. Generate configuration files
-7. Run Simulations: Using
-  ```
-    sandbox option
-    OPTIONS = [--subset --forc --conf --run]
-  ```
-- Option: `--subset` downloads geopackage(s) given a gage ID(s), extracts and locally compute TWI, GIUH, and Nash Cascade parameters; see `divide-attributes` in the gage_<basin_id>.gpkg file
-- Option: `--forc` downloads AORC forcings for geopackage(s)
-- Option: `--conf` generates configuration and realization files for the selected models/basins
-- Option: `--run` executes NextGen simulations with and without calibration
-
-Note: These options can be run individually or combined together, for example, `sandbox -subset -conf -run`. The `-subset` is an expensive step, should be run once to get the desired basin geopacakge and associated model parameters.
