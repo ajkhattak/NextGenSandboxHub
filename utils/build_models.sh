@@ -11,19 +11,36 @@
 #   2. MODELS
 #   3. T-ROUTE
 
-BUILD_NGEN=OFF      # Required first
-BUILD_MODELS=ON     # Build after NGEN
-BUILD_TROUTE=OFF    # Build after MODELS
+
+BUILD_NGEN=${NGEN:-OFF}
+BUILD_MODELS=${MODELS:-OFF}
+BUILD_TROUTE=${TROUTE:-OFF}
+
+# -------------------------------
+# Override from command-line arguments
+# Example usage: ./build_models.sh NGEN=ON MODELS=OFF TROUTE=ON
+# -------------------------------
+for arg in "$@"; do
+    case $arg in
+        NGEN=ON) BUILD_NGEN=ON ;;
+        MODELS=ON) BUILD_MODELS=ON ;;
+        TROUTE=ON) BUILD_TROUTE=ON ;;
+        *) echo "Warning: unrecognized argument '$arg'" ;;
+    esac
+done
+
+
+# -------------------------------
+# Print the build flags
+# -------------------------------
+echo "BUILD_NGEN   = $BUILD_NGEN"
+echo "BUILD_MODELS = $BUILD_MODELS"
+echo "BUILD_TROUTE = $BUILD_TROUTE"
 
 HF_VERSION=2.2     # provide hydrofabric version
 
 ###############################################################
 # Check if current active venv matches the sandbox venv
-VENV_SANDBOX="$SANDBOX_BUILD_DIR/venv/venv_sandbox_py3.11"
-
-# Expand ~ and/or convert to absolute path
-SANDBOX_ENV=$(realpath "$VENV_SANDBOX" 2>/dev/null)
-
 
 # Determine current active environment
 if [ -n "$VIRTUAL_ENV" ]; then
@@ -34,9 +51,9 @@ else
     CURRENT_ENV=""
 fi
 
-if [ "$CURRENT_ENV" != "$SANDBOX_ENV" ]; then
+if [ "$CURRENT_ENV" != "$SANDBOX_VENV" ]; then
     echo "Error: This script must be run inside the sandbox environment:"
-    echo "Expected: $SANDBOX_ENV"
+    echo "Expected: $SANDBOX_VENV"
     echo "Current : ${CURRENT_ENV:-<none>}"
     exit 1
 fi
@@ -80,9 +97,10 @@ build_troute()
 {
     if [ ${HF_VERSION} == 2.2 ]; then
 	pushd $NGEN_DIR/extern
-	git clone https://github.com/aaraney/t-route t-route-hf2.2
+	git clone https://github.com/shorvath-noaa/t-route t-route-hf2.2
 	cd t-route-hf2.2
-	git checkout hf_2_2_support_sans_seans_fork
+	git checkout conus_timing_runs
+	git pull
     else
 	pushd $NGEN_DIR/extern/t-route
 	git checkout master
@@ -207,14 +225,14 @@ build_models()
 
 
 if [ "$BUILD_NGEN" == "ON" ]; then
-    echo "NextGen build: ${BUILD_NGEN}"
+    echo "Building ngen..."
     build_ngen
 fi
 if [ "$BUILD_MODELS" == "ON" ]; then
-    echo "Models build: ${BUILD_MODELS}"
+    echo "Building models...}"
     build_models
 fi
 if [ "$BUILD_TROUTE" == "ON" ]; then
-    echo "Troute build: ${BUILD_TROUTE}"
+    echo "Building troute..."
     build_troute
 fi
