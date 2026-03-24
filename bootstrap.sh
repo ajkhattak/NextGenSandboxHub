@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 #USAGE: ./bootstrap.sh --sandbox --subset --ngen --models --troute
 
-set -e
+#set -e
+set -x
 
 BUILD_SANDBOX=OFF
-BUILD_SUBSET_ENV=OFF
+BUILD_SUBSET=OFF
 BUILD_NGEN=OFF
 BUILD_MODELS=OFF
 BUILD_TROUTE=OFF
@@ -21,10 +22,15 @@ for arg in "$@"; do
   esac
 done
 
+echo "========================================="
 echo "Configuration:"
-echo "  SANDBOX: $BUILD_SANDBOX"
-echo "  SUBSET ENV: $BUILD_SUBSET_ENV"
-echo "  MODELS: $BUILD_MODELS"
+echo "  SANDBOX  : $BUILD_SANDBOX"
+echo "  SUBSET   : $BUILD_SUBSET"
+echo "  NGEN     : $BUILD_NGEN"
+echo "  MODELS   : $BUILD_MODELS"
+echo "  TROUTE   : $BUILD_MODELS"
+echo "========================================="
+
 
 # Run steps
 if [ "$BUILD_SANDBOX" = "ON" ]; then
