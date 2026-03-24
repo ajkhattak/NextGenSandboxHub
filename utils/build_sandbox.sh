@@ -62,12 +62,20 @@ append_if_missing "export SANDBOX_DIR='$SANDBOX_DIR'"
 append_if_missing "export SANDBOX_BUILD_DIR='$SANDBOX_BUILD_DIR'"
 append_if_missing "export NGEN_DIR='$NGEN_DIR'"
 
-
-
 # reload the updated bash profile to apply the changes immediately
 echo "Reloading bash file..."
 source "$TARGET_FILE"
 
+############################################
+# NEEDED WHEN HOME DIR HAS LIMITED STORAGE QUOTA (HPC SETTINGS)
+############################################
+export SCRATCH_BASE="$SANDBOX_BUILD_DIR"
+mkdir -p "$SCRATCH_BASE/tmp" "$SCRATCH_BASE/pip_cache"
+
+export TMPDIR="$SCRATCH_BASE/tmp"
+export TEMP="$SCRATCH_BASE/tmp"
+export TMP="$SCRATCH_BASE/tmp"
+export PIP_CACHE_DIR="$SCRATCH_BASE/pip_cache"
 
 #####################################################
 build_sandbox()
@@ -110,7 +118,8 @@ build_sandbox()
 	# To remove conda env long prefix 
 	conda config --set env_prompt '({name})'
 
-	pip install -U pip "setuptools>=64.0,<69.0" wheel
+	python -m pip install --upgrade pip --no-cache-dir
+	pip install "setuptools>=64.0,<69.0" wheel
         # Optional: safe numba/llvmlite from conda-forge
         conda install -y -c conda-forge numba==0.63 llvmlite
 	conda install -y pycares=4.11.0 # need for ngen-cal
@@ -128,7 +137,8 @@ build_sandbox()
         mkdir -p "$VENV_SANDBOX_PATH"
         $PYTHON_CMD -m venv "$VENV_SANDBOX_PATH"
         source "$VENV_SANDBOX_PATH/bin/activate"
-        pip install -U pip==24.0 "setuptools>=64.0,<69.0" wheel
+	python -m pip install --upgrade pip --no-cache-dir
+	pip install "setuptools>=64.0,<69.0" wheel
 
 	if ! grep -qxF "export SANDBOX_VENV='$VENV_SANDBOX_PATH/bin/activate'" "$TARGET_FILE"; then
             echo "export SANDBOX_VENV='$VENV_SANDBOX_PATH/bin/activate'" >> "$TARGET_FILE"
@@ -143,11 +153,9 @@ build_sandbox()
     git submodule update --remote extern/CIROH_DL_NextGen
     git submodule update --remote extern/lstm
     
-    pip install 'extern/ngen-cal/python/ngen_cal[netcdf]'
-    pip install extern/ngen-cal/python/ngen_conf
+    pip install --no-cache-dir 'extern/ngen-cal/python/ngen_cal[netcdf]'
+    pip install --no-cache-dir extern/ngen-cal/python/ngen_conf
     pip install -e ./extern/ngen_cal_plugins
-
-    # also install lstm
     pip install -e ./extern/lstm
 
     echo "Sandbox Python Environment Created ($VENV_SANDBOX_PATH)"
@@ -164,15 +172,16 @@ build_sandbox()
     echo "Creating virtual python environment for forcing downloader ($VENV_FORCING_PATH)"
 
     if command -v conda >/dev/null 2>&1; then
-	echo "Conda detected. Creating conda environment: $VENV_FORCING_PATH"
 	source "$(conda info --base)/etc/profile.d/conda.sh"
 
-	conda create -y -p "$VENV_FORCING_PATH" python=3.11
+	if [ ! -d "$VENV_FORCING_PATH" ]; then
+            echo "Creating conda forcing environment at $VENV_FORCING_PATH"
+            conda create -y -p "$VENV_FORCING_PATH" python=3.11
+        fi
 
 	conda activate "$VENV_FORCING_PATH"
-
-	pip install -U pip==25.0
-	pip install -r ./doc/env/requirements_forcing.txt
+	python -m pip install --upgrade pip --no-cache-dir
+	pip install --no-cache-dir -r ./doc/env/requirements_forcing.txt
 
 	conda deactivate
 
@@ -183,25 +192,13 @@ build_sandbox()
 
 	$PYTHON_CMD -m venv "$VENV_FORCING_PATH"
 	source "$VENV_FORCING_PATH/bin/activate"
-
-	pip install -U pip==25.0
-	pip install -r ./doc/env/requirements_forcing.txt
+	python -m pip install --upgrade pip --no-cache-dir
+	pip install --no-cache-dir -r ./doc/env/requirements_forcing.txt
 
 	deactivate
     fi
-    
-    ############################################
-    # LSTM
-    ############################################
-    #VENV_LSTM=~/.venv_lstm
 
-    #mkdir "$VENV_LSTM"
-    #$PYTHON_VERSION -m venv "$VENV_LSTM"
-    #source "$VENV_LSTM/bin/activate"
-    
-    #pip install -U pip==24.0
-    #pip install -e ./extern/lstm
-    #deactivate
+    echo "Forcing environment created successfully ($VENV_FORCING_PATH)"
 }
 
 
