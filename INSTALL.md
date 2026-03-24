@@ -12,7 +12,7 @@ Detailed instructions on how to install, configure, and get the NextGenSandboxHu
      - HPC system: load conda or a compatible Python module, e.g., Python ≥ 3.11.
   3. Build the Sandbox workflow:
      ```
-     source ./utils/build_sandbox.sh
+     ./bootstrap.sh --sandbox
      ```
 
 >**NOTE:** The script installs a python env named `.venv_sandbox_py3.11` (see utils/build_sandbox.sh [here](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/build_sandbox.sh#L18)). This environment MUST be activated before performing any of the following steps.
@@ -21,10 +21,6 @@ Detailed instructions on how to install, configure, and get the NextGenSandboxHu
 During the Sandbox build step, `SANDBOX_DIR, SANDBOX_BUILD_DIR, SANDBOX_VENV` environment variables are appended to your shell configuration file (.bashrc, .bash_profile, or equivalent) for easy navigation and environment activation.
 
 **Activate the virtual environment:**
- - Navigate to the sandbox directory
-   ```
-   cd $SANDBOX_DIR
-   ```
  - If using Conda:
    ```
    conda activate $SANDBOX_VENV
@@ -38,7 +34,7 @@ During the Sandbox build step, `SANDBOX_DIR, SANDBOX_BUILD_DIR, SANDBOX_VENV` en
   #### Option #1: HPC machines (load conda module) or macOS
   Run the following command in a terminal:
   ```
-  ./utils/build_venv_subset.sh
+  ./bootstrap.sh --subset
   ```
   #### Option #2: macOS
   Ensure R and Rtools are already installed before proceeding.
@@ -55,11 +51,11 @@ During the Sandbox build step, `SANDBOX_DIR, SANDBOX_BUILD_DIR, SANDBOX_VENV` en
 > **Note:** The sandbox workflow assumes that [ngen](https://github.com/NOAA-OWP/ngen) and models including [t-route](https://github.com/NOAA-OWP/t-route) have been built in the Python virtual environment created in Step 1.
 Please activate the sandbox environment and follow the instructions in the [build_models](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/build_models.sh) script to build ngen and models. For an example HPC setup, see [setup_hpc.sh](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/setup_hpc.sh). After loading the required modules and setting up the environment variables, run the following command:
 ```
-./utils/build_models.sh [OPTIONS]
+./bootstrap.sh [OPTIONS]
 Options:
-  NGEN=ON     Build ngen
-  MODELS=ON   Build models
-  TROUTE=ON   Build t-route
+  --ngen     Build ngen
+  --models   Build models
+  --troute   Build t-route
 ```
 ### <ins>Verification Test
 Run the following command to verify that everything has been set up successfully. Download conus geopackage file from [lynker-spatial](https://www.lynker-spatial.com/data?path=hydrofabric%2Fv2.2%2F).
