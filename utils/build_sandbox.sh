@@ -31,9 +31,14 @@ echo "BASH_FILE  : $TARGET_FILE"
 
 ######## PATHS #########
 
-SANDBOX_DIR="$(
-  cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd
-)"
+if [ -n "${BASH_SOURCE[0]}" ]; then
+    SOURCE="${BASH_SOURCE[0]}"
+else
+    SOURCE="$0"
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
+SANDBOX_DIR="$(dirname "$SCRIPT_DIR")"
 
 SANDBOX_BUILD_DIR="$(dirname "$SANDBOX_DIR")/sandbox_build"
 NGEN_DIR="$SANDBOX_BUILD_DIR/ngen"
