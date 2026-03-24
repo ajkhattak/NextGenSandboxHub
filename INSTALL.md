@@ -55,7 +55,11 @@ During the Sandbox build step, `SANDBOX_DIR, SANDBOX_BUILD_DIR, SANDBOX_VENV` en
 > **Note:** The sandbox workflow assumes that [ngen](https://github.com/NOAA-OWP/ngen) and models including [t-route](https://github.com/NOAA-OWP/t-route) have been built in the Python virtual environment created in Step 1.
 Please activate the sandbox environment and follow the instructions in the [build_models](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/build_models.sh) script to build ngen and models. For an example HPC setup, see [setup_hpc.sh](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/setup_hpc.sh). After loading the required modules and setting up the environment variables, run the following command:
 ```
-./utils/build_models.sh
+./utils/build_models.sh [OPTIONS]
+Options:
+  NGEN=ON     Build ngen
+  MODELS=ON   Build models
+  TROUTE=ON   Build t-route
 ```
 ### <ins>Verification Test
 Run the following command to verify that everything has been set up successfully. Download conus geopackage file from [lynker-spatial](https://www.lynker-spatial.com/data?path=hydrofabric%2Fv2.2%2F).
