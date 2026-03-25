@@ -10,25 +10,16 @@ Detailed instructions on how to install, configure, and get the NextGenSandboxHu
   2. Ensure conda or Python (>=3.11) is available:
      - Local machine: check Python version.
      - HPC system: load conda or a compatible Python module, e.g., Python ≥ 3.11.
+  3. Set up sandbox environment variables
+     ```
+     ./bootstrap.sh --env
+     ```
   3. Build the Sandbox workflow:
      ```
      ./bootstrap.sh --sandbox
      ```
 
 >**NOTE:** The script installs a python env named `.venv_sandbox_py3.11` (see utils/build_sandbox.sh [here](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/build_sandbox.sh#L18)). This environment MUST be activated before performing any of the following steps.
-
-### <ins>  Sandbox Virtual Environment Activation
-During the Sandbox build step, `SANDBOX_DIR, SANDBOX_BUILD_DIR, SANDBOX_VENV` environment variables are appended to your shell configuration file (.bashrc, .bash_profile, or equivalent) for easy navigation and environment activation.
-
-**Activate the virtual environment:**
- - If using Conda:
-   ```
-   conda activate $SANDBOX_VENV
-   ```
- - If using a standard Python venv
-   ```
-   source $SANDBOX_VENV
-   ```
   
 ### <ins>  Step 2. Hydrofabric Installation
   #### Option #1: HPC machines (load conda module) or macOS
@@ -45,6 +36,19 @@ During the Sandbox build step, `SANDBOX_DIR, SANDBOX_BUILD_DIR, SANDBOX_VENV` en
    - Open `<path_to_sandboxhub>/src/R/install_load_libs.R` in RStudio. Click Source to execute the script.
    - Alternatively, run the following command in the RStudio Console: `source("~/<path_to_sandboxhub>/src/R/install_load_libs.R")`
 
+### <ins>  Sandbox Virtual Environment Activation
+The sandbox setup step configures the required environment variables: `SANDBOX_DIR, SANDBOX_BUILD_DIR, SANDBOX_VENV` environment variables, enabling easy navigation and environment activation.
+
+**Activate the virtual environment:**
+ - If using Conda:
+   ```
+   conda activate $SANDBOX_VENV
+   ```
+ - If using a standard Python virtual environment:
+   ```
+   source $SANDBOX_VENV
+   ```
+   
 ### <ins> Step 3. Install NextGen (ngen) and Required Models
 > **Important:** Before continuing to later steps, you must install and build ngen and the required routing/models components.
 
