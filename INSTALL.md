@@ -18,8 +18,6 @@ Detailed instructions on how to install, configure, and get the NextGenSandboxHu
      ```
      ./bootstrap.sh --sandbox
      ```
-
->**NOTE:** The script installs a python env named `.venv_sandbox_py3.11` (see utils/build_sandbox.sh [here](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/build_sandbox.sh#L18)). This environment MUST be activated before performing any of the following steps.
   
 ### <ins>  Step 2. Hydrofabric Installation
   #### Option #1: HPC machines (load conda module) or macOS
@@ -38,6 +36,7 @@ Detailed instructions on how to install, configure, and get the NextGenSandboxHu
 
 ### <ins>  Sandbox Virtual Environment Activation
 The sandbox setup step configures the required environment variables: `SANDBOX_DIR, SANDBOX_BUILD_DIR, SANDBOX_VENV`, enabling easy navigation and environment activation.
+>**NOTE:** This environment must be activated before performing Step 3 and subsequent steps.
 
 **Activate the virtual environment:**
  - If using Conda:
@@ -48,7 +47,8 @@ The sandbox setup step configures the required environment variables: `SANDBOX_D
    ```
    source $SANDBOX_VENV
    ```
-   
+
+
 ### <ins> Step 3. Install NextGen (ngen) and Required Models
 > **Important:** Before continuing to later steps, you must install and build ngen and the required routing/models components.
 
