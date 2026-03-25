@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 #USAGE: ./bootstrap.sh --sandbox --subset --ngen --models --troute
 
-#set -e
-set -x
+set -e
+#set -x
 
+SETUP_ENV=OFF
 BUILD_SANDBOX=OFF
 BUILD_SUBSET=OFF
 BUILD_NGEN=OFF
@@ -12,18 +13,20 @@ BUILD_TROUTE=OFF
 
 # Parse args
 for arg in "$@"; do
-  case $arg in
-    --sandbox) BUILD_SANDBOX=ON ;;
-    --subset) BUILD_SUBSET=ON ;;
-    --ngen) BUILD_NGEN=ON ;;
-    --models) BUILD_MODELS=ON ;;
-    --troute) BUILD_TROUTE=ON ;;
-    *) echo "Unknown option: $arg"; exit 1 ;;
+    case $arg in
+      --env) SETUP_ENV=ON ;;
+      --sandbox) BUILD_SANDBOX=ON ;;
+      --subset) BUILD_SUBSET=ON ;;
+      --ngen) BUILD_NGEN=ON ;;
+      --models) BUILD_MODELS=ON ;;
+      --troute) BUILD_TROUTE=ON ;;
+      *) echo "Unknown option: $arg"; exit 1 ;;
   esac
 done
 
 echo "========================================="
 echo "Configuration:"
+echo "  ENV      : $SETUP_ENV"
 echo "  SANDBOX  : $BUILD_SANDBOX"
 echo "  SUBSET   : $BUILD_SUBSET"
 echo "  NGEN     : $BUILD_NGEN"
@@ -33,13 +36,16 @@ echo "========================================="
 
 
 # Run steps
+if [ "$SETUP_ENV" = "ON" ]; then
+  source ./utils/sandbox_env.sh
+fi
+
+# Run steps
 if [ "$BUILD_SANDBOX" = "ON" ]; then
-  echo "Building sandbox..."
   source ./utils/build_sandbox.sh
 fi
 
 if [ "$BUILD_SUBSET" = "ON" ]; then
-  echo "Building subset environment..."
   ./utils/build_venv_subset.sh
 fi
 

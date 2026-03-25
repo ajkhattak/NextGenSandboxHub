@@ -11,41 +11,6 @@
 ###### Config #######
 BUILD_SANDBOX=${BUILD:-ON}
 
-# Detect shell config file (with optional override)
-if [ -n "$BASH_FILE" ]; then
-    TARGET_FILE="$BASH_FILE"
-else
-    if [ -n "$ZSH_VERSION" ]; then
-        TARGET_FILE="$HOME/.zshrc"
-    elif [ -n "$BASH_VERSION" ]; then
-        TARGET_FILE="$HOME/.bashrc"
-    else
-        echo "Unsupported shell"
-        return 1
-    fi
-fi
-
-echo "BUILD_SANDBOX: $BUILD_SANDBOX"
-echo "BASH_FILE  : $TARGET_FILE"
-
-
-######## PATHS #########
-
-if [ -n "${BASH_SOURCE[0]}" ]; then
-    SOURCE="${BASH_SOURCE[0]}"
-else
-    SOURCE="$0"
-fi
-
-SCRIPT_DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
-SANDBOX_DIR="$(dirname "$SCRIPT_DIR")"
-
-SANDBOX_BUILD_DIR="$(dirname "$SANDBOX_DIR")/sandbox_build"
-NGEN_DIR="$SANDBOX_BUILD_DIR/ngen"
-
-VENV_SANDBOX_PATH="$SANDBOX_BUILD_DIR/venv/venv_sandbox_py3.11"
-VENV_FORCING_PATH="$SANDBOX_BUILD_DIR/venv/venv_forcing"
-
 mkdir -p "$SANDBOX_BUILD_DIR"
 
 echo "Sandbox dir       : $SANDBOX_DIR"
@@ -53,18 +18,6 @@ echo "Sandbox build dir : $SANDBOX_BUILD_DIR"
 echo "Sandbox VENV      : $VENV_SANDBOX_PATH"
 echo "Forcing VENV      : $VENV_FORCING_PATH"
 
-append_if_missing() {
-    local line="$1"
-    grep -qxF "$line" "$TARGET_FILE" || echo "$line" >> "$TARGET_FILE"
-}
-
-append_if_missing "export SANDBOX_DIR='$SANDBOX_DIR'"
-append_if_missing "export SANDBOX_BUILD_DIR='$SANDBOX_BUILD_DIR'"
-append_if_missing "export NGEN_DIR='$NGEN_DIR'"
-
-# reload the updated bash profile to apply the changes immediately
-echo "Reloading bash file..."
-source "$TARGET_FILE"
 
 ############################################
 # NEEDED WHEN HOME DIR HAS LIMITED STORAGE QUOTA (HPC SETTINGS)
