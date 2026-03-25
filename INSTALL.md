@@ -37,7 +37,7 @@ Detailed instructions on how to install, configure, and get the NextGenSandboxHu
    - Alternatively, run the following command in the RStudio Console: `source("~/<path_to_sandboxhub>/src/R/install_load_libs.R")`
 
 ### <ins>  Sandbox Virtual Environment Activation
-The sandbox setup step configures the required environment variables: `SANDBOX_DIR, SANDBOX_BUILD_DIR, SANDBOX_VENV` environment variables, enabling easy navigation and environment activation.
+The sandbox setup step configures the required environment variables: `SANDBOX_DIR, SANDBOX_BUILD_DIR, SANDBOX_VENV`, enabling easy navigation and environment activation.
 
 **Activate the virtual environment:**
  - If using Conda:
