@@ -15,8 +15,8 @@ mkdir -p "$SANDBOX_BUILD_DIR"
 
 echo "Sandbox dir       : $SANDBOX_DIR"
 echo "Sandbox build dir : $SANDBOX_BUILD_DIR"
-echo "Sandbox VENV      : $VENV_SANDBOX_PATH"
-echo "Forcing VENV      : $VENV_FORCING_PATH"
+echo "Sandbox VENV      : $SANDBOX_ENV"
+echo "Forcing VENV      : $FORCING_ENV"
 
 
 ############################################
@@ -60,45 +60,37 @@ build_sandbox()
         echo "Conda detected — building sandbox with conda"
         source "$(conda info --base)/etc/profile.d/conda.sh"
 
-        # Create conda environment if it doesn't exist
-        if [ ! -d "$VENV_SANDBOX_PATH" ]; then
-            echo "Creating conda environment at $VENV_SANDBOX_PATH"
-            conda create -y -p "$VENV_SANDBOX_PATH" python=3.11
+	# Create or update environment
+        if [ ! -d "$SANDBOX_ENV" ]; then
+	    echo "Creating conda environment at $SANDBOX_ENV"
+            conda env create -p "$SANDBOX_ENV" -f utils/venv/venv_sandbox.yaml
+        else
+	    echo "Updating conda environment at $SANDBOX_ENV"
+            conda env update -p "$SANDBOX_ENV" -f utils/venv/venv_sandbox.yaml
         fi
 
-	conda activate "$VENV_SANDBOX_PATH"
+	conda activate "$SANDBOX_ENV"
 
 	# To remove conda env long prefix 
 	conda config --set env_prompt '({name})'
 
-	python -m pip install --upgrade pip --no-cache-dir
-	pip install "setuptools>=64.0,<69.0" wheel
-        # Optional: safe numba/llvmlite from conda-forge
-        conda install -y -c conda-forge numba==0.63 llvmlite
-	conda install -y pycares=4.11.0 # need for ngen-cal
-
-	#Save how to activate (use conda activate)
-	if ! grep -qxF "export SANDBOX_VENV='$VENV_SANDBOX_PATH'" "$TARGET_FILE"; then
-            echo "export SANDBOX_VENV='$VENV_SANDBOX_PATH'" >> "$TARGET_FILE"
-	fi
-
+	#python -m pip install --upgrade pip --no-cache-dir
+	#pip install "setuptools>=64.0,<69.0" wheel
+        #conda install -y -c conda-forge numba==0.63 llvmlite
+	#conda install -y -c conda-forge pycares=4.11.0 # need for ngen-cal
     else
         # -------------------------------
         # FALLBACK TO VIRTUALENV
         # -------------------------------
-	echo "Conda not found -- building sandbox virtual python environment ($VENV_SANDBOX_PATH)"
-        mkdir -p "$VENV_SANDBOX_PATH"
-        $PYTHON_CMD -m venv "$VENV_SANDBOX_PATH"
-        source "$VENV_SANDBOX_PATH/bin/activate"
+	echo "Conda not found -- building sandbox virtual python environment ($SANDBOX_ENV)"
+        mkdir -p "$SANDBOX_ENV"
+        $PYTHON_CMD -m venv "$SANDBOX_ENV"
+        source "$SANDBOX_ENV/bin/activate"
 	python -m pip install --upgrade pip --no-cache-dir
 	pip install "setuptools>=64.0,<69.0" wheel
 
-	if ! grep -qxF "export SANDBOX_VENV='$VENV_SANDBOX_PATH/bin/activate'" "$TARGET_FILE"; then
-            echo "export SANDBOX_VENV='$VENV_SANDBOX_PATH/bin/activate'" >> "$TARGET_FILE"
-	fi
-
     fi
-    
+
     pip install -e .
 
     git submodule update --init --recursive
@@ -111,7 +103,7 @@ build_sandbox()
     pip install -e ./extern/ngen_cal_plugins
     pip install -e ./extern/lstm
 
-    echo "Sandbox Python Environment Created ($VENV_SANDBOX_PATH)"
+    echo "Sandbox Python Environment Created ($SANDBOX_ENV)"
     
     if command -v conda &>/dev/null; then
         conda deactivate
@@ -122,36 +114,36 @@ build_sandbox()
     ############################################
     # FORCING
     ############################################
-    echo "Creating virtual python environment for forcing downloader ($VENV_FORCING_PATH)"
+    echo "Creating virtual python environment for forcing downloader ($FORCING_ENV)"
 
     if command -v conda >/dev/null 2>&1; then
 	source "$(conda info --base)/etc/profile.d/conda.sh"
 
-	if [ ! -d "$VENV_FORCING_PATH" ]; then
-            echo "Creating conda forcing environment at $VENV_FORCING_PATH"
-            conda create -y -p "$VENV_FORCING_PATH" python=3.11
+	if [ ! -d "$FORCING_ENV" ]; then
+            echo "Creating conda forcing environment at $FORCING_ENV"
+            conda create -y -p "$FORCING_ENV" python=3.11
         fi
 
-	conda activate "$VENV_FORCING_PATH"
+	conda activate "$FORCING_ENV"
 	python -m pip install --upgrade pip --no-cache-dir
-	pip install --no-cache-dir -r ./doc/env/requirements_forcing.txt
+	pip install --no-cache-dir -r ./utils/venv/requirements_forcing.txt
 
 	conda deactivate
 
     else
-	echo "Conda not found -- building forcing virtual python environment ($VENV_FORCING_PATH)"
+	echo "Conda not found -- building forcing virtual python environment ($FORCING_ENV)"
 
-	mkdir -p "$VENV_FORCING_PATH"
+	mkdir -p "$FORCING_ENV"
 
-	$PYTHON_CMD -m venv "$VENV_FORCING_PATH"
-	source "$VENV_FORCING_PATH/bin/activate"
+	$PYTHON_CMD -m venv "$FORCING_ENV"
+	source "$FORCING_ENV/bin/activate"
 	python -m pip install --upgrade pip --no-cache-dir
-	pip install --no-cache-dir -r ./doc/env/requirements_forcing.txt
+	pip install --no-cache-dir -r ./utils/venv/requirements_forcing.txt
 
 	deactivate
     fi
 
-    echo "Forcing environment created successfully ($VENV_FORCING_PATH)"
+    echo "Forcing environment created successfully ($FORCING_ENV)"
 }
 
 

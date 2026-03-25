@@ -1,0 +1,12 @@
+name: sandbox
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numba=0.63
+  - llvmlite
+  - pycares=4.11.0
+  - pip
+  - pip:
+    - wheel
+    - setuptools>=64,<69

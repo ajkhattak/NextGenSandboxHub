@@ -31,15 +31,15 @@ SANDBOX_BUILD_DIR="$(dirname "$SANDBOX_DIR")/sandbox_build"
 
 NGEN_DIR="$SANDBOX_BUILD_DIR/ngen"
 
-VENV_SANDBOX_PATH="$SANDBOX_BUILD_DIR/venv/venv_sandbox_py3.11"
-VENV_FORCING_PATH="$SANDBOX_BUILD_DIR/venv/venv_forcing"
+SANDBOX_ENV="$SANDBOX_BUILD_DIR/venv/venv_sandbox_py3.11"
+FORCING_ENV="$SANDBOX_BUILD_DIR/venv/venv_forcing"
 
 
 export SANDBOX_DIR
 export SANDBOX_BUILD_DIR
 export NGEN_DIR
-export VENV_SANDBOX_PATH
-export VENV_FORCING_PATH
+export SANDBOX_ENV
+export FORCING_ENV
 
 
 if ! grep -Fxq "source $SCRIPT_PATH" "$HOME/.zshrc" 2>/dev/null && \
@@ -52,8 +52,8 @@ if ! grep -Fxq "source $SCRIPT_PATH" "$HOME/.zshrc" 2>/dev/null && \
     echo "SANDBOX_DIR        : $SANDBOX_DIR"
     echo "SANDBOX_BUILD_DIR  : $SANDBOX_BUILD_DIR"
     echo "NGEN_DIR           : $NGEN_DIR"
-    echo "VENV_SANDBOX_PATH  : $VENV_SANDBOX_PATH"
-    echo "VENV_FORCING_PATH  : $VENV_FORCING_PATH"
+    echo "SANDBOX_ENV        : $SANDBOX_ENV"
+    echo "FORCING_ENV        : $FORCING_ENV"
     echo ""
 
     echo ""

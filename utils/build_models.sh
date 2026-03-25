@@ -51,9 +51,9 @@ else
     CURRENT_ENV=""
 fi
 
-if [ "$CURRENT_ENV" != "$SANDBOX_VENV" ]; then
+if [ "$CURRENT_ENV" != "$SANDBOX_ENV" ]; then
     echo "Error: This script must be run inside the sandbox environment:"
-    echo "Expected: $SANDBOX_VENV"
+    echo "Expected: $SANDBOX_ENV"
     echo "Current : ${CURRENT_ENV:-<none>}"
     exit 1
 fi

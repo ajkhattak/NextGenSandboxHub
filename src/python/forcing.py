@@ -34,8 +34,7 @@ class ForcingProcessor:
         self.forcing_format   = self.dforcing.get('format', '.nc')
         self.selected_gages   = self.dforcing.get('select', 'all')
 
-        sandbox_build_dir     = Path(os.environ.get("SANDBOX_BUILD_DIR"))
-        self.forcing_venv_dir = self.dforcing.get('forcing_venv_dir', os.path.join(sandbox_build_dir, "venv", "venv_forcing"))
+        self.forcing_venv_dir = Path(os.environ.get("FORCING_ENV"))
 
         start_yr = pd.Timestamp(self.forcing_time['start_time']).year
         end_yr   = pd.Timestamp(self.forcing_time['end_time']).year + 1

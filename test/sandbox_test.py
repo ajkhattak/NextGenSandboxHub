@@ -13,26 +13,11 @@ from pathlib import Path
 import sandbox
 import shutil
 
-sandbox_test_dir = Path(__file__).resolve().parent
-
-sandbox_config   = sandbox_test_dir / "configs" / "sandbox_config.yaml"
-
-with open(sandbox_config, 'r') as file:
-    d = yaml.safe_load(file)
-
-# modify values
-d["general"]["input_dir"] = str(sandbox_test_dir / "input")
-d["general"]["output_dir"] = str(sandbox_test_dir / "output")
-d["subsetting"]["hydrofabric"]["gpkg_path"] = "/Users/ahmadjankhattak/Core/input_data/hf2.2_gpkgs/conus_nextgen.gpkg" # <- Set this to your local settings
-#d["subsetting"]["dem_input_file"] = "<path_to>/dem.vrt" # <- OPTIONAL: Set this to your local settings
-
-with open(sandbox_config, "w") as f:
-    yaml.safe_dump(d, f, sort_keys=False)
-
 
 if __name__ == "__main__":
     try:
         parser = argparse.ArgumentParser()
+        parser.add_argument("--gpkg",  dest="conus_gpkg",  type=str, required=True, metavar="CONUS_GPKG", help="conus .gpkg file")
         parser.add_argument("--subset", action='store_true', help="Subset basin (generate .gpkg files)")
         parser.add_argument("--forc",   action='store_true', help="Download forcing data")
         parser.add_argument("--conf",   action='store_true', help="Generate config files")
@@ -43,6 +28,21 @@ if __name__ == "__main__":
     except SystemExit:
         sys.exit(0)
 
+    sandbox_test_dir = Path(__file__).resolve().parent
+
+    sandbox_config   = sandbox_test_dir / "configs" / "sandbox_config.yaml"
+    
+    with open(sandbox_config, 'r') as file:
+        d = yaml.safe_load(file)
+
+        # modify values
+        d["general"]["input_dir"] = str(sandbox_test_dir / "input")
+        d["general"]["output_dir"] = str(sandbox_test_dir / "output")
+        d["subsetting"]["hydrofabric"]["gpkg_path"] = args.conus_gpkg
+        
+    with open(sandbox_config, "w") as f:
+        yaml.safe_dump(d, f, sort_keys=False)
+    
     # test sandbox -conf
     if args.subset:
         print ("-------------------------------------")

@@ -43,11 +43,11 @@ from src.python import forcing, driver, runner
 sandbox_build_dir = Path(os.environ.get("SANDBOX_BUILD_DIR"))
 
 def CheckSandboxVENV():
-    VENV_SANDBOX = sandbox_build_dir / "venv" / "venv_sandbox_py3.11"
-
+    SANDBOX_ENV = Path(os.environ.get("SANDBOX_ENV"))
+    
     # Check if the virtual environment exists
-    if not VENV_SANDBOX.exists():
-        print(f"Error: NextGen virtual environment {VENV_SANDBOX} not found under directory: {sandbox_build_dir}/venv")
+    if not SANDBOX_ENV.exists():
+        print(f"Error: NextGen virtual environment {SANDBOX_ENV} not found under directory: {sandbox_build_dir}/venv")
         sys.exit(1)
 
     # Detect active Python environment
@@ -55,14 +55,14 @@ def CheckSandboxVENV():
     CONDA_ACTIVE = os.environ.get("CONDA_PREFIX")
 
     # Resolve paths to handle symlinks
-    expected = VENV_SANDBOX.resolve()
+    expected = SANDBOX_ENV.resolve()
     active   = VENV_ACTIVE.resolve()
     conda_active = Path(CONDA_ACTIVE).resolve() if CONDA_ACTIVE else None
 
     # Check if either venv or conda env matches
     if not (active.samefile(expected) or (conda_active and conda_active.samefile(expected))):
         print("Error: sandbox is not running in the expected Python virtual environment.")
-        print(f"Expected: {VENV_SANDBOX}")
+        print(f"Expected: {SANDBOX_ENV}")
         print(f"Active sys.prefix: {VENV_ACTIVE}")
         if CONDA_ACTIVE:
             print(f"Active CONDA_PREFIX: {CONDA_ACTIVE}")
