@@ -41,9 +41,9 @@ export NGEN_DIR
 export SANDBOX_ENV
 export FORCING_ENV
 
-
 if ! grep -Fxq "source $SCRIPT_PATH" "$HOME/.zshrc" 2>/dev/null && \
-   ! grep -Fxq "source $SCRIPT_PATH" "$HOME/.bashrc" 2>/dev/null; then
+   ! grep -Fxq "source $SCRIPT_PATH" "$HOME/.bashrc" 2>/dev/null && \
+   ! grep -Fxq "source $SCRIPT_PATH" "$HOME/.bash_profile" 2>/dev/null; then
 
     ######## INFO OUTPUT #########
 
