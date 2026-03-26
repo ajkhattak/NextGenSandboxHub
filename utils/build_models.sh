@@ -145,6 +145,8 @@ build_models()
     export builddir="cmake_build"
 
     for model in noah-owp-modular cfe evapotranspiration SoilFreezeThaw SoilMoistureProfiles CASAM snow17 sac-sma; do
+	echo "------------ Building model: $model -------------"
+
 	rm -rf extern/$model/${builddir}
 	if [ "$model" == "noah-owp-modular" ]; then
 	    git submodule update --remote extern/${model}/${model}
@@ -184,13 +186,14 @@ build_models()
 	    repo_url="https://github.com/NGWPC/snow17"
 	    dest_dir="extern/${model}/${model}"
 
-	    # Check if repo directory exists
 	    if [ -d "$dest_dir/.git" ]; then
 		echo "Repository already exists — updating..."
-		git -C "$dest_dir" pull --ff-only
+		git -C "$dest_dir" fetch origin
+		git -C "$dest_dir" reset --hard 70ff380df0a57dd175b007eda04ce71561f16dfa
 	    else
 		echo "Cloning repository..."
 		git clone "$repo_url" "$dest_dir"
+		git -C "$dest_dir" checkout 70ff380df0a57dd175b007eda04ce71561f16dfa
 	    fi
 
 	    cp -r ./extern/iso_c_fortran_bmi "extern/${model}/"
@@ -200,7 +203,7 @@ build_models()
 	fi
 
 	if [ "$model" == "sac-sma" ]; then
-	    repo_url="https://github.com/NGWPC/sac-sma"
+	    repo_url="https://github.com/NOAA-OWP/sac-sma"
 	    dest_dir="extern/${model}/${model}"
 
 	    # Check if repo directory exists
