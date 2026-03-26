@@ -4,7 +4,8 @@
 
 # Clone NextGenSandboxHub repository
 # git clone https://github.com/ajkhattak/NextGenSandboxHub && cd NextGenSandboxHub
-# Run: BASH_FILE=~/.bash_profile BUILD=ON ./utils/build_sandbox.sh
+# Run: BUILD=ON ./utils/build_sandbox.sh
+# install mamba if not already there: conda install -n base -c conda-forge mamba
 
 ###############################################################
 
@@ -54,19 +55,31 @@ build_sandbox()
 
 
     # -------------------------------
-    # USE CONDA IF AVAILABLE
+    # USE CONDA / MAMBA
     # -------------------------------
     if command -v conda &>/dev/null; then
-        echo "Conda detected — building sandbox with conda"
+
         source "$(conda info --base)/etc/profile.d/conda.sh"
 
-	# Create or update environment
-        if [ ! -d "$SANDBOX_ENV" ]; then
-	    echo "Creating conda environment at $SANDBOX_ENV"
-            conda env create -p "$SANDBOX_ENV" -f utils/venv/venv_sandbox.yaml
+	# Prefer mamba if available
+	
+        if command -v mamba &>/dev/null; then
+            SOLVER="mamba"
         else
-	    echo "Updating conda environment at $SANDBOX_ENV"
-            conda env update -p "$SANDBOX_ENV" -f utils/venv/venv_sandbox.yaml
+            SOLVER="conda"
+        fi
+
+	echo "Using solver: $SOLVER"
+
+	############################################
+        # SANDBOX ENV
+        ############################################
+	if [ ! -d "$SANDBOX_ENV" ]; then
+            echo "Creating sandbox environment at $SANDBOX_ENV"
+            $SOLVER env create -y -p "$SANDBOX_ENV" -f utils/venv/venv_sandbox.yaml
+        else
+            echo "Updating sandbox environment at $SANDBOX_ENV"
+            $SOLVER env update -y -p "$SANDBOX_ENV" -f utils/venv/venv_sandbox.yaml
         fi
 
 	conda activate "$SANDBOX_ENV"
@@ -119,16 +132,22 @@ build_sandbox()
     if command -v conda >/dev/null 2>&1; then
 	source "$(conda info --base)/etc/profile.d/conda.sh"
 
-	if [ ! -d "$FORCING_ENV" ]; then
-            echo "Creating conda forcing environment at $FORCING_ENV"
-            conda create -y -p "$FORCING_ENV" python=3.11
+	# Prefer mamba if available
+        if command -v mamba &>/dev/null; then
+            SOLVER="mamba"
+        else
+            SOLVER="conda"
         fi
 
-	conda activate "$FORCING_ENV"
-	python -m pip install --upgrade pip --no-cache-dir
-	pip install --no-cache-dir -r ./utils/venv/requirements_forcing.txt
+	echo "Using solver: $SOLVER"
 
-	conda deactivate
+	if [ ! -d "$FORCING_ENV" ]; then
+            echo "Creating forcing environment at $FORCING_ENV"
+            $SOLVER env create -y -p "$FORCING_ENV" -f utils/venv/venv_forcing.yaml
+	else
+            echo "Updating forcing environment at $FORCING_ENV"
+            $SOLVER env update -y -p "$FORCING_ENV" -f utils/venv/venv_forcing.yaml
+	fi
 
     else
 	echo "Conda not found -- building forcing virtual python environment ($FORCING_ENV)"

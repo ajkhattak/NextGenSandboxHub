@@ -229,7 +229,7 @@ if [ "$BUILD_NGEN" == "ON" ]; then
     build_ngen
 fi
 if [ "$BUILD_MODELS" == "ON" ]; then
-    echo "Building models...}"
+    echo "Building models..."
     build_models
 fi
 if [ "$BUILD_TROUTE" == "ON" ]; then

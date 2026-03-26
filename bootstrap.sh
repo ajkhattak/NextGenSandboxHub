@@ -31,7 +31,7 @@ echo "  SANDBOX  : $BUILD_SANDBOX"
 echo "  SUBSET   : $BUILD_SUBSET"
 echo "  NGEN     : $BUILD_NGEN"
 echo "  MODELS   : $BUILD_MODELS"
-echo "  TROUTE   : $BUILD_MODELS"
+echo "  TROUTE   : $BUILD_TROUTE"
 echo "========================================="
 
 
