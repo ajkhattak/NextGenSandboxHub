@@ -10,18 +10,18 @@ BUILD_SUBSET=OFF
 BUILD_NGEN=OFF
 BUILD_MODELS=OFF
 BUILD_TROUTE=OFF
-CLEAN=false
+BUILD_CLEAN=false
 
 # Parse args
 for arg in "$@"; do
     case $arg in
-      --env) SETUP_ENV=ON ;;
+      --env)     SETUP_ENV=ON ;;
       --sandbox) BUILD_SANDBOX=ON ;;
       --subset)  BUILD_SUBSET=ON ;;
       --ngen)    BUILD_NGEN=ON ;;
       --models)  BUILD_MODELS=ON ;;
       --troute)  BUILD_TROUTE=ON ;;
-      --clean)   CLEAN=true ;;
+      --clean)   BUILD_CLEAN=true ;;
       *) echo "Unknown option: $arg"; exit 1 ;;
   esac
 done
@@ -39,29 +39,28 @@ echo "========================================="
 
 # Run steps
 if [ "$SETUP_ENV" = "ON" ]; then
-  source ./utils/sandbox_env.sh
+    source ./utils/sandbox_env.sh
 fi
 
 # Run steps
 if [ "$BUILD_SANDBOX" = "ON" ]; then
-  source ./utils/build_sandbox.sh
+    source ./utils/build_sandbox.sh
 fi
 
 if [ "$BUILD_SUBSET" = "ON" ]; then
-  ./utils/build_venv_subset.sh
+    ./utils/build_venv_subset.sh
 fi
 
 if [ "$BUILD_NGEN" = "ON" ]; then
-  source ./utils/build_models.sh NGEN=ON
+    source ./utils/build_models.sh NGEN=ON CLEAN=$BUILD_CLEAN
 fi
 
 if [ "$BUILD_MODELS" = "ON" ]; then
-  source ./utils/build_models.sh MODELS=ON CLEAN
+    source ./utils/build_models.sh MODELS=ON CLEAN=$BUILD_CLEAN
 fi
 
 if [ "$BUILD_TROUTE" = "ON" ]; then
-  source ./utils/build_models.sh TROUTE=ON
+    source ./utils/build_models.sh TROUTE=ON
 fi
 
 echo "Done."
-

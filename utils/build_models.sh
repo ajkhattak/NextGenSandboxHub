@@ -15,17 +15,21 @@
 BUILD_NGEN=${NGEN:-OFF}
 BUILD_MODELS=${MODELS:-OFF}
 BUILD_TROUTE=${TROUTE:-OFF}
-CLEAN=${CLEAN:-false}
+BUILD_CLEAN=${CLEAN:-false}
 
 # -------------------------------
 # Override from command-line arguments
 # Example usage: ./build_models.sh NGEN=ON MODELS=OFF TROUTE=ON
 # -------------------------------
 for arg in "$@"; do
-    case $arg in
-        NGEN=ON)   BUILD_NGEN=ON ;;
-        MODELS=ON) BUILD_MODELS=ON ;;
-        TROUTE=ON) BUILD_TROUTE=ON ;;
+    key="${arg%%=*}"
+    value="${arg#*=}"
+
+    case "$key" in
+        NGEN)   BUILD_NGEN="$value" ;;
+        MODELS) BUILD_MODELS="$value" ;;
+        TROUTE) BUILD_TROUTE="$value" ;;
+        CLEAN)  BUILD_CLEAN="$value" ;;
         *) echo "Warning: unrecognized argument '$arg'" ;;
     esac
 done
@@ -63,11 +67,31 @@ fi
 
 
 ###############################################################
+# Helper: clone or update repo
+clone_or_update() {
+    local repo_url="$1"
+    local dest_dir="$2"
+    
+    if [ -d "$dest_dir/.git" ]; then
+        echo "Updating repo: $dest_dir"
+        git -C "$dest_dir" pull --ff-only
+    else
+        echo "Cloning repo: $repo_url"
+        git clone "$repo_url" "$dest_dir"
+    fi
+}
 
 build_ngen()
 {
     pushd $SANDBOX_BUILD_DIR
-    git clone https://github.com/NOAA-OWP/ngen
+
+    if [ "$CLEAN" = true ]; then
+	echo "Cleaning ngen repo"
+	rm -rf ngen
+    fi
+
+    clone_or_update "https://github.com/NOAA-OWP/ngen" "ngen"
+
     cd ngen
     git submodule update --init --recursive
 
@@ -146,20 +170,6 @@ build_models() {
 
     builddir="cmake_build"
 
-    # Helper: clone or update repo
-    clone_or_update() {
-        local repo_url="$1"
-        local dest_dir="$2"
-
-        if [ -d "$dest_dir/.git" ]; then
-            echo "Updating repo: $dest_dir"
-            git -C "$dest_dir" pull --ff-only
-        else
-            echo "Cloning repo: $repo_url"
-            git clone "$repo_url" "$dest_dir"
-        fi
-    }
-
     # Helper: build with cmake
     cmake_build() {
         local src="$1"
@@ -176,7 +186,7 @@ build_models() {
 	
     }
 
-    
+
     # Model loop
     for model in noah-owp-modular cfe evapotranspiration SoilFreezeThaw SoilMoistureProfiles CASAM snow17 sac-sma; do
 	echo "#-----------------------------------------------"
