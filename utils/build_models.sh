@@ -15,6 +15,7 @@
 BUILD_NGEN=${NGEN:-OFF}
 BUILD_MODELS=${MODELS:-OFF}
 BUILD_TROUTE=${TROUTE:-OFF}
+CLEAN=${CLEAN:-false}
 
 # -------------------------------
 # Override from command-line arguments
@@ -22,7 +23,7 @@ BUILD_TROUTE=${TROUTE:-OFF}
 # -------------------------------
 for arg in "$@"; do
     case $arg in
-        NGEN=ON) BUILD_NGEN=ON ;;
+        NGEN=ON)   BUILD_NGEN=ON ;;
         MODELS=ON) BUILD_MODELS=ON ;;
         TROUTE=ON) BUILD_TROUTE=ON ;;
         *) echo "Warning: unrecognized argument '$arg'" ;;
@@ -138,94 +139,101 @@ build_troute()
 
 
 
-build_models()
-{
-    pushd $NGEN_DIR
+build_models() {
 
-    export builddir="cmake_build"
+    set -e  # exit on error
+    pushd "$NGEN_DIR" >/dev/null || return 1
 
-    for model in noah-owp-modular cfe evapotranspiration SoilFreezeThaw SoilMoistureProfiles CASAM snow17 sac-sma; do
-	echo "------------ Building model: $model -------------"
+    builddir="cmake_build"
 
-	rm -rf extern/$model/${builddir}
-	if [ "$model" == "noah-owp-modular" ]; then
-	    git submodule update --remote extern/${model}/${model}
-	    cmake -B extern/${model}/${builddir} -S extern/${model} -DCMAKE_BUILD_TYPE=Release -DNGEN_IS_MAIN_PROJECT=ON
-	    make -C extern/${model}/${builddir}
-	fi
-	if [ "$model" == "cfe" ] || [ "$model" == "SoilFreezeThaw" ] || [ "$model" == "SoilMoistureProfiles" ]; then
-	    git submodule update --remote extern/${model}/${model}
-	    cmake -B extern/${model}/${model}/${builddir} -S extern/${model}/${model} -DNGEN=ON -DCMAKE_BUILD_TYPE=Release
-	    make -C extern/${model}/${model}/${builddir}
-	fi
+    # Helper: clone or update repo
+    clone_or_update() {
+        local repo_url="$1"
+        local dest_dir="$2"
+
+        if [ -d "$dest_dir/.git" ]; then
+            echo "Updating repo: $dest_dir"
+            git -C "$dest_dir" pull --ff-only
+        else
+            echo "Cloning repo: $repo_url"
+            git clone "$repo_url" "$dest_dir"
+        fi
+    }
+
+    # Helper: build with cmake
+    cmake_build() {
+        local src="$1"
+        local build="$2"
+        shift 2
+
+	if [ "$CLEAN" = true ]; then
+            echo "Cleaning build directory: $build"
+            rm -rf "$build"
+        fi
+
+	cmake -B "$build" -S "$src" "$@"
+        cmake --build "$build" -j
 	
-	if [ "$model" == "CASAM" ]; then
-	    repo_url="https://github.com/NOAA-OWP/LGAR-C"
-	    dest_dir="extern/${model}/${model}"
+    }
 
-	    # Check if repo directory exists
-	    if [ -d "$dest_dir/.git" ]; then
-		echo "Repository already exists — updating..."
-		git -C "$dest_dir" pull --ff-only
-	    else
-		echo "Cloning repository..."
-		git clone "$repo_url" "$dest_dir"
-	    fi
-  
-	    cmake -B extern/${model}/${model}/${builddir} -S extern/${model}/${model} -DNGEN=ON -DCMAKE_BUILD_TYPE=Release
-	    make -C extern/${model}/${model}/${builddir}
-	fi
+    
+    # Model loop
+    for model in noah-owp-modular cfe evapotranspiration SoilFreezeThaw SoilMoistureProfiles CASAM snow17 sac-sma; do
+	echo "#-----------------------------------------------"
+        echo "# Building model: $model"
+	echo "#---------------------------------- -------------"
+	
+        case "$model" in
 
-	if [ "$model" == "evapotranspiration" ]; then
-	    git submodule update --remote extern/${model}/${model}
-	    cmake -B extern/${model}/${model}/${builddir} -S extern/${model}/${model} -DCMAKE_BUILD_TYPE=Release
-	    make -C extern/${model}/${model}/${builddir}
-	fi
+        noah-owp-modular)
+            git submodule update --remote "extern/$model/$model"
+            cmake_build "extern/$model" "extern/$model/$builddir" \
+                -DCMAKE_BUILD_TYPE=Release -DNGEN_IS_MAIN_PROJECT=ON
+            ;;
 
-	if [ "$model" == "snow17" ]; then
-	    repo_url="https://github.com/NGWPC/snow17"
-	    dest_dir="extern/${model}/${model}"
+        cfe|SoilFreezeThaw|SoilMoistureProfiles)
+            git submodule update --remote "extern/$model/$model"
+            cmake_build "extern/$model/$model" "extern/$model/$model/$builddir" \
+                -DNGEN=ON -DCMAKE_BUILD_TYPE=Release
+            ;;
 
-	    if [ -d "$dest_dir/.git" ]; then
-		echo "Repository already exists — updating..."
-		git -C "$dest_dir" fetch origin
-		git -C "$dest_dir" reset --hard 70ff380df0a57dd175b007eda04ce71561f16dfa
-	    else
-		echo "Cloning repository..."
-		git clone "$repo_url" "$dest_dir"
-		git -C "$dest_dir" checkout 70ff380df0a57dd175b007eda04ce71561f16dfa
-	    fi
+        evapotranspiration)
+            git submodule update --remote "extern/$model/$model"
+            cmake_build "extern/$model/$model" "extern/$model/$model/$builddir" \
+                -DCMAKE_BUILD_TYPE=Release
+            ;;
 
-	    cp -r ./extern/iso_c_fortran_bmi "extern/${model}/"
+        CASAM)
+            clone_or_update "https://github.com/NOAA-OWP/LGAR-C" "extern/$model/$model"
+            cmake_build "extern/$model/$model" "extern/$model/$model/$builddir" \
+                -DNGEN=ON -DCMAKE_BUILD_TYPE=Release
+            ;;
 
-	    cmake -B "${dest_dir}/${builddir}" -S "$dest_dir" -DCMAKE_BUILD_TYPE=Release
-	    make -C "${dest_dir}/${builddir}"
-	fi
+        snow17)
+            clone_or_update "https://github.com/NOAA-OWP/snow17" "extern/$model/$model"
+            cp -r ./extern/iso_c_fortran_bmi "extern/$model/"
+            cmake_build "extern/$model/$model" "extern/$model/$model/$builddir" \
+                -DCMAKE_BUILD_TYPE=Release
+            ;;
 
-	if [ "$model" == "sac-sma" ]; then
-	    repo_url="https://github.com/NOAA-OWP/sac-sma"
-	    dest_dir="extern/${model}/${model}"
+        sac-sma)
+            clone_or_update "https://github.com/NOAA-OWP/sac-sma" "extern/$model/$model"
+            cp "${dest_dir}/ngen_files/sacbmi.pc.in" \
+               "${dest_dir}/ngen_files/CMakeLists.txt" \
+               "extern/$model" 2>/dev/null || true
 
-	    # Check if repo directory exists
-	    if [ -d "$dest_dir/.git" ]; then
-		echo "Repository already exists — updating..."
-		git -C "$dest_dir" pull --ff-only
-	    else
-		echo "Cloning repository..."
-		git clone "$repo_url" "$dest_dir"
-	    fi
+            cmake_build "extern/$model" "extern/$model/$model/$builddir" \
+                -DCMAKE_BUILD_TYPE=Release
+            ;;
 
-	    cp "${dest_dir}/ngen_files/sacbmi.pc.in" "${dest_dir}/ngen_files/CMakeLists.txt" "extern/${model}"
-
-	    cmake -B "${dest_dir}/${builddir}" -S "extern/${model}" -DCMAKE_BUILD_TYPE=Release
-	    make -C "${dest_dir}/${builddir}"
-	fi
-
+        *)
+            echo "Unknown model: $model"
+            ;;
+        esac
     done
 
-    popd
+    popd >/dev/null || return 1
 }
-
 
 if [ "$BUILD_NGEN" == "ON" ]; then
     echo "Building ngen..."
@@ -233,7 +241,7 @@ if [ "$BUILD_NGEN" == "ON" ]; then
 fi
 if [ "$BUILD_MODELS" == "ON" ]; then
     echo "Building models..."
-    build_models
+    build_models --clean
 fi
 if [ "$BUILD_TROUTE" == "ON" ]; then
     echo "Building troute..."

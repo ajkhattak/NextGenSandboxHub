@@ -10,16 +10,18 @@ BUILD_SUBSET=OFF
 BUILD_NGEN=OFF
 BUILD_MODELS=OFF
 BUILD_TROUTE=OFF
+CLEAN=false
 
 # Parse args
 for arg in "$@"; do
     case $arg in
       --env) SETUP_ENV=ON ;;
       --sandbox) BUILD_SANDBOX=ON ;;
-      --subset) BUILD_SUBSET=ON ;;
-      --ngen) BUILD_NGEN=ON ;;
-      --models) BUILD_MODELS=ON ;;
-      --troute) BUILD_TROUTE=ON ;;
+      --subset)  BUILD_SUBSET=ON ;;
+      --ngen)    BUILD_NGEN=ON ;;
+      --models)  BUILD_MODELS=ON ;;
+      --troute)  BUILD_TROUTE=ON ;;
+      --clean)   CLEAN=true ;;
       *) echo "Unknown option: $arg"; exit 1 ;;
   esac
 done
@@ -54,7 +56,7 @@ if [ "$BUILD_NGEN" = "ON" ]; then
 fi
 
 if [ "$BUILD_MODELS" = "ON" ]; then
-  source ./utils/build_models.sh MODELS=ON
+  source ./utils/build_models.sh MODELS=ON CLEAN
 fi
 
 if [ "$BUILD_TROUTE" = "ON" ]; then
