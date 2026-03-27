@@ -23,7 +23,7 @@ if __name__ == "__main__":
         parser.add_argument("--conf",   action='store_true', help="Generate config files")
         parser.add_argument("--run",    action='store_true', help="Run NextGen simulations")
         parser.add_argument("--all",    action='store_true', help="Run all: subset, forc, conf, run")
-        parser.add_argument("--clean",    action='store_true', help="Run all: subset, forc, conf, run")
+        parser.add_argument("--clean",  action='store_true', help="Run all: subset, forc, conf, run")
         args = parser.parse_args()
     except SystemExit:
         sys.exit(0)
@@ -31,18 +31,18 @@ if __name__ == "__main__":
     sandbox_test_dir = Path(__file__).resolve().parent
 
     sandbox_config   = sandbox_test_dir / "configs" / "sandbox_config.yaml"
-    
+
     with open(sandbox_config, 'r') as file:
         d = yaml.safe_load(file)
 
         # modify values
         d["general"]["input_dir"] = str(sandbox_test_dir / "input")
         d["general"]["output_dir"] = str(sandbox_test_dir / "output")
-        d["subsetting"]["hydrofabric"]["gpkg_path"] = args.conus_gpkg
-        
+        d["subsetting"]["hydrofabric"]["gpkg_path"] = str(Path(args.conus_gpkg).resolve())
+
     with open(sandbox_config, "w") as f:
         yaml.safe_dump(d, f, sort_keys=False)
-    
+
     # test sandbox -conf
     if args.subset:
         print ("-------------------------------------")
