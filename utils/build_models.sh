@@ -122,7 +122,8 @@ build_troute()
 {
     if [ ${HF_VERSION} == 2.2 ]; then
 	pushd $NGEN_DIR/extern
-	git clone https://github.com/shorvath-noaa/t-route t-route-hf2.2
+	clone_or_update "https://github.com/shorvath-noaa/t-route" "t-route-hf2.2"
+
 	cd t-route-hf2.2
 	git checkout conus_timing_runs
 	git pull
