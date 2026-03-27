@@ -229,8 +229,8 @@ build_models() {
 
         sac-sma)
             clone_or_update "https://github.com/NOAA-OWP/sac-sma" "extern/$model/$model"
-            cp "${dest_dir}/ngen_files/sacbmi.pc.in" \
-               "${dest_dir}/ngen_files/CMakeLists.txt" \
+            cp "extern/$model/$model/ngen_files/sacbmi.pc.in" \
+               "extern/$model/$model/ngen_files/CMakeLists.txt" \
                "extern/$model" 2>/dev/null || true
 
             cmake_build "extern/$model" "extern/$model/$model/$builddir" \
