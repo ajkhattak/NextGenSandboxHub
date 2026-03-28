@@ -77,6 +77,8 @@ class Driver:
         
         self.sim_name_suffix = dsim.get('sim_name_suffix') or None
 
+        self.disable_divide_output = dsim.get('disable_divide_output',True)
+
         dlauncher = d.get('sandbox_launcher') or None
 
         if dlauncher:
@@ -275,6 +277,7 @@ class Driver:
                                     ngen_cal_type  = self.task_type,
                                     schema = self.schema_type,
                                     domain = self.domain,
+                                    disable_divide_output = self.disable_divide_output,
                                     ensemble_enabled = self.ensemble_enabled,
                                     ensemble_models  = self.ensemble_models
                                     )

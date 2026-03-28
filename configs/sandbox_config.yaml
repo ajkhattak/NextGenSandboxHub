@@ -69,7 +69,8 @@ simulation :
   validation_time  : {"start_time" : "2018-10-01 00:00:00", "end_time" : "2020-09-30 23:00:00"} # Entire simulation period for validation; including spinup period
   valid_eval_time  : {"start_time" : "2019-10-01 00:00:00", "end_time" : "2020-09-30 23:00:00"} # Evalaution period for validation (excluding spinup period)
   restart_dir      : "<path_to_restart_dir>/{*}/202410042024_ngen_qaiklwj0_worker/" #----------- Restart experiment from the best iteration
-  
+
+  disable_divide_output: TRUE | FALSE #--------------------------------------------- Turn off/on catchment output files (e.g., actual ET, etc.)
   ensemble:
     enabled: FALSE # ---------------------------------------------------------------- Ensemble ON/OFF (OPTIONS: TRUE/FALSE)
     calib_params_groups: #------------------------------------------- scope of calibratable parameters: local = tile-specific, global = shared across tiles

@@ -24,7 +24,7 @@ class RealizationGenerator:
     def __init__(self, ngen_dir, forcing_dir,  output_dir, formulation,
                  simulation_time, forcing_format, verbosity, ngen_cal_type,
                  domain, ensemble_enabled, ensemble_member_id,
-                 ensemble_models):
+                 ensemble_models, disable_divide_output=True):
         
         self.ngen_dir    = ngen_dir
         self.forcing_dir = forcing_dir
@@ -37,9 +37,11 @@ class RealizationGenerator:
         self.ngen_cal_type   = ngen_cal_type
         self.lib_files       = self.get_lib_files()
         self.domain          = domain.lower()
-        self.ensemble_enabled    = ensemble_enabled
-        self.ensemble_size = len([m.strip() for m in ensemble_models.split(",")]) if self.ensemble_enabled else 1
-        self.ensemble_member_id  = ensemble_member_id
+        self.ensemble_enabled   = ensemble_enabled
+        self.ensemble_size      = len([m.strip() for m in ensemble_models.split(",")]) if self.ensemble_enabled else 1
+        self.ensemble_member_id = ensemble_member_id
+
+        self.disable_divide_output = disable_divide_output
 
         if isinstance(ensemble_models, str):
             self.ensemble_models = ensemble_models.lower()
@@ -200,13 +202,16 @@ class RealizationGenerator:
 
         if ("LSTM" in self.formulation):
             main_output_variable = "land_surface_water__runoff_depth"
-            output_variables = ["land_surface_water__runoff_depth"]#["land_surface_water__runoff_volume_flux"]
+            output_variables = ["land_surface_water__runoff_depth"] #["land_surface_water__runoff_volume_flux"]
             modules.append(self.get_lstm_block())
-            
-        #output_variables = ["RAIN_RATE", "Q_OUT", "POTENTIAL_ET", "ACTUAL_ET"]
-        #output_variables = ["RAIN_RATE","DIRECT_RUNOFF","INFILTRATION_EXCESS","DEEP_GW_TO_CHANNEL_FLUX","SOIL_TO_GW_FLUX","Q_OUT","SOIL_STORAGE","POTENTIAL_ET","ACTUAL_ET"]
+
         #output_header_fields = ["rain_rate", "q_out", "PET", "AET"]
 
+        # disable catchment output, later move this to base realization file
+        
+        root["disable_catchment_output"] = True if self.disable_divide_output else False
+        
+        
         output_header_fields = ["Qout"]
 
         if (len(main_output_variable) == 0):

@@ -22,6 +22,7 @@ class Generate:
     def __init__(self, sandbox_dir, gpkg_file, forcing_dir, ngen_dir,
                  sim_time, formulation, formulations_supported, output_dir,
                  forcing_format, ngen_cal_type, schema, domain,
+                 disable_divide_output,
                  ensemble_enabled=False, ensemble_models = None
                  ):
         
@@ -42,7 +43,9 @@ class Generate:
         self.ensemble_enabled = ensemble_enabled
         self.ensemble_size = len([m.strip() for m in ensemble_models.split(",")]) if self.ensemble_enabled else 1
         self.ensemble_models  = ensemble_models
-        
+
+        self.disable_divide_output     = disable_divide_output
+
         if not os.path.exists(self.gpkg_file):
             sys.exit(f'The gpkg file does not exist: ', self.gpkg_file)
 
@@ -74,7 +77,7 @@ class Generate:
             
 
     def _generate_member(self, member_id):
-        
+
 
         ConfigGen = get_config_generator(
             sandbox_dir=self.sandbox_dir,
@@ -119,7 +122,8 @@ class Generate:
             ensemble_enabled   = self.ensemble_enabled,
             ensemble_member_id = member_id,
             ensemble_models    = self.ensemble_models,
-            verbosity          = 1
+            verbosity          = 1,
+            disable_divide_output = self.disable_divide_output
         )
 
         RealGen.write_realization_file()
