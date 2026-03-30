@@ -408,7 +408,8 @@ class ConfigurationCalib:
             "TOPMODEL": "topmodel_params",
             "NOM":      "noahowp_params",
             "SNOW17":   "snow17_params",
-            "SAC-SMA":  "sacsma_params"
+            "SAC-SMA":  "sacsma_params",
+            "CASAM":    "casam_params"
         }
 
         if "CFE" in self.formulation:
@@ -496,6 +497,8 @@ class ConfigurationCalib:
                         key = "Snow17"
                     if key == "SAC-SMA":
                         key = "SacSMA"
+                    if key == "CASAM":
+                        key = "LGAR"
                     param_values = base_file.get(name, [])
 
                     # store final params
