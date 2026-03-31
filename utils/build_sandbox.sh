@@ -110,12 +110,14 @@ build_sandbox()
     git submodule update --remote extern/ngen-cal
     git submodule update --remote extern/CIROH_DL_NextGen
     git submodule update --remote extern/lstm
-    
+    git submodule update --remote extern/dhbv2
+
     uv pip install 'extern/ngen-cal/python/ngen_cal[netcdf]'
     uv pip install extern/ngen-cal/python/ngen_conf
     uv pip install -e ./extern/ngen_cal_plugins
     uv pip install -e ./extern/lstm
-
+    uv pip install -e ./extern/dhbv2
+ 
     echo "Sandbox Python Environment Created ($SANDBOX_ENV)"
     
     if command -v conda &>/dev/null; then
