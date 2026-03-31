@@ -62,22 +62,22 @@ if __name__ == "__main__":
     elif args.all:
         print ("-------------------------------------")
         print ("Running subset step")
-        run_conf = f"sandbox -subset -i {sandbox_config}"
+        run_conf = f"sandbox --subset -i {sandbox_config}"
         result = subprocess.call(run_conf, shell=True)
         
         print ("-------------------------------------")
         print ("Running forcing step")
-        run_conf = f"sandbox -forc -i {sandbox_config}"
+        run_conf = f"sandbox --forc -i {sandbox_config}"
         result = subprocess.call(run_conf, shell=True)
         
         print ("-------------------------------------")
         print ("Running config generation step")
-        run_conf = f"sandbox -conf -i {sandbox_config}"
+        run_conf = f"sandbox --conf -i {sandbox_config}"
         result = subprocess.call(run_conf, shell=True)
         
         print ("-------------------------------------")
         print ("Running test simulation")
-        run_conf = f"sandbox -run -i {sandbox_config}"
+        run_conf = f"sandbox --run -i {sandbox_config}"
         result = subprocess.call(run_conf, shell=True)
 
     elif args.clean:
