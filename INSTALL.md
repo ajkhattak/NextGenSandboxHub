@@ -64,7 +64,7 @@ Options:
 ### <ins>Verification Test
 Run the following command to verify that everything has been set up successfully. Download conus geopackage file from [lynker-spatial](https://www.lynker-spatial.com/data?path=hydrofabric%2Fv2.2%2F).
 ```
-   python test/sandbox_test.py --all
+   python test/sandbox_test.py --all --gpkg <path/to/conus_nextgen.gpkg>
 ```
 
 ### <ins> Step 4. Setup configuration file
