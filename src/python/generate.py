@@ -61,13 +61,13 @@ class Generate:
         formulation_test = formulation_in_lower if has_troute else f"{self.formulation_in},T-ROUTE"
 
         if formulation_test.upper() in formulations_supported:
-            self.formulation = formulation_test.upper()
+            #self.formulation = formulation_test.upper()
+            self.formulation = self.formulation_in
         else:
             raise ValueError(
                 f"\nUnsupported formulation: {self.formulation_in} \n"
                 f"Supported: {self.formulations_supported} \n"
-                "[INFO]: Formulations that omit T-ROUTE are allowed, as it is appended automatically; \
-                however, all other formulation components must be specified exactly as supported."
+                "[INFO]: Formulations that omit T-ROUTE are allowed, however, all other formulation components must be specified exactly as supported."
             )
 
 
