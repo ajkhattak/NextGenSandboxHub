@@ -6,7 +6,6 @@ dependencies:
   - numba=0.63
   - llvmlite
   - pycares=4.11.0
-  - uv
   - pip
   - pip:
     - wheel

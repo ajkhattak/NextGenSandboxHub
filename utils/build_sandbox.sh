@@ -99,12 +99,12 @@ build_sandbox()
         $PYTHON_CMD -m venv "$SANDBOX_ENV"
         source "$SANDBOX_ENV/bin/activate"
 	python -m pip install --upgrade pip --no-cache-dir
-	python -m pip install uv
+	#python -m pip install uv
 	uv pip install "setuptools>=64.0,<69.0" wheel
 
     fi
 
-    uv pip install -e .
+    pip install -e .
 
     git submodule update --init --recursive
     git submodule update --remote extern/ngen-cal
@@ -112,11 +112,11 @@ build_sandbox()
     git submodule update --remote extern/lstm
     git submodule update --remote extern/dhbv2
 
-    uv pip install 'extern/ngen-cal/python/ngen_cal[netcdf]'
-    uv pip install extern/ngen-cal/python/ngen_conf
-    uv pip install -e ./extern/ngen_cal_plugins
-    uv pip install -e ./extern/lstm
-    uv pip install -e ./extern/dhbv2
+    pip install 'extern/ngen-cal/python/ngen_cal[netcdf]'
+    pip install extern/ngen-cal/python/ngen_conf
+    pip install -e ./extern/ngen_cal_plugins
+    pip install -e ./extern/lstm
+    pip install -e ./extern/dhbv2
  
     echo "Sandbox Python Environment Created ($SANDBOX_ENV)"
     
@@ -159,8 +159,8 @@ build_sandbox()
 	$PYTHON_CMD -m venv "$FORCING_ENV"
 	source "$FORCING_ENV/bin/activate"
 	python -m pip install --upgrade pip --no-cache-dir
-	python -m pip install uv
-	ur pip install -r ./utils/venv/requirements_forcing.txt
+	#python -m pip install uv
+	pip install -r ./utils/venv/requirements_forcing.txt
 
 	deactivate
     fi
