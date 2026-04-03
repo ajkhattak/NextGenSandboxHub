@@ -12,6 +12,12 @@
 ###### Config #######
 BUILD_SANDBOX=${BUILD:-ON}
 
+if [ -z "$SANDBOX_BUILD_DIR" ]; then
+  echo "Error: SANDBOX_BUILD_DIR is not set or empty" >&2
+  echo "Run: ./bootstrap.sh --env and follow the steps to set environment variables." >&2
+  exit 1
+fi
+
 mkdir -p "$SANDBOX_BUILD_DIR"
 
 echo "Sandbox dir       : $SANDBOX_DIR"
