@@ -31,8 +31,8 @@ SANDBOX_BUILD_DIR="$(dirname "$SANDBOX_DIR")/sandbox_build"
 
 NGEN_DIR="$SANDBOX_BUILD_DIR/ngen"
 
-SANDBOX_ENV="$SANDBOX_BUILD_DIR/venv/sandbox-py311"
-FORCING_ENV="$SANDBOX_BUILD_DIR/venv/forcing-py311"
+SANDBOX_ENV="$SANDBOX_BUILD_DIR/venv/sandbox"
+FORCING_ENV="$SANDBOX_BUILD_DIR/venv/forcing"
 
 
 export SANDBOX_DIR
