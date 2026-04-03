@@ -84,7 +84,7 @@ build_sandbox()
             $SOLVER env create -y -p "$SANDBOX_ENV" -f utils/venv/venv_sandbox.yaml
         else
             echo "Updating sandbox environment at $SANDBOX_ENV"
-            $SOLVER env update -y -p "$SANDBOX_ENV" -f utils/venv/venv_sandbox.yaml
+            $SOLVER env update -p "$SANDBOX_ENV" -f utils/venv/venv_sandbox.yaml
         fi
 
 	conda activate "$SANDBOX_ENV"
@@ -154,7 +154,7 @@ build_sandbox()
             $SOLVER env create -y -p "$FORCING_ENV" -f utils/venv/venv_forcing.yaml
 	else
             echo "Updating forcing environment at $FORCING_ENV"
-            $SOLVER env update -y -p "$FORCING_ENV" -f utils/venv/venv_forcing.yaml
+            $SOLVER env update -p "$FORCING_ENV" -f utils/venv/venv_forcing.yaml
 	fi
 
     else
