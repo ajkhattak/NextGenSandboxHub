@@ -1,8 +1,9 @@
 #!/bin/bash
 #
 # Example HPC environment setup for building ngen/models needed for the Sandbox workflow.
-# NOTE: You must adjust module names/versions to match your HPC system.
-#
+# NOTE: 
+# - You must adjust module names/versions to match your HPC system.
+# - Set NETCDF_ROOT and BOOST_ROOT
 
 # Optional: clear currently-loaded modules
 module purge
@@ -21,11 +22,14 @@ export F90=$(which gfortran)
 export CC=$(which gcc)
 export CXX=$(which g++)
 
-export NETCDF_ROOT=/apps/spack-2024-12/linux-rocky9-x86_64/gcc-11.4.1/netcdf-fortran-4.6.1-rxwle72kj3anm4uess3ixiqg7ezgq\
-4vk
-#####export NETCDF_C_ROOT=/apps/spack-2024-12/linux-rocky9-x86_64/gcc-11.4.1/netcdf-c-4.9.2-dzmdg3ly7avioysvapk37klgegbsq3j\
-#s
+# Modify this
+export NETCDF_ROOT=/apps/spack-2024-12/linux-rocky9-x86_64/gcc-11.4.1/netcdf-fortran-4.6.1-rxwle72kj3anm4uess3ixiqg7ezgq4vk
 export LIBRARY_PATH=$LD_LIBRARY_PATH
+
+# Download boost using
+# wget https://boostorg.jfrog.io/artifactory/main/release/1.88.0/source/boost_1_88_0.tar.gz
+# tar -xzf boost_1_88_0.tar.gz
+export BOOST_ROOT=/full/path/to/boost_1_88_0
 
 # OR USE MPI Compilers explicitly
 #export FC=`which gfortran`
