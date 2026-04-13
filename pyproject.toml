@@ -24,7 +24,8 @@ dependencies = [
     "geopandas",
     "fiona",
     "pygeohydro",
-    "Cython>3,!=3.0.4"
+    "Cython>3,!=3.0.4",
+    "pycares==4.11.0"
 ]
 
 
