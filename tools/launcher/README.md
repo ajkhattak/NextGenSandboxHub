@@ -22,7 +22,7 @@ The launcher:
 With a single command, the Sandbox Launcher orchestrates hundreds of experiments, making large-scale calibration and validation workflows efficient, automated, and repeatable.
 
 ## Setup
-Before starting, copy the `$SANDBOD_DIR/tools/launcher` directory to your desired working location. The path to this directory (<path_to_launcher>) will be referenced in sandbox_launcher.py (see below).
+Before starting, copy the `$SANDBOX_DIR/tools/launcher` directory to your desired working location. The path to this directory (<path_to_launcher>) will be referenced in sandbox_launcher.py (see below).
 
 - **Prepare the model–gage mapping file** \
   Create a YAML configuration file that maps models to gages (i.e., which model(s) runs at which location(s)). You can use the following as a template: [models_gages_map.yaml](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/tools/launcher/models_gages_map.yaml)
