@@ -12,27 +12,20 @@
 # OUTPUT : a geopackage with all model parameters, which is used for generating config and realization files
 
 ######################## REQUIRED INPUT #######################################
-# Key steps are hihglight as:
+# Key steps are highlight as:
 # STEP #1: Setup (REQUIRED) (main.R)
-# STEP #2: Options: Provide gage ID or list of gage IDs or set path to work with already download geopackages (main.R)
-# Workflow substeps
-#   STEP #3: Download geopackage (if needed) (inside driver.R)
-#   STEP #4: Add model attributes to the geopackage (inside driver.R)
-#   STEP #5: Compute TWI and width function (inside driver.R)
-#   STEP #6: Compute GIUH (inside driver.R)
-#   STEP #7: Compute Nash cascade parameters (N and K) for surface runoff (inside driver.R)
-#   STEP #8: Compute terrain slope from the DEM (inside driver.R)
-#   STEP #8a: Compute NLCD landcover (inside driver.R)
-#   STEP #8b: Compute aspect from the DEM (inside driver.R)
-#   STEP #9: Append GIUH, TWI, width function, Nash cascade parameters, slope, 
-#   aspect, and vegetation type to model_attributes layer (inside driver.R)
+# Workflow steps
+#   STEP #2:  Download geopackage (if needed)
+#   STEP #3:  Add model attributes to the geopackage
+#   STEP #4:  Compute TWI and width function
+#   STEP #5:  Compute GIUH
+#   STEP #6:  Compute Nash cascade parameters (N and K) for surface runoff
+#   STEP #7:  Compute terrain slope from the DEM
+#   STEP #8a: Compute NLCD landcover
+#   STEP #8b: Compute aspect from the DEM
+#   STEP #9:  Append GIUH, TWI, width function, Nash cascade parameters, slope, 
+#   aspect, and vegetation type to divide_attributes layer
 
-
-################################ SETUP #########################################
-# STEP #1: INSTALL REQUIRED PACKAGES 
-# - set sandbox_dir (basin_sandbox repository directory)
-# - set dem_infile (defaults to S3 .vrt file)
-# - set output_dir (geopackages and DEM files will be stored here)
 
 # STEP 8a REQUIRED - download NLCD data for the domain of interest and set the path to the NLCD data
 # Links to recent NLCD data for each domain:
@@ -42,9 +35,16 @@
 # - Alaska (2011): https://www.mrlc.gov/downloads/sciweb1/shared/mrlc/data-bundles/NLCD_2016_Land_Cover_AK_20200724.zip
 
 
+################################################################################
 library(yaml)
 args <- commandArgs(trailingOnly = TRUE)
 Sys.setenv("AWS_NO_SIGN_REQUEST" = "YES")
+
+
+################################ SETUP #########################################
+# STEP: Workflow setup
+# - Set sandbox_config.yaml file under $SANDBOX_DIR/configs directory
+# - Set sandbox_dir and infile_config explicitly when running in RStudio (see below)
 
 Setup <-function() {
 
@@ -55,8 +55,9 @@ Setup <-function() {
   } else if (length(args) > 2) {
     stop("Usage: RScript main.R input.yaml sandbox_dir")
   } else {
-    sandbox_dir   <<- "<path_to_sandboxhub>"
-    infile_config <-  "<path_to_sandboxhub>/configs/sandbox_config.yaml"
+    # Set paths explicitly when running in RStudio
+    sandbox_dir   <<- "<path/to/sandboxhub>" 
+    infile_config <-  "<path/to/sandbox_config.yaml>"
   }
 
   if (!file.exists(infile_config)) {
