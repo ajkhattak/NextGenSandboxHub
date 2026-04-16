@@ -1,16 +1,16 @@
 # Sandbox configuration sample file
 
 general:
-  input_dir     : "/Users/ahmadjankhattak/Core/projects/ensemble/inputs"
-  output_dir    : "/Users/ahmadjankhattak/Core/projects/ensembleX/"
+  input_dir     : "/Users/ahmadjankhattak/Core/projects/synthetic_2026/inputs"
+  output_dir    : "/Users/ahmadjankhattak/Core/projects/synthetic_2026/basecase"
 
 
 ########################################################################
 #forcing data is stored under <input_dir>/gage_id/data/forcing
 forcings : 
-  forcing_format     : ".nc"
-  forcing_time       : {"start_time" : "2015-10-01 00:00:00", "end_time" : "2022-09-30 23:00:00"}
-  domain             : "conus"        # options = ["conus", "HI", "PR", 'AK']
+  format     : ".nc"
+  time       : {"start_time" : "2015-10-01 00:00:00", "end_time" : "2022-09-30 23:00:00"}
+  domain     : "conus"        # options = ["conus", "HI", "PR", 'AK']
 
 ########################################################################
 formulation :
@@ -21,7 +21,7 @@ formulation :
 
 simulation :
   task_type : "calibvalid" # calibvalid, calibration, validation, restart, control
-  gage_ids_input   :  <*> #"10011500"
+  gage_ids_input   :  <*>
   #simulation_time : {"start_time" : "2015-10-01 00:00:00", "end_time" : "2020-09-30 23:00:00"}
   calibration_time : {"start_time" : "2015-10-01 00:00:00", "end_time" : "2020-09-30 23:00:00"}
   calib_eval_time  : {"start_time" : "2016-10-01 00:00:00", "end_time" : "2020-09-30 23:00:00"}

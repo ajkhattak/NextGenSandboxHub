@@ -16,11 +16,13 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing
 
 # ===========================  Inputs ==========================================
+base_dir = "/Users/ahmadjankhattak/Core/projects/synthetic_2026"
 
-sandbox_config_file = "/Users/ahmadjankhattak/Code/workflows/NextGenSandboxHub/tools/launcher/basefiles/sandbox_config_base.yaml"
-calib_config_file   = "/Users/ahmadjankhattak/Code/workflows/NextGenSandboxHub/tools/launcher/basefiles/calib_config_base.yaml"
-map_config_file     = "/Users/ahmadjankhattak/Code/workflows/NextGenSandboxHub/tools/launcher/models_gages_map.yaml"
+sandbox_config_file = f"{base_dir}/launcher/basefiles/sandbox_config_base.yaml"
+calib_config_file   = f"{base_dir}/launcher/basefiles/calib_config_base.yaml"
+map_config_file     = f"{base_dir}/launcher/models_gages_map.yaml"
 
+num_workers = 2  # number of basins running in parallel
 
 # ==============================================================================
 # Load configuration files
@@ -118,7 +120,7 @@ def generate_config_files_for_gage(model_name, model_dir, gage_id, exp_config_di
         yaml.dump(calib_restart_cfg, f, default_flow_style=False, sort_keys=False)
 
     # Run sandbox -conf to generate exp_info.yml
-    subprocess.run(["sandbox", "-conf", "-i", sandbox_main, "-j", calib_main])
+    subprocess.run(["sandbox", "--conf", "-i", sandbox_main, "-j", calib_main])
 
 
 def get_max_iter(exp_config_dir, gage_id):
@@ -246,7 +248,7 @@ def run_experiment(model_name, model_dir, gage_id, job_name, exp_config_dir,
         # ===== LOCAL EXECUTION =====
         cmd = [
             "sandbox",
-            "-run",
+            "--run",
             "-i", str(sb_cfg_file),
             "-j", str(calib_file)
         ]
@@ -427,7 +429,7 @@ def runner(use_slurm):
 
     if not use_slurm and local_jobs:
 
-        max_workers = min(4, multiprocessing.cpu_count())
+        max_workers = min(num_workers, multiprocessing.cpu_count())
         print(f"\n[INFO] Running locally with up to {max_workers} parallel workers\n")
 
         with ProcessPoolExecutor(max_workers=max_workers) as executor:

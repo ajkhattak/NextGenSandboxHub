@@ -271,16 +271,16 @@ noahowp_params: &noahowp_params
     min: 3.6
     max: 12.6
     init: 9.0
-  -
-    name: RSURF_EXP # surface resistence for snow [s/m]
-    min: 1.0
-    max: 6.0
-    init: 3.0
-  -
-    name: SHDMAX # annual maximum fraction of surface covered by vegetation
-    min: 0.05
-    max: 0.95
-    init: 0.5  
+  #-
+  #  name: RSURF_EXP # surface resistence for snow [s/m]
+  #  min: 1.0
+  #  max: 6.0
+  #  init: 3.0
+  #-
+  #  name: SHDMAX # annual maximum fraction of surface covered by vegetation
+  #  min: 0.05
+  #  max: 0.95
+  #  init: 0.5  
 
 ####################################################################################
 snow17_params: &snow17_params
@@ -454,4 +454,4 @@ model:
       - "ngen_cal_user_plugins.read_obs_plugin.ReadObservedData"
     plugin_settings:
       read_obs_data:
-        obs_data_path: /Users/ahmadjankhattak/Core/projects/nwm_bm_sims/usgs_obs_streamflow
+        obs_data_path: /Users/ahmadjankhattak/Core/projects/nwm_bm_sims/usgs_obs_streamflow_agg

@@ -55,7 +55,7 @@ if [ "$RUN_ENV" = "slurm" ]; then
     source /scratch4/NCEPDEV/ohd/Ahmad.Jan.Khattak/Code/NextGenSandboxHub/.venv/venv_sandbox_py3.11/bin/activate
 else    
     #source .venv/venv_sandbox_py3.11/bin/activate 2>/dev/null || true
-    conda activate $SANDBOX_VENV
+    conda activate $SANDBOX_ENV
 fi
 
 echo "Python executable: $(which python)"

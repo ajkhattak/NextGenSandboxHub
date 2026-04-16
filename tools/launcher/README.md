@@ -35,12 +35,11 @@ Before starting, copy the `$SANDBOX_DIR/tools/launcher` directory to your desire
    - [submit_gage.slurm](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/tools/launcher/submit_gage.slurm)
    - [submit_launcher.slurm](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/tools/launcher/submit_launcher.slurm)
 - **Update paths inside sandbox_launcher.py** \
-  Edit the following variables in `sandbox_launcher.py` to match your local filesystem (to point to your copied launcher directory):
+  Set the base directory path in `sandbox_launcher.py` to match your local filesystem (to point to your copied launcher directory):
   ```
-  sandbox_config_file = "<path_to_launcher>/launcher/basefiles/sandbox_config_base.yaml"
-  calib_config_file   = "<path_to_launcher>/launcher/basefiles/calib_config_base.yaml"
-  map_config_file     = "<path_to_launcher>/launcher/models_gages_map.yaml"
+  base_dir = "<path/to/copied/launcher>"
   ```
+
 ## Run
 > **Important:** Run these commands from the <path_to_launcher> directory.
 ### On HPC (SLURM)
@@ -52,6 +51,12 @@ sbatch launcher/submit_launcher.sh
 Run directly:
 ```
 bash launcher/submit_launcher.sh
+```
+
+### Check experiments status
+Run:
+```
+./launcher/check_status.sh
 ```
 
 > The launcher automatically detects whether it is running under SLURM and selects the appropriate execution backend.
