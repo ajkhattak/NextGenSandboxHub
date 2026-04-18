@@ -43,20 +43,30 @@ class CASAMConfigurationGenerator(ConfigurationGenerator):
         soil_z = "10.0,15.0,18.0,23.0,29.0,36.0,44.0,55.0,69.0,86.0,107.0,134.0,166.0,207.0,258.0,322.0,401.0,500.0,600.0"
 
         casam_params_base = [
-            "verbosity=none",
-            f"soil_params_file={casam_params_file}",
-            "layer_thickness=200.0[cm]",
-            "initial_psi=2000.0[cm]",
-            "timestep=3600[sec]",
-            "endtime=1000000000.0[d]",
-            "forcing_resolution=3600[sec]",
-            "ponded_depth_max=0[cm]",
-            "use_closed_form_G=false",
-            "layer_soil_type=",
-            "wilting_point_psi=15495.0[cm]",
-            "field_capacity_psi=340.9[cm]",
-            "adaptive_timestep=true",
-            "giuh_ordinates="
+            'verbosity=none',
+            f'soil_params_file={casam_params_file}',
+            'layer_thickness=200.0[cm]',
+            'initial_psi=2000.0[cm]',
+            'timestep=3600[sec]',
+            'endtime=1000000000.0[d]',
+            'forcing_resolution=3600[sec]',
+            'ponded_depth_max=0[cm]',
+            'use_closed_form_G=true',
+            'layer_soil_type=',
+            'max_valid_soil_types=25',
+            'wilting_point_psi=15495.0[cm]',
+            'field_capacity_psi=340.9[cm]',
+            'adaptive_timestep=true',
+            'giuh_ordinates=',
+            'a=0.0001',
+            'b=3.0',
+            'frac_to_GW=0.4',
+            'PET_affects_precip=false',
+            'spf_factor=0.6',
+            'free_drainage_enabled=true',
+            'allow_flux_caching=true',
+            'calib_params=true',
+            'log_mode=true'
         ]
 
         if sft_coupled:

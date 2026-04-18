@@ -192,6 +192,8 @@ class RealizationGenerator:
 
         if ("CASAM" in self.formulation):
             main_output_variable = "total_discharge"
+            output_variables = ["total_discharge"]
+            output_header_fields = ["Qout"]
             modules.append(self.get_casam_block())
 
         if ("SMP" in self.formulation):
@@ -629,11 +631,11 @@ class RealizationGenerator:
                 "ice_fraction_xinanjiang(1,double,1,node)": 0.0,
                 "soil_moisture_profile(1,double,1,node)": 0.0
             }
-        elif "LASAM" in self.formulation and not "SFT" in self.formulation:
+        elif "CASAM" in self.formulation and not "SFT" in self.formulation:
             params = {
                 "soil_temperature_profile(1,double,K,node)": 275.15
             }
-        elif "SMP" in self.formulation and not "TOPMODEL" in self.formulation and not "LASAM" in self.formulation:
+        elif "SMP" in self.formulation and not "TOPMODEL" in self.formulation and not "CASAM" in self.formulation:
             params = {
                 "soil_moisture_wetting_fronts(1,double,1,node)": 0.0,
                 "soil_depth_wetting_fronts(1,double,1,node)": 0.0,
@@ -642,7 +644,7 @@ class RealizationGenerator:
                 "Qv_topmodel(1,double,1,node)": 0.0,
                 "global_deficit(1,double,1,node)": 0.0
             }
-        elif "SMP" in self.formulation and "LASAM" in self.formulation:
+        elif "SMP" in self.formulation and "CASAM" in self.formulation:
             params = {
                 "sloth_soil_storage(1,double,m,node)": 1.0E-10,
                 "sloth_soil_storage_change(1,double,m,node)": 0.0,
