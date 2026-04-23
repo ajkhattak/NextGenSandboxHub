@@ -153,12 +153,13 @@ def get_current_iteration(exp_info_dir, gage_id, status=False):
     if not iter_file:
         if not status:
             print(f"INFO: [{gage_id}] No best_params.txt found — assuming iteration 0")
-        return 0
+        return 0, -999
 
     iter_params = pd.read_csv(iter_file[0], header=None)
-    current_iter = int(iter_params.values[0].item()) #+ 1 # add one as the iteration in the best_params.txt shows the last completed iteration
+    current_iter = int(iter_params.values[0].item())
+    obj_value = round(float(iter_params.values[2].item()),3)
 
-    return current_iter
+    return current_iter, obj_value
 
 
 def get_num_cpus(exp_info_dir, gage_id):
@@ -276,8 +277,10 @@ def check_status():
     """
 
     print("\n============================ STATUS REPORT ==============================")
+    #print ("Sumamry:")
+    #print (f"Total Gages: {len(mapping.keys())}")
     # Table header
-    header = f"{'Gage':<12} {'Formulation':<30} {'Calib (cur/max)':<18} {'Validation':<4}"
+    header = f"{'Gage':<12} {'Formulation':<30} {'Calib (cur|max|obj_val)':<18} {'Validation':<4}"
     print(header)
     print("-" * len(header))
     for gage_id in mapping.keys():
@@ -288,15 +291,15 @@ def check_status():
             exp_info_dir   = output_dir / model_dir / base_sandbox_cfg["sandbox_launcher"]["exp_info_dir"]
             exp_config_dir = output_dir / model_dir / "configs"
 
-            current_iter = get_current_iteration(exp_info_dir, gage_id, status=True)
+            current_iter, obj_value = get_current_iteration(exp_info_dir, gage_id, status=True)
             max_iter     = get_max_iter(exp_config_dir, gage_id)
 
             validation_exists = check_validation_exists(exp_info_dir, gage_id, status=True)
             valid_flag = "YES" if validation_exists else "NO"
-            print(f"{gage_id:<12} {model_name:<30} {f'{current_iter}/{max_iter}':<18} {valid_flag:<4}")
+            print(f"{gage_id:<12} {model_name:<30} {f'{current_iter} | {max_iter} | {obj_value}':<25} {valid_flag:<4}")
 
     print("-" * len(header))
-    print("======================== STATUS REPORT COMPLETE ==========================")
+    print("======================== STATUS REPORT COMPLETE =========================")
 
 # For requeue-ing launcher via slrum
 def launcher_exit(incomplete_exists):
@@ -328,7 +331,7 @@ def is_experiment_complete(gage_id, model_dir):
     exp_config_dir = output_dir / model_dir / "configs"
 
     # Get current and max iterations
-    current_iter = get_current_iteration(exp_info_dir, gage_id, status=True)
+    current_iter, _ = get_current_iteration(exp_info_dir, gage_id, status=True)
     max_iter     = get_max_iter(exp_config_dir, gage_id)
 
     # Check if validation exists
@@ -396,7 +399,7 @@ def runner(use_slurm):
             exp_info_dir   = output_dir / model_dir / base_sandbox_cfg["sandbox_launcher"]["exp_info_dir"]
             exp_config_dir = output_dir / model_dir / "configs"
 
-            current_iter = get_current_iteration(exp_info_dir, gage_id)
+            current_iter, _ = get_current_iteration(exp_info_dir, gage_id)
             max_iter     = get_max_iter(exp_config_dir, gage_id)
 
             if current_iter == 0:
@@ -408,10 +411,6 @@ def runner(use_slurm):
 
             # to avoid race for reading .nc forcing file. 5 seconds per mode, adjust as needed
             delay_seconds = m_idx * 5
-
-            #run_experiment(model_name, model_dir, gage_id, job_name,
-            #               exp_config_dir, exp_info_dir, current_iter,
-            #               delay_seconds, use_slurm)
 
             if use_slurm:
                 run_experiment(model_name, model_dir, gage_id, job_name,
@@ -430,6 +429,7 @@ def runner(use_slurm):
     if not use_slurm and local_jobs:
 
         max_workers = min(num_workers, multiprocessing.cpu_count())
+
         print(f"\n[INFO] Running locally with up to {max_workers} parallel workers\n")
 
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
