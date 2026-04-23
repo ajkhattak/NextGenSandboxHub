@@ -94,9 +94,9 @@ DriverGivenGPKG <- function(gage_files,
                             dem_output_dir,
                             dem_input_file = NULL,
                             compute_divide_attributes = TRUE,
-                            nlcd_data_path = "",
-                            calculate_vegetation = FALSE,
-                            veg_method = NULL
+                            veg_calc_enabled = NULL,
+                            veg_nlcd_path    = NULL, 
+                            veg_method       = NULL
                             ) 
   {
 

@@ -38,7 +38,7 @@ subsetting :
     gpkg:
       dir: "<path_to_gpkgs_dir>" #------------------------------- Path to base directory for all (already downloaded/processed) geopackages (or path to .gpkg file).
       pattern: "gage_" #----------------------------------------- Pattern of names, e.g., gage_<*> or hf_<*>
-      select: ["HUC_VPUID03W"] #--------------------------------- Selected gages/gpkgs from the directory gpkg_dir
+      select: ["01308000"] #------------------------------------- Selected gages/gpkgs from the directory gpkg_dir
 
 
 ########################################################################
