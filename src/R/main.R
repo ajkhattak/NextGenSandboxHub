@@ -78,8 +78,16 @@ Setup <-function() {
   compute_divide_attributes <<- get_param(inputs, "subsetting$compute_divide_attributes", TRUE)
   
   # Newer DEM, better for oCONUS and other previously problematic basins
-  dem_input_file  <<- get_param(inputs, "subsetting$dem$input_file", "s3://lynker-spatial/gridded/3DEP/USGS_seamless_DEM_13.vrt")
-
+  dem_input_file <<- get_param(inputs, "subsetting$dem$input_file", NULL)
+  
+  if (is.null(dem_input_file)) {
+    dem_input_file <<- "s3://lynker-spatial/gridded/3DEP/USGS_seamless_DEM_13.vrt"
+  } else if (trimws(dem_input_file) == "") {
+    stop("Invalid input: 'subsetting$dem$input_file' was provided but is empty. 
+         Either remove it to use the default DEMor provide a valid DEM file.")
+  }
+  print (dem_input_file)
+  #stop()
   dem_output_dir  <<- get_param(inputs, "subsetting$dem$output_dir", "")
   dem_aggregate_factor <<- get_param(inputs, "subsetting$dem$aggregate_factor", 3)
   
@@ -126,6 +134,14 @@ Setup <-function() {
   
   setwd(output_dir)
   wbt_wd(getwd())
+  
+  failed_dir <- file.path(output_dir, "basins_failed")
+  
+  if (dir.exists(failed_dir)) {
+    unlink(failed_dir, recursive = TRUE, force = TRUE)
+  }
+  
+  dir.create(failed_dir, recursive = TRUE)
   
   return(0)
 }
