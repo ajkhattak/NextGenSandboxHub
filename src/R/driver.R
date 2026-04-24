@@ -18,9 +18,7 @@ DriverGivenGageIDs <- function(gage_ids,
   {
   
   print ("DRIVER GIVEN GAGE ID")
-
-  dir.create(glue("{output_dir}/basins_failed"), recursive = TRUE, showWarnings = FALSE)
-
+  
   lapply(X = gage_ids, FUN = ProcessCatchmentID)
 
   setwd(output_dir)
@@ -29,7 +27,7 @@ DriverGivenGageIDs <- function(gage_ids,
 
 #-----------------------------------------------------------------------------#
 # Function called by pblapply for parallel processing by each worker/node
-# for each catchemnt id
+# for each catchment id
 # it calls run_driver for each gage id and computes giuh/twi etc.
 
 ProcessCatchmentID <- function(id) {
@@ -103,13 +101,6 @@ DriverGivenGPKG <- function(gage_files,
   print ("DRIVER GIVEN GEOPACKAGE FUNCTION")
 
   stopifnot(length(gage_files) >= 1)
-
-  failed_dir <- glue("{output_dir}/basins_failed")
-
-  if (dir.exists(failed_dir)) {
-    unlink(failed_dir, recursive = TRUE)
-  }
-  dir.create(failed_dir, recursive = TRUE, showWarnings = FALSE)
 
   cats_failed <- lapply(X = gage_files, FUN = ProcessGPKG, failed_dir)
   setwd(output_dir)

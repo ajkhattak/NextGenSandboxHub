@@ -108,7 +108,7 @@ GetDEM <- function(div_infile,
              source = dem_file,
              destination = dem_proj_file,
              options = c("-of", "GTiff", "-t_srs", "EPSG:5070", "-r", "bilinear"))
-  cat(glue("DEM reprojected to EPSG:5070: {dem_proj_file}\n"))
+  cat(glue("\nDEM reprojected to EPSG:5070: {dem_proj_file}\n"))
   
   # ----------------------------
   # Breach depressions
@@ -117,7 +117,7 @@ GetDEM <- function(div_infile,
   wbt_breach_depressions(dem = dem_proj_file,
                          output = dem_corr_file)
   
-  cat(glue("Depressions breached: {dem_corr_file}\n"))
+  cat(glue("\nDepressions breached: {dem_corr_file}\n"))
   
   cat("=== DEM processing complete ===\n")
   
