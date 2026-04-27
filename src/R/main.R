@@ -71,11 +71,10 @@ Setup <-function() {
   output_dir    <<- inputs$general$input_dir
   hf_version    <<- inputs$subsetting$hydrofabric$version
   hf_gpkg_path  <<- inputs$subsetting$hydrofabric$gpkg_path
+  compute_divide_attributes <<- get_param(inputs, "subsetting$hydrofabric$compute_divide_attributes", TRUE)
   
   source(paste0(sandbox_dir, "/src/R/install_load_libs.R"))
   source(glue("{sandbox_dir}/src/R/custom_functions.R"))
-  
-  compute_divide_attributes <<- get_param(inputs, "subsetting$compute_divide_attributes", TRUE)
   
   # Newer DEM, better for oCONUS and other previously problematic basins
   dem_input_file <<- get_param(inputs, "subsetting$dem$input_file", NULL)

@@ -14,6 +14,7 @@ subsetting :
     version               : "2.2" #-------------------------------------- Only enter version number, e.g. "2.2" or "2.1.1"
     # Ensure that this gpkg matches the hf_version specified above:
     gpkg_path             : "<path_to>/conus_nextgen.gpkg"  #------------ For example, "<paht_to>/conus_nextgen.gpkg", download it from https://proxy.lynker-spatial.com/hydrofabric/v2.2/conus
+    compute_divide_attributes : TRUE #----------------------------------- # Turn on/off compute divide attributes locally (OPTIONS: TRUE/FALSE, Default is TRUE). If the base hydrofabric (gpkg_path) provides all the divide attributes, then set it to FALSE
   dem:
     output_dir           : "dem"    #-------------------------------- If set to null string, the dem.tif and associated files will be deleted at the end. If provide an absolute path, all .tif files will be moved to that directory.
     input_file           : "<path_to>/dem.vrt" #--------------------- Set to local dem.vrt file (download it from https://proxy.lynker-spatial.com/gridded/3DEP/USGS_seamless_DEM_13.vrt), or leave it empty # (OPTIONAL)
