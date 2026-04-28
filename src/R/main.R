@@ -71,10 +71,15 @@ Setup <-function() {
   output_dir    <<- inputs$general$input_dir
   hf_version    <<- inputs$subsetting$hydrofabric$version
   hf_gpkg_path  <<- inputs$subsetting$hydrofabric$gpkg_path
-  compute_divide_attributes <<- get_param(inputs, "subsetting$hydrofabric$compute_divide_attributes", TRUE)
   
+  if (is.null(hf_gpkg_path) || trimws(hf_gpkg_path) == "" || !file.exists(hf_gpkg_path)) {
+    stop("Invalid input: 'subsetting$hydrofabric$gpkg_path' is missing, empty, or does not exist.")
+  }
+
   source(paste0(sandbox_dir, "/src/R/install_load_libs.R"))
   source(glue("{sandbox_dir}/src/R/custom_functions.R"))
+  
+  compute_divide_attributes <<- get_param(inputs, "subsetting$hydrofabric$compute_divide_attributes", TRUE)
   
   # Newer DEM, better for oCONUS and other previously problematic basins
   dem_input_file <<- get_param(inputs, "subsetting$dem$input_file", NULL)
@@ -85,8 +90,7 @@ Setup <-function() {
     stop("Invalid input: 'subsetting$dem$input_file' was provided but is empty. 
          Either remove it to use the default DEMor provide a valid DEM file.")
   }
-  print (dem_input_file)
-  #stop()
+
   dem_output_dir  <<- get_param(inputs, "subsetting$dem$output_dir", "")
   dem_aggregate_factor <<- get_param(inputs, "subsetting$dem$aggregate_factor", 3)
   
