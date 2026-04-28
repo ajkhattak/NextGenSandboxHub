@@ -28,6 +28,7 @@
 
 ### ML-Based models
 - LSTM
+- dHBV
 
 ## Supported Models — Source Code Links
 
@@ -43,6 +44,7 @@ Here are the hydrologic and hydraulic modules supported by NextGenSandboxHub, al
 | Sac-SMA | https://github.com/NOAA-OWP/sac-sma |
 | CASAM (LGAR-based rainfall–runoff model) | https://github.com/NOAA-OWP/LGAR-C |
 | LSTM (ML-based streamflow) | https://github.com/NOAA-OWP/lstm |
+| dHBV (ML-based streamflow) | https://github.com/mhpi/dhbv2 |
 | SFT (SoilFreezeThaw) | https://github.com/NOAA-OWP/soilfreezethaw |
 | SMP (SoilMoistureProfiles) | https://github.com/NOAA-OWP/soilmoistureprofiles |
 | T-ROUTE (Routing) | https://github.com/NOAA-OWP/t-route |
