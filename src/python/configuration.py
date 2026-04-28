@@ -1,6 +1,6 @@
 ############################################################################################
-# Author  : Ahmad Jan
-# Contact : ahmad.jan@noaa.gov
+# Author  : Ahmad Jan Khattak
+# Contact : ahmad.jan.khattak@noaa.gov
 # Date    : September 28, 2023
 ############################################################################################
 
@@ -43,6 +43,7 @@ def _load_formulations():
     import src.python.models.troute
     import src.python.models.sft
     import src.python.models.smp
+    import src.python.models.dhbv
 
 def get_config_generator(formulation, **kwargs):
     ctx = ConfigurationContext(formulation=formulation, **kwargs)
@@ -153,7 +154,8 @@ class ConfigurationContext:
         gdf_soil['impervious_mean']  = gdf_soil[params['impervious_mean']].fillna(0.0) / 100. # convert percent to fraction
         gdf_soil['terrain_slope']    = gdf_soil[params['terrain_slope']].fillna(0.0)
         gdf_soil['divide_area']      = gdf_div["areasqkm"].fillna(1.0)
-
+        gdf_soil['flowpath_length']  = gdf_div["lengthkm"].fillna(1.0)
+        
         if self.schema_type == 'dangermond':
             gdf_soil['elevation_mean'] = gdf_soil['elevation_mean'] / 100.0
 
@@ -200,6 +202,7 @@ class ConfigurationContext:
         gdf['terrain_slope'] = gdf_soil[params['terrain_slope']]
 
         gdf['divide_area'] = gdf_soil['divide_area']
+        gdf['flowpath_length'] = gdf_soil['flowpath_length']
 
         if "IVGTYP_nlcd" in params and params["IVGTYP_nlcd"] in gdf_soil.columns:
             gdf["IVGTYP_nlcd"] = gdf_soil[params["IVGTYP_nlcd"]]
