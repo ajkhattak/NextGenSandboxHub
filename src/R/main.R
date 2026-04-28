@@ -71,6 +71,7 @@ Setup <-function() {
   output_dir    <<- inputs$general$input_dir
   hf_version    <<- inputs$subsetting$hydrofabric$version
   hf_gpkg_path  <<- inputs$subsetting$hydrofabric$gpkg_path
+  compute_divide_attributes <<- get_param(inputs, "subsetting$hydrofabric$compute_divide_attributes", TRUE)
   
   if (is.null(hf_gpkg_path) || trimws(hf_gpkg_path) == "" || !file.exists(hf_gpkg_path)) {
     stop("Invalid input: 'subsetting$hydrofabric$gpkg_path' is missing, empty, or does not exist.")

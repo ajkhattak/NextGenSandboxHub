@@ -103,6 +103,11 @@ class RealizationGenerator:
             print(f"LSTM config files directory does not exist. {lstm_dir}")
             sys.exit(0)
 
+        dhbv_dir = os.path.join(self.output_dir, "configs", "dhbv")
+        if 'DHBV' in self.formulation and not os.path.exists(dhbv_dir):
+            print(f"dHBV config files directory does not exist. {dhbv_dir}")
+            sys.exit(0)
+
 
     def write_realization_file(self):
 
@@ -160,7 +165,8 @@ class RealizationGenerator:
         model_type_name = self.formulation.replace(",","_")
 
         modules = []
-        if not "SAC-SMA" in self.formulation and not "LSTM" in self.formulation:
+        if not "SAC-SMA" in self.formulation and not "LSTM" in self.formulation \
+           and not "DHBV" in self.formulation:
             modules = [self.get_sloth_block()]
 
         output_variables = []
@@ -207,6 +213,11 @@ class RealizationGenerator:
             output_variables = ["land_surface_water__runoff_depth"] #["land_surface_water__runoff_volume_flux"]
             modules.append(self.get_lstm_block())
 
+        if ("DHBV" in self.formulation):
+            main_output_variable = "land_surface_water__runoff_volume_flux"
+            #output_variables = ["land_surface_water__runoff_volume_flux"]
+            modules.append(self.get_dhbv_block())
+
         #output_header_fields = ["rain_rate", "q_out", "PET", "AET"]
 
         # disable catchment output, later move this to base realization file
@@ -224,7 +235,7 @@ class RealizationGenerator:
 
         global_block["params"]["model_type_name"] = model_type_name
         global_block["params"]["main_output_variable"] = main_output_variable
-        global_block["params"]["output_variables"] = output_variables
+        #global_block["params"]["output_variables"] = output_variables
         #global_block["params"]["output_header_fields"] = output_header_fields
         global_block["params"]["modules"] = modules
 
@@ -658,6 +669,8 @@ class RealizationGenerator:
             }
         elif "LSTM" in self.formulation:
             return block
+        elif "DHBV" in self.formulation:
+            return block
         else:
             msg = "SLoTH model not setup for this formulation yet: " + self.formulation
             sys.exit(msg)
@@ -695,6 +708,36 @@ class RealizationGenerator:
         return block
 
 
+    def get_dhbv_block(self):
+
+        tag = self.tag if (self.ensemble_enabled and "lstm" in self.ensemble_models) else "cfg"
+
+        block = {
+            "name": "bmi_python",
+            "params": {
+                "python_type": "dhbv2.mts_bmi.MtsDeltaModelBmi",
+                "model_type_name": "DeltaModelBmi",
+                "main_output_variable": "land_surface_water__runoff_volume_flux",
+                "allow_exceed_end_time": True,
+                "fixed_time_step": False,
+                "uses_forcing_file": False,
+                "init_config": os.path.join(self.config_dir, f'dhbv/dhbv_{tag}_{{{{id}}}}.yaml'),
+                "variables_names_map": {
+                    "atmosphere_water__liquid_equivalent_precipitation_rate": "APCP_surface",
+                    "land_surface_air__temperature": "TMP_2maboveground",
+                    "atmosphere_air_water~vapor__relative_saturation": "SPFH_2maboveground",
+                    "land_surface_radiation~incoming~longwave__energy_flux": "DLWRF_surface",
+                    "land_surface_radiation~incoming~shortwave__energy_flux": "DSWRF_surface",
+                    "land_surface_wind__x_component_of_velocity": "UGRD_10maboveground",
+                    "land_surface_wind__y_component_of_velocity": "VGRD_10maboveground",
+                    "land_surface_air__pressure": "PRES_surface",
+                    "land_surface_water__runoff_volume_flux": "streamflow_cms"
+                }
+            }
+        }
+
+        return block
+    
     def get_jinjabmi_unit_conversion_block(self):
         block_jinjabmi = {
             "name": "bmi_python",
