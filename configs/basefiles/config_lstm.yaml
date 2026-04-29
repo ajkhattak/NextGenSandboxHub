@@ -1,17 +1,63 @@
-# template - the user needs to set the
-train_cfg_file: ./trained_neuralhydrology_models/persistent_hourly_test_2601_152630/config.yml
-attributes_file: /Users/ahmadjankhattak/Core/projects/nwm_bm_sims/lstm_bm_v2.3/model-2/bm_LSTM_1.0_attrs.parquet
+############################################################
+# CONFIGURATION GUIDE
+#
+# This file is a base file for generating lstm config files
+# It provides attributes .parquet and training files, and maps
+# model feature names (used during training)
+# to column names in your attributes (.parquet) file.
+#
+# Rule:
+#   training:
+#     <name_used_in_training>: <column_name_in_parquet>
+#
+# - LEFT side = fixed (must match trained model)
+# - RIGHT side = flexible (must match your file)
+############################################################
+
+
+
+############################################################
+# Example 1: Single LSTM model
+############################################################
+
+
+train_cfg_file: ./trained_neuralhydrology_models/nh_AORC_hourly_slope_elev_precip_temp_seq999_seed101_2801_191806/config.yml
+attributes_file: ./path/to/attributes.parquet
+
 static_attributes:
   training:
+    elev_mean: mean.elevation
+    slope_mean: terrain_slope
+  bmi:
+    area_sqkm : areasqkm
+
+
+
+############################################################
+# Example 2: Ensemble (multiple LSTM models)
+############################################################
+# Provide a list of model config files and the associated .parquet files (order matters)
+
+train_cfg_file: ["./trained_neuralhydrology_models/nh_AORC_hourly_slope_elev_precip_temp_seq999_seed101_2801_191806/config.yml", "./trained_neuralhydrology_models/nh_AORC_hourly_seq4380_owp_snowsample_seed105_1603_230110/config.yml"]
+attributes_file: ["./path/to/attributes_model1.parquet", "./path/to/attributes_model2.parquet"]
+
+
+static_attributes:
+  training:
+    elev_mean: mean.elevation
+    slope_mean: terrain_slope
+    
     ari_ix_mean: ari_ix_mean
     slp_dg_mean: slp_dg_mean
-    centroid_y: lat_dec_deg
+    centroid_lat: centroid_lat
     ims_pc_mean: ims_pc_mean
     ele_mt_mean: ele_mt_mean
     snd_pct: snd_pct
     cly_pct: cly_pct
     lka_pc_sse: lka_pc_sse
-    areasqkm: areasqkm
+    area_sqkm: area_sqkm
+    snw_pc_max: snw_pc_max
     for_pc_forest_sse: for_pc_forest
   bmi:
-    area_sqkm : areasqkm
+    area_sqkm : area_sqkm
+ 
