@@ -1,5 +1,5 @@
 
-attributes_file: /Users/ahmadjankhattak/Core/input_data/dhbv_attributes/dhbv_attrs.parquet
+attributes_file: ./ngen_resources/data/dhbv_2_mts/model/dhbv_2_mts/dhbv_attrs.parquet
 model_dir: ./ngen_resources/data/dhbv_2_mts/model/dhbv_2_mts
 
 ### Single-catchment configuration ###

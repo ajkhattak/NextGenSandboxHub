@@ -51,25 +51,12 @@ class dHBVConfigurationGenerator(ConfigurationGenerator):
             )
         )
 
-        attributes_file = base_file.get("attributes_file")
+        attributes_file = os.path.join(self.ctx.sandbox_dir,"extern/dhbv2", base_file.get("attributes_file"))
         df_attr_div     = pd.read_parquet(attributes_file)
         df_attr_div     = df_attr_div.set_index("divide_id")
         
-        #with open(train_cfg_path, "r") as f:
-        #    train_cfg = yaml.safe_load(f)
-            
-        #static_attrs_dhbv_training = train_cfg['static_attributes']
-        
         static_attributes_cfg = base_file.get("static_attributes", {})
         static_attrs_parquet_mapping = static_attributes_cfg.get("training", {})
-        
-        #static_attrs_bmi_mapping = static_attributes_cfg.get("bmi", {})
-
-        #assert set(static_attrs_dhbv_training) == set(static_attrs_parquet_mapping.keys())
-
-        #assert all(col in df_attr_div.columns
-        #           for col in static_attrs_parquet_mapping.values()
-        #           ), "Some mapped attribute columns are missing in parquet!"
 
         for catID in self.ctx.catids:
             cat_name = f"cat-{catID}"
@@ -98,10 +85,6 @@ class dHBVConfigurationGenerator(ConfigurationGenerator):
                     config[dhbv_name] = float(self.ctx.gdf.loc[cat_name, "flowpath_length"])
                 else:
                     config[dhbv_name] = float(df_attr_div.loc[cat_name][parquet_col])
-
-            # Add BMI attributes
-            #for bmi_name, parquet_col in static_attrs_bmi_mapping.items():
-            #    config[bmi_name] = float(df_attr_div.loc[cat_name][parquet_col])
 
 
             with open(dhbv_file, "w") as f:
