@@ -367,7 +367,34 @@ class ConfigurationCalib:
         basin_gage_id = basin_gage[waterbody_id].tolist()
 
         return basin_gage_id
-        
+
+    def find_state_file(self):
+        if self.ngen_cal_type == 'validation':
+            params_state_dir = self.output_dir
+
+        elif self.ngen_cal_type == 'restart':
+            params_state_dir = self.restart_dir
+
+        params_state_path = Path(params_state_dir)
+
+        if not params_state_path.exists():
+            raise FileNotFoundError(f"Directory does not exist: {params_state_path}")
+
+        # First pattern: directly inside directory
+        files = glob.glob(str(params_state_path / "*_parameter_df_state.parquet"))
+        if files:
+            return files[0]
+
+        # Second pattern: inside *_worker subdirectories
+        files = glob.glob(str(params_state_path / "*_worker" / "*_parameter_df_state.parquet"))
+        if files:
+            return files[0]
+
+
+        raise FileNotFoundError(
+            f"No parameters state file found in {params_state_path} or its *_worker subdirectory"
+        )
+
     def write_calib_input_files(self):
         
         conf_dir = os.path.join(self.output_dir, "configs")
@@ -545,17 +572,9 @@ class ConfigurationCalib:
              
 
         if self.ngen_cal_type in ['restart', 'validation']:
-            if (self.ngen_cal_type == 'validation'):
-                try:
-                    state_file = glob.glob(str(Path(self.output_dir) / "*_parameter_df_state.parquet"))[0]
-                except:
-                    state_file = glob.glob(str(Path(self.output_dir) / "*_worker" / "*_parameter_df_state.parquet"))[0]
 
-            elif (self.ngen_cal_type == 'restart'):
-                try:
-                    state_file = glob.glob(str(Path(self.restart_dir) / "*_parameter_df_state.parquet"))[0]
-                except:
-                    state_file = glob.glob(str(Path(self.restart_dir) / "*_worker" / "*_parameter_df_state.parquet"))[0]
+
+            state_file = self.find_state_file()
 
             df_parq = pd.read_parquet(state_file)
             df_params = pd.read_csv(Path(state_file).parent / "best_params.txt", header = None)

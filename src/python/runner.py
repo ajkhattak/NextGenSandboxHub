@@ -160,7 +160,12 @@ class Runner:
                 o_dir = self.output_dir / f"{id}_{self.sim_name_suffix}"
 
             i_dir = Path(self.input_dir) / id
+
+            if not os.path.isdir(o_dir):
+                raise FileNotFoundError(f"directory {o_dir} does not exist, this dir is created at the config generation step")
+
             os.chdir(o_dir)
+
             print("cwd: ", os.getcwd())
             print("input_dir: ", i_dir)
             print("output_dir: ", o_dir)
@@ -214,7 +219,12 @@ class Runner:
             o_dir = self.output_dir / f"{id}_{self.sim_name_suffix}"
 
         i_dir = Path(self.input_dir) / id
+
+        if not os.path.isdir(o_dir):
+            raise FileNotFoundError(f"directory {o_dir} does not exist, this dir is created at the config generation step")
+
         os.chdir(o_dir)
+
         print("cwd: ", os.getcwd())
         print("input_dir: ", i_dir)
         print("output_dir: ", o_dir)
@@ -299,7 +309,9 @@ class Runner:
                 run_command += " -routing configs/troute_config.yaml"
 
         if not self.dryrun:
-            return subprocess.call(run_command, shell=True)
+            result = subprocess.run(run_command, shell=True)
+            if result.returncode != 0:
+                raise RuntimeError(f"{mode.capitalize()} step failed...")
         else:
             print("Dry run: no simulation executed.")
 
