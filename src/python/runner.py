@@ -7,6 +7,8 @@
 import os
 import sys
 import pandas as pd
+import geopandas as gpd
+import numpy as np
 import subprocess
 import glob
 import yaml
@@ -27,9 +29,6 @@ class Runner:
 
         self.load_configuration()
 
-        #if self.np_per_basin > 1 and not os.path.exists(f"{self.ngen_dir}/cmake_build/partitionGenerator"):
-        #    sys.exit("Partitioning geopackage is requested but partitionGenerator does not exist! Quitting...")
-
         # Check whether `mpirun` exists on the system; if exists, then it assumes that ngen was built with MPI=ON
         self.mpirun_exists = shutil.which("mpirun") is not None
 
@@ -44,7 +43,6 @@ class Runner:
         dformul = self.config['formulation']
         self.ngen_dir     = Path(os.environ.get("NGEN_DIR"))
         self.formulation  = dformul['models'].upper()
-        self.num_procs    = int(dformul.get('num_procs', 1))
 
         dsim = self.config['simulation']
         self.ngen_cal_type    = dsim.get('task_type', 'control')
@@ -80,14 +78,14 @@ class Runner:
                 raise FileNotFoundError(f"restart_dir does not exist, provided {self.restart_dir}.")
 
         # Get gages IDs
-        self.gage_ids, self.num_divides = self.load_gage_ids(dsim.get("gage_ids_input"))
+        self.gage_ids = self.load_gage_ids(dsim.get("gage_ids_input"))
 
         suffix = dsim.get('sim_name_suffix')
         if suffix and any(c.isspace() for c in suffix):
             raise ValueError("sim_name_suffix must not contain whitespace")
         self.sim_name_suffix = suffix
 
-        densemble = dsim.get('ensemble') or None
+        densemble = dformul.get('ensemble') or None
         if (densemble):
             self.ensemble_enabled = bool(densemble.get('enabled'))
             
@@ -103,9 +101,9 @@ class Runner:
             self.ensemble_models  = []
             self.ensemble_calib_params_groups = {}
 
-        
+
+
     def load_gage_ids(self, gage_ids_input):
-        num_cats = -99
         if gage_ids_input is None:
             raise TypeError("gage_ids_input must be a CSV path, a string ID, or a list of IDs")
 
@@ -121,15 +119,15 @@ class Runner:
             if 'gage_id' not in df.columns:
                 raise ValueError("CSV must contain a 'gage_id' column")
 
-            return df['gage_id'].tolist(), df['num_divides'].tolist()
+            return df['gage_id'].tolist()
 
         # Case 2: single gage ID as string
         if isinstance(gage_ids_input, str):
-            return [gage_ids_input], [num_cats]
+            return [gage_ids_input]
 
         # Case 3: list / tuple / set
         if isinstance(gage_ids_input, (list, tuple, set)):
-            return [str(x) for x in gage_ids_input], [num_cats for x in gage_ids_input]
+            return [str(x) for x in gage_ids_input]
 
         raise TypeError("gage_ids_input must be a CSV path, a string ID, or a list of IDs")
 
@@ -138,23 +136,24 @@ class Runner:
         if "LSTM" in self.formulation:
             print("Running LSTM in NextGen ...")
             self.run_ngen_without_calibration()
-        elif self.ngen_cal_type not in ['calibration', 'validation', 'calibvalid', 'restart']:
+            return
+
+        if self.ngen_cal_type in ['calibration', 'validation', 'calibvalid', 'restart']:
+            print(f'Running NextGen with task_type {self.ngen_cal_type}')
+            for gage in self.gage_ids:
+                self.run_ngen_with_calibration(gage)
+        else:
             print("Running NextGen without calibration ...")
             self.run_ngen_without_calibration()
-        else:
-            print(f'Running NextGen with task_type {self.ngen_cal_type}')
 
-            for tp in zip(self.gage_ids, self.num_divides):
-                self.run_ngen_with_calibration(tp)
 
 
     def run_ngen_without_calibration(self):
         ngen_exe = os.path.join(self.ngen_dir, "cmake_build/ngen")
 
 
-        for id, ncats in zip(self.gage_ids, self.num_divides):
-            
-            ncats = int(ncats)
+        for id in self.gage_ids:
+
             o_dir = self.output_dir / id
             if self.sim_name_suffix:
                 o_dir = self.output_dir / f"{id}_{self.sim_name_suffix}"
@@ -173,7 +172,7 @@ class Runner:
             gpkg_file = Path(glob.glob(str(i_dir / "data" / "*.gpkg"))[0])
             gpkg_name = gpkg_file.stem
 
-            realization = glob.glob(str( o_dir / "configs" / "realization_*.json"))
+            realization = glob.glob(str(o_dir / "configs" / "realization_*.json"))
 
             assert len(realization) == 1
             realization = realization[0]
@@ -181,22 +180,19 @@ class Runner:
             # defaults to serial run no-mpi mode
             run_cmd = f'{ngen_exe} {gpkg_file} all {gpkg_file} all {realization}'
 
+            file_par, num_cpus = self.prepare_basin_partitioning(gpkg_file)
+
+            self.file_par = os.path.join(o_dir, file_par) if file_par else None
+            self.num_procs = int(num_cpus)
+
             if self.mpirun_exists:
                 # mpirun exists so run with MPI
 
-                if self.num_procs > 1:
-                    file_par = self.generate_partition_basin_file(ncats, gpkg_file)
-                    file_par = os.path.join(o_dir, file_par)
-                    run_cmd  = (
-                        f"mpirun -np {self.num_procs} "
-                        f"{ngen_exe} {gpkg_file} all {gpkg_file} all {realization} {file_par}"
-                        )
-                else:
-                    # single-process MPI mode
-                    run_cmd = (
-                        f"mpirun -np 1 "
-                        f"{ngen_exe} {gpkg_file} all {gpkg_file} all {realization}"
-                        )
+                run_cmd = (
+                    f"mpirun -np {self.num_procs} "
+                    f"{ngen_exe} {gpkg_file} all {gpkg_file} all {realization}"
+                    f"{f' {self.file_par}' if self.num_procs > 1 else ''}"
+                )
 
             if self.os_name == "Darwin":
                 run_cmd = f'PYTHONEXECUTABLE=$(which python) {run_cmd}'
@@ -209,9 +205,9 @@ class Runner:
                 print("Dry run: no simulation executed.")
 
 
-    def run_ngen_with_calibration(self, basin):
-        id, ncats = basin
-        ncats = int(ncats)
+    def run_ngen_with_calibration(self, gage):
+        id = gage
+
         o_dir = self.output_dir / id
 
         if self.sim_name_suffix:
@@ -231,19 +227,19 @@ class Runner:
         gpkg_file = Path(glob.glob(str(i_dir / "data" / "*.gpkg"))[0])
         gpkg_name = gpkg_file.stem
 
-        file_par = ""
-        if self.num_procs > 1:
-            file_par = self.generate_partition_basin_file(ncats, gpkg_file)
-            file_par = os.path.join(o_dir, file_par)
+        file_par, num_cpus = self.prepare_basin_partitioning(gpkg_file)
+        self.file_par = os.path.join(o_dir, file_par) if file_par else None
+
+        self.num_procs = int(num_cpus)
 
         print(f"Running basin {id} on cores {self.num_procs} ********", flush=True)
 
         if self.ngen_cal_type in ['calibration', 'calibvalid', 'restart']:
             mode = 'calibration' if self.ngen_cal_type == 'calibvalid' else self.ngen_cal_type
-            self.run_ngen_experiment(mode, gpkg_file, o_dir, file_par, id)
+            self.run_ngen_experiment(mode, gpkg_file, o_dir, self.file_par, id)
 
         if self.ngen_cal_type in ['validation', 'calibvalid']:
-            self.run_ngen_experiment('validation', gpkg_file, o_dir, file_par, id)
+            self.run_ngen_experiment('validation', gpkg_file, o_dir, self.file_par, id)
 
 
     def run_ngen_experiment(self, mode, gpkg_file, o_dir, file_par, id):
@@ -316,15 +312,38 @@ class Runner:
             return
 
 
-    def generate_partition_basin_file(self, ncats, gpkg_file):
+    def prepare_basin_partitioning(self, gpkg_file):
 
-        fpar = " "
-        if self.num_procs > 1:
-            #fpar = os.path.join(json_dir, f"partitions_{num_procs_local}.json")
-            #partition = f"{self.ngen_dir}/cmake_build/partitionGenerator {gpkg_file} {gpkg_file} {fpar} {num_procs_local} \"\" \"\" "
-            fpar = os.path.join("configs", f"partitions_{self.num_procs}.json")
-            partitions = f"{sys.executable} {self.sandbox_dir}/utils/python/local_only_partitions.py {gpkg_file} {self.num_procs} {os.getcwd()}/configs"
-            result = subprocess.call(partitions, shell=True)
+        nexus     = gpd.read_file(gpkg_file, layer='nexus')
 
-        return fpar
+        partitioning =  self.config['simulation']['partitioning']
+        par_mode = partitioning.get("mode", "serial").lower()
+        max_nexus_per_proc = int(partitioning.get("max_nexus_per_proc", 20))
+        max_procs = int(partitioning.get("max_procs", 1))
+
+        if not par_mode in  ["serial", "parallel"]:
+            raise RuntimeError(f"Partitioning mode OPTIONS: serial or parallel, provided {par_mode}")
+
+
+        if par_mode == "serial":
+            return None, 1
+
+        if max_procs <= 1:
+            raise RuntimeError(
+                f"Parallel mode requires max_procs > 1, got {max_procs}"
+            )
+
+        num_cpus = min(max_procs, int(np.ceil(len(nexus) / max_nexus_per_proc)) )
+
+        fpar = os.path.join("configs", f"partitions_{num_cpus}.json")
+
+        subprocess.run([
+            sys.executable,
+            f"{self.sandbox_dir}/utils/python/local_only_partitions.py",
+            gpkg_file,
+            str(num_cpus),
+            os.path.join(os.getcwd(), "configs")
+        ], check=True)
+
+        return fpar, num_cpus
 

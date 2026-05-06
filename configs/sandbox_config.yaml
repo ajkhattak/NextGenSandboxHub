@@ -57,7 +57,11 @@ formulation :
   clean             : ['existing'] #--------------------------------------- Clean existing config and realization files (does not delete simulation data)
   verbosity         : 0            #--------------------------------------- Verbosity levels (Set to 0 recommended unless debugging)
 
-  num_procs         : 4            #--------------------------------------- Number of processors for basin partitioning
+  ensemble:
+    enabled: FALSE # ---------------------------------------------------------------- Ensemble ON/OFF (OPTIONS: TRUE/FALSE, Default is FALSE)
+    calib_params_groups: #------------------------------------------- scope of calibratable parameters: local = tile-specific, global = shared across tiles
+      NOM : local
+      CFE-S : global
 
 simulation :
   task_type        : "<pick_option>" #------------------------------------- Supported options: calibvalid, calibration, validation, restart, control
@@ -72,8 +76,7 @@ simulation :
 
   disable_divide_output: TRUE #--------------------------------------------- Turn off/on catchment output files (e.g., actual ET, etc.); Default is TRUE
 
-  ensemble:
-    enabled: FALSE # ---------------------------------------------------------------- Ensemble ON/OFF (OPTIONS: TRUE/FALSE, Default is FALSE)
-    calib_params_groups: #------------------------------------------- scope of calibratable parameters: local = tile-specific, global = shared across tiles
-      NOM : local
-      CFE-S : global
+  partitioning:
+    mode: parallel     #----------------------------------------------------- Execution mode: parallel or serial
+    max_nexus_per_proc: 25  #------------------------------------------------ Maximum number of nexus per processor
+    max_procs: 3       #----------------------------------------------------- # Maximum number of processor to use for parallel execution
