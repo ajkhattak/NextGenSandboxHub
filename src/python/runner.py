@@ -173,7 +173,6 @@ class Runner:
             gpkg_file = Path(glob.glob(str(i_dir / "data" / "*.gpkg"))[0])
             gpkg_name = gpkg_file.stem
 
-            print(f"Running basin {id} on cores {self.num_procs} ********", flush=True)
             realization = glob.glob(str( o_dir / "configs" / "realization_*.json"))
 
             assert len(realization) == 1
@@ -199,11 +198,11 @@ class Runner:
                         f"{ngen_exe} {gpkg_file} all {gpkg_file} all {realization}"
                         )
 
-
             if self.os_name == "Darwin":
                 run_cmd = f'PYTHONEXECUTABLE=$(which python) {run_cmd}'
 
             if not self.dryrun:
+                print(f"Running basin {id} on cores {self.num_procs} ********", flush=True)
                 print(f"Run command: {run_cmd}", flush=True)
                 result = subprocess.call(run_cmd, shell=True)
             else:
@@ -295,13 +294,12 @@ class Runner:
 
 
         # Run command
-
         if mode in ['calibration', 'restart']:
-            run_command = "python -m ngen.cal configs/ngen-cal_calib_config.yaml"
+            run_command = f"{sys.executable} -m ngen.cal configs/ngen-cal_calib_config.yaml"
 
         elif mode == 'validation':
             run_command = (
-                f"python {self.sandbox_dir}/src/python/validation.py "
+                f"{sys.executable} {self.sandbox_dir}/src/python/validation.py "
                 f"-config configs/ngen-cal_valid_config.yaml"
             )
 
@@ -325,7 +323,7 @@ class Runner:
             #fpar = os.path.join(json_dir, f"partitions_{num_procs_local}.json")
             #partition = f"{self.ngen_dir}/cmake_build/partitionGenerator {gpkg_file} {gpkg_file} {fpar} {num_procs_local} \"\" \"\" "
             fpar = os.path.join("configs", f"partitions_{self.num_procs}.json")
-            partitions = f"python {self.sandbox_dir}/utils/python/local_only_partitions.py {gpkg_file} {self.num_procs} {os.getcwd()}/configs"
+            partitions = f"{sys.executable} {self.sandbox_dir}/utils/python/local_only_partitions.py {gpkg_file} {self.num_procs} {os.getcwd()}/configs"
             result = subprocess.call(partitions, shell=True)
 
         return fpar
