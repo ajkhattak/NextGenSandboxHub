@@ -80,13 +80,7 @@ def generate_config_files_for_gage(model_name, model_dir, gage_id, exp_config_di
 
     sandbox_cfg = sandbox_config.copy()
 
-    # --- Determine CPU count based on number of divides ---
-    gpkg_path = glob.glob(str(input_dir / f"{gage_id}/data/*.gpkg"))
-    div       = gpd.read_file(gpkg_path[0], layer='divides')
-    num_cpus  = int(np.ceil(len(div) / 20))
-
     sandbox_cfg["general"]["output_dir"]    = str(output_dir / model_dir)
-    sandbox_cfg["formulation"]["num_procs"] = num_cpus
     sandbox_cfg["formulation"]["models"]    = model_name
     sandbox_cfg["simulation"]["gage_ids_input"]   = [gage_id]
 
@@ -118,10 +112,10 @@ def generate_config_files_for_gage(model_name, model_dir, gage_id, exp_config_di
     calib_restart_cfg["general"]["restart"] = True
     with open(calib_restart, "w") as f:
         yaml.dump(calib_restart_cfg, f, default_flow_style=False, sort_keys=False)
-
+    
     # Run sandbox -conf to generate exp_info.yml
     subprocess.run(["sandbox", "--conf", "-i", sandbox_main, "-j", calib_main])
-
+    
 
 def get_max_iter(exp_config_dir, gage_id):
     """
@@ -143,7 +137,7 @@ def get_current_iteration(exp_info_dir, gage_id, status=False):
     info_file = exp_info_dir / f"info_{gage_id}.yml"
 
     if not info_file.exists():
-        return 0
+        return 0, -999
 
     with open(info_file, 'r') as file:
         d = yaml.safe_load(file)
@@ -400,10 +394,10 @@ def runner(use_slurm):
             exp_config_dir = output_dir / model_dir / "configs"
 
             current_iter, _ = get_current_iteration(exp_info_dir, gage_id)
-            max_iter     = get_max_iter(exp_config_dir, gage_id)
+            max_iter        = get_max_iter(exp_config_dir, gage_id)
 
             if current_iter == 0:
-                print(f"[{gage_id}] First time setup — generating configs...")
+                print(f"[{gage_id}] Setup step (iteration 0) — generating configs...")
                 generate_config_files_for_gage(model_name, model_dir, gage_id, exp_config_dir, exp_info_dir)
 
             # if made it to this point, the experiment needs to be checked for resubmission
@@ -429,7 +423,6 @@ def runner(use_slurm):
     if not use_slurm and local_jobs:
 
         max_workers = min(num_workers, multiprocessing.cpu_count())
-
         print(f"\n[INFO] Running locally with up to {max_workers} parallel workers\n")
 
         with ProcessPoolExecutor(max_workers=max_workers) as executor:

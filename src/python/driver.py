@@ -35,21 +35,20 @@ class Driver:
 
     def load_config(self):
         with open(self.sandbox_config, 'r') as file:
-            d = yaml.safe_load(file)
+            self.config = yaml.safe_load(file)
 
-        self.input_dir    = d['general'].get('input_dir')
-        self.output_dir   = Path(d['general'].get('output_dir'))
+        self.input_dir    = self.config['general'].get('input_dir')
+        self.output_dir   = Path(self.config['general'].get('output_dir'))
         
-        dformul = d['formulation']
+        dformul = self.config['formulation']
         self.ngen_dir      = Path(os.environ.get("NGEN_DIR"))
         self.formulation   = dformul['models'].upper()
         self.clean         = self.process_clean_input_param(dformul.get('clean', "none"))
         self.verbosity     = dformul.get('verbosity', 0)
-        self.num_cpus      = int(dformul.get('num_procs', 1))
         self.schema_type   = dformul.get('schema_type', "noaa-owp")
 
         # Forcing block
-        dforcing = d['forcings']
+        dforcing = self.config['forcings']
 
         self.forcing_time   = dforcing["time"]
         self.forcing_format = dforcing.get('format', '.nc')
@@ -65,7 +64,7 @@ class Driver:
             self.is_netcdf_forcing = False
 
         # Simulation block
-        dsim = d['simulation']
+        dsim = self.config['simulation']
         self.task_type = (dsim.get('task_type', 'control')).lower()
 
         if "LSTM" in self.formulation:
@@ -79,7 +78,7 @@ class Driver:
 
         self.disable_divide_output = dsim.get('disable_divide_output',True)
 
-        dlauncher = d.get('sandbox_launcher') or None
+        dlauncher = self.config.get('sandbox_launcher') or None
 
         if dlauncher:
             self.sb_launcher = dlauncher.get('exp_info', False)
@@ -176,6 +175,20 @@ class Driver:
                         raise ValueError(f"Forcing directory '{fdir}' does not exist.")
                     if self.is_corrected_forcing:
                         forcing_file = glob.glob(f"{fdir}/*_corrected.nc")[0]
+
+                        chunk_py = os.path.join(self.sandbox_dir,"utils/python/rechunk_forcing.py")
+                        # Rechunk forcing file if utility exists
+                        if os.path.isfile(chunk_py):
+                            subprocess.run(
+                                [sys.executable, chunk_py, "-i", forcing_file],
+                                check=True
+                            )
+
+                            rechunked_files = glob.glob(f"{fdir}/*_corrected_rechunked.nc")
+
+                            if rechunked_files:
+                                forcing_file = rechunked_files[0]
+
                     else:
                         nc_file = glob.glob(f"{fdir}/*.nc")
                         forcing_file = [f for f in nc_file if not "_corrected" in f][0]
@@ -232,6 +245,11 @@ class Driver:
         gpkg_dir = Path(glob.glob(str(i_dir / "data" / "*.gpkg"))[0])
         gpkg_id = i_dir.name
 
+        # get num of cores for the basin
+        gpkg_file = Path(glob.glob(str(i_dir / "data" / "*.gpkg"))[0])
+        num_cpus = helper.prepare_basin_partitioning(self.sandbox_dir, gpkg_file,
+                                                     self.config["simulation"]['partitioning'],
+                                                     create_par_file=False)
         # this meta data is needed to resubmit jobs on HPC after wallclock time outs
 
         if self.sb_launcher:
@@ -239,7 +257,7 @@ class Driver:
             # write meta data to YAML for restarting
             sim_info = {
                 "basin_id"   : gpkg_id,
-                "num_cpus"   : self.num_cpus,
+                "num_cpus"  : num_cpus,
                 "input_dir"  : str(i_dir),
                 "output_dir" : str(o_dir),
                 "cwd"        : os.getcwd()

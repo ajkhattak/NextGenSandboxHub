@@ -17,6 +17,7 @@ import json
 from pathlib import Path
 import shutil
 from src.python import configuration
+from src.python import helper
 
 class Runner:
     def __init__(self, sandbox_dir, config_workflow, config_calib, dryrun
@@ -180,7 +181,8 @@ class Runner:
             # defaults to serial run no-mpi mode
             run_cmd = f'{ngen_exe} {gpkg_file} all {gpkg_file} all {realization}'
 
-            file_par, num_cpus = self.prepare_basin_partitioning(gpkg_file)
+            file_par, num_cpus = helper.prepare_basin_partitioning(self.sandbox_dir, gpkg_file,
+                                                                   self.config["simulation"]['partitioning'])
 
             self.file_par = os.path.join(o_dir, file_par) if file_par else None
             self.num_procs = int(num_cpus)
@@ -227,7 +229,9 @@ class Runner:
         gpkg_file = Path(glob.glob(str(i_dir / "data" / "*.gpkg"))[0])
         gpkg_name = gpkg_file.stem
 
-        file_par, num_cpus = self.prepare_basin_partitioning(gpkg_file)
+        file_par, num_cpus = helper.prepare_basin_partitioning(self.sandbox_dir, gpkg_file,
+                                                               self.config["simulation"]['partitioning'])
+
         self.file_par = os.path.join(o_dir, file_par) if file_par else None
 
         self.num_procs = int(num_cpus)
@@ -310,40 +314,3 @@ class Runner:
             print("Dry run: no simulation executed.")
 
             return
-
-
-    def prepare_basin_partitioning(self, gpkg_file):
-
-        nexus     = gpd.read_file(gpkg_file, layer='nexus')
-
-        partitioning =  self.config['simulation']['partitioning']
-        par_mode = partitioning.get("mode", "serial").lower()
-        max_nexus_per_proc = int(partitioning.get("max_nexus_per_proc", 20))
-        max_procs = int(partitioning.get("max_procs", 1))
-
-        if not par_mode in  ["serial", "parallel"]:
-            raise RuntimeError(f"Partitioning mode OPTIONS: serial or parallel, provided {par_mode}")
-
-
-        if par_mode == "serial":
-            return None, 1
-
-        if max_procs <= 1:
-            raise RuntimeError(
-                f"Parallel mode requires max_procs > 1, got {max_procs}"
-            )
-
-        num_cpus = min(max_procs, int(np.ceil(len(nexus) / max_nexus_per_proc)) )
-
-        fpar = os.path.join("configs", f"partitions_{num_cpus}.json")
-
-        subprocess.run([
-            sys.executable,
-            f"{self.sandbox_dir}/utils/python/local_only_partitions.py",
-            gpkg_file,
-            str(num_cpus),
-            os.path.join(os.getcwd(), "configs")
-        ], check=True)
-
-        return fpar, num_cpus
-

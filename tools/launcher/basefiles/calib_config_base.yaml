@@ -13,7 +13,7 @@ general:
 
   start_iteration: 0
   # The total number of search iterations to run
-  iterations: 500
+  iterations: 300
   random_seed: 444
   workdir: ./
 

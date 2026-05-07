@@ -17,7 +17,6 @@ formulation :
   models             : <*>
   clean              : ['existing']
   verbosity          : 0
-  num_procs           : <*>         # number of processors for basin partitioning
 
 simulation :
   task_type : "calibvalid" # calibvalid, calibration, validation, restart, control
@@ -27,6 +26,11 @@ simulation :
   calib_eval_time  : {"start_time" : "2016-10-01 00:00:00", "end_time" : "2020-09-30 23:00:00"}
   validation_time  : {"start_time" : "2020-10-01 00:00:00", "end_time" : "2022-09-30 23:00:00"}
   valid_eval_time  : {"start_time" : "2021-10-01 00:00:00", "end_time" : "2022-09-30 23:00:00"}
+
+  partitioning:
+    mode: parallel
+    max_nexus_per_proc: 20
+    max_procs: 10
 
 sandbox_launcher :
   exp_info : True

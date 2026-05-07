@@ -1,5 +1,9 @@
 import os
+import sys
 import shutil
+import numpy as np
+import subprocess
+import geopandas as gpd
 
 # called in driver.py
 class colors:
@@ -54,3 +58,40 @@ def create_clean_dirs(output_dir,
     
     if (os.path.isdir("dem")):
         shutil.rmtree("dem")
+
+
+def prepare_basin_partitioning(sandbox_dir, gpkg_file, partitioning, create_par_file=True):
+
+    nexus     = gpd.read_file(gpkg_file, layer='nexus')
+
+    par_mode     = partitioning.get("mode", "serial").lower()
+    max_nexus_per_proc = int(partitioning.get("max_nexus_per_proc", 20))
+    max_procs = int(partitioning.get("max_procs", 1))
+
+    if not par_mode in  ["serial", "parallel"]:
+        raise RuntimeError(f"Partitioning mode OPTIONS: serial or parallel, provided {par_mode}")
+
+    if par_mode == "serial":
+        return None, 1
+
+    if max_procs <= 1:
+        raise RuntimeError(
+            f"Parallel mode requires max_procs > 1, got {max_procs}"
+        )
+
+    num_cpus = min(max_procs, int(np.ceil(len(nexus) / max_nexus_per_proc)) )
+
+    if not create_par_file:
+        return num_cpus
+
+    fpar = os.path.join("configs", f"partitions_{num_cpus}.json")
+
+    subprocess.run([
+        sys.executable,
+        f"{sandbox_dir}/utils/python/local_only_partitions.py",
+        gpkg_file,
+        str(num_cpus),
+        os.path.join(os.getcwd(), "configs")
+    ], check=True)
+
+    return fpar, num_cpus
