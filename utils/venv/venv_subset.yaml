@@ -1,9 +1,10 @@
 name: venv_subset
 channels:
   - conda-forge
+  - nodefaults
 
 dependencies:
-  - r-base=4.4.1
+  - r-base>=4.4,<4.5
   - r-terra
   - r-sf
   - r-exactextractr
@@ -16,7 +17,6 @@ dependencies:
   - r-pbapply
   - r-dataretrieval
   - r-remotes
-  - r-Metrics
   - gdal
   - proj
   - geos
@@ -40,3 +40,18 @@ dependencies:
   - r-dbplyr
   - r-collapse
   - r-santoku
+
+  - r-rcpp
+  - r-gifski
+  - r-sourcetools
+  - r-rnaturalearth
+  - r-later
+  - r-promises
+  - r-httpuv
+  - r-shiny
+  - r-leaflet
+  - r-units
+  - r-maptiles
+  - r-fst
+  - r-leaflet.extras
+  - r-ncdf4
