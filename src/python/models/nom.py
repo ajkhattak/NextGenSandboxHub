@@ -42,8 +42,10 @@ class NOMConfigurationGenerator(ConfigurationGenerator):
         start_time = pd.Timestamp(self.ctx.simulation_time['start_time']).strftime("%Y%m%d%H%M")
         end_time   = pd.Timestamp(self.ctx.simulation_time['end_time']).strftime("%Y%m%d%H%M")
 
-        flat_domain = 0.0
-        
+        flat_domain = 0.0 if lines[2].split("=")[1].strip().lower() == "true" else 1.0
+
+        lines = lines[3:] # skipping the first 3 lines
+
         for catID in self.ctx.catids:
             cat_name = 'cat-' + str(catID)
             fname_nom = f'noahowp_{tag}_{cat_name}.input'
@@ -61,7 +63,6 @@ class NOMConfigurationGenerator(ConfigurationGenerator):
                     veg_type      = veg_type_nlcd['v'][0]
                 else:
                     veg_type      = veg_type_nlcd['v'][member_id - 1]
-
 
 
             nom_file = os.path.join(nom_dir, fname_nom)

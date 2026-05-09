@@ -1,7 +1,11 @@
+# this option is for the sandbox only and not part of the NoahOM config file.
+# Option: true | false, true = adjust incoming shortwave radiation to slope and aspect
+flat_domain = false   ! don't move the first 3 lines
+
 &timing                                   ! and input/output paths
   dt                 = 3600.0             ! timestep [seconds]
-  startdate          = "201610010000"             ! UTC time start of simulation (YYYYMMDDhhmm)
-  enddate            = "202109302300"             ! UTC time end of simulation (YYYYMMDDhhmm)
+  startdate          = <*>             ! UTC time start of simulation (YYYYMMDDhhmm)
+  enddate            = <*>             ! UTC time end of simulation (YYYYMMDDhhmm)
   forcing_filename   = "<path_to_forcing.nc>"         ! file containing forcing data
   output_filename    = "output-cat-10120.csv"
 /
@@ -16,10 +20,10 @@
 /
 
 &location                                         ! for point runs
-  lat              = 42.086658273615605                           ! latitude [degrees]  (-90 to 90)
-  lon              = -71.25457780431543                           ! longitude [degrees] (-180 to 180)
-  terrain_slope    = 0.0                          ! terrain slope [degrees]
-  azimuth          = 0.0                          ! terrain azimuth or aspect [degrees clockwise from north]
+  lat              = <*>                          ! latitude [degrees]  (-90 to 90)
+  lon              = <*>                          ! longitude [degrees] (-180 to 180)
+  terrain_slope    = <*>                          ! terrain slope [degrees]
+  azimuth          = <*>                          ! terrain azimuth or aspect [degrees clockwise from north]
 / 
 
 &forcing
@@ -48,11 +52,11 @@
 /
 
 &structure
-  isltyp           = 3               ! soil texture class
+  isltyp           = <*>               ! soil texture class
   nsoil            = 4               ! number of soil levels
   nsnow            = 3               ! number of snow levels
   nveg             = 27              ! number of vegetation types
-  vegtyp           = 1               ! vegetation type
+  vegtyp           = <*>               ! vegetation type
   croptype         = 0               ! crop type (0 = no crops; this option is currently inactive)
   sfctyp           = 1               ! land surface type, 1:soil, 2:lake
   soilcolor       = 4               ! soil color code
