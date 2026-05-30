@@ -12,11 +12,23 @@
 ###### Config #######
 BUILD_SANDBOX=${BUILD:-ON}
 
-if [ -z "$SANDBOX_BUILD_DIR" ]; then
-  echo "Error: SANDBOX_BUILD_DIR is not set or empty" >&2
-  echo "Run: ./bootstrap.sh --env and follow the steps to set environment variables." >&2
-  exit 1
-fi
+# Validate environment
+for var in \
+    SANDBOX_DIR \
+    SANDBOX_BUILD_DIR \
+    NGEN_DIR \
+    SANDBOX_ENV \
+    FORCING_ENV
+do
+    eval "value=\${$var}"
+
+    if [ -z "$value" ]; then
+        echo "ERROR: Missing environment variable: $var"
+	echo "Run: ./bootstrap.sh --env and follow the steps to set environment variables." >&2
+        return 1
+    fi
+
+done
 
 mkdir -p "$SANDBOX_BUILD_DIR"
 
