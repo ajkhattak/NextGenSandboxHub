@@ -22,6 +22,7 @@ for arg in "$@"; do
       --models)  BUILD_MODELS=ON ;;
       --troute)  BUILD_TROUTE=ON ;;
       --clean)   BUILD_CLEAN=true ;;
+      --verbose) VERBOSE=ON;;
       *) echo "Unknown option: $arg"; exit 1 ;;
   esac
 done
@@ -39,7 +40,7 @@ echo "========================================="
 
 # Run steps
 if [ "$SETUP_ENV" = "ON" ]; then
-    source ./utils/sandbox_env.sh
+    source ./utils/sandbox_env.sh VERBOSE=$VERBOSE
 fi
 
 # Run steps
@@ -62,5 +63,3 @@ fi
 if [ "$BUILD_TROUTE" = "ON" ]; then
     source ./utils/build_models.sh TROUTE=ON
 fi
-
-echo "Done."
