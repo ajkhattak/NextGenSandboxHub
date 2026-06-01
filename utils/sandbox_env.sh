@@ -2,9 +2,11 @@
 
 # Prevent multiple initializations
 if [ -n "$SANDBOX_ENV_LOADED" ]; then
-    return 0 2>/dev/null || exit 0
+    ALREADY_LOADED=ON
+else
+    export SANDBOX_ENV_LOADED=1
+    ALREADY_LOADED=OFF
 fi
-export SANDBOX_ENV_LOADED=1
 
 
 ENV_VERBOSE=${VERBOSE:-OFF}
@@ -101,6 +103,16 @@ if ! grep -Fxq "$SOURCE_LINE" "$TARGET_FILE" 2>/dev/null; then
     echo "Shell configuration updated successfully."
     echo ""
 
+    echo "IMPORTANT:"
+    echo "The sandbox environment will be loaded automatically for future terminal sessions."
+    echo ""
+    echo "To use the environment in the current terminal, either:"
+    echo ""
+    echo "  source $TARGET_FILE"
+    echo ""
+    echo "or open a new terminal window."
+    echo ""
+
 fi
 
 ###### Validate persistence ########
@@ -128,17 +140,18 @@ do
 done
 
 if [ "$ENV_VERBOSE" = "ON" ]; then
-
-    echo ""
-    echo "Sandbox environment successfully configured."
-    echo ""
-
-    echo "SANDBOX_DIR        : $SANDBOX_DIR"
-    echo "SANDBOX_BUILD_DIR  : $SANDBOX_BUILD_DIR"
-    echo "NGEN_DIR           : $NGEN_DIR"
-    echo "SANDBOX_ENV        : $SANDBOX_ENV"
-    echo "FORCING_ENV        : $FORCING_ENV"
-    echo ""
+    if [ "$ALREADY_LOADED" = "ON" ]; then
+        echo "Sandbox environment already loaded."
+	echo "SANDBOX_DIR        : $SANDBOX_DIR"
+	echo "SANDBOX_BUILD_DIR  : $SANDBOX_BUILD_DIR"
+	echo "NGEN_DIR           : $NGEN_DIR"
+	echo "SANDBOX_ENV        : $SANDBOX_ENV"
+	echo "FORCING_ENV        : $FORCING_ENV"
+	echo ""
+    else
+	echo "Sandbox environment successfully configured, but not loaded yet"
+	echo "  source $TARGET_FILE"
+    fi
 
 fi
 

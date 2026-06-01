@@ -12,8 +12,49 @@ from pathlib import Path
 import sandbox
 import platform
 
+
+from src.python import forcing, driver, runner
+
 sandbox_dir = Path(sandbox.__file__).resolve().parent
 sys.path.insert(0, str(sandbox_dir))
+
+
+def check_required_env_vars():
+
+    required_vars = [
+        "SANDBOX_DIR",
+        "SANDBOX_BUILD_DIR",
+        "NGEN_DIR",
+        "SANDBOX_ENV",
+        "FORCING_ENV",
+    ]
+
+    missing = [
+        var
+        for var in required_vars
+        if not os.environ.get(var)
+    ]
+
+    if missing:
+
+        print("")
+        print("Error: Required sandbox environment variables are not defined:")
+        print("")
+
+        for var in missing:
+            print(f"{var}")
+
+        print("")
+        print("Please source the sandbox environment before running:")
+        print("")
+        print("  source utils/sandbox_env.sh or ./boostrap.sh --env")
+        print("")
+
+        sys.exit(1)
+
+
+#------------- Validate environment ---------------
+check_required_env_vars()
 
 # Only configure R environment on HPC (Linux)
 if platform.system() == "Linux":
@@ -38,7 +79,7 @@ else:
     rscript = Path("Rscript")  # assume system R
 
 
-from src.python import forcing, driver, runner
+
 
 sandbox_build_dir = Path(os.environ.get("SANDBOX_BUILD_DIR"))
 
@@ -137,7 +178,7 @@ def Sandbox(args, sandbox_config, calib_config, dryrun=False):
     
 
 def main():
-    
+
     parser = argparse.ArgumentParser(description="NextGen SandboxHub workflow")
     parser.add_argument("--subset", action='store_true',    help="Subset basin")
     parser.add_argument("--forc",   action='store_true',    help="Download forcing data")
@@ -161,6 +202,7 @@ def main():
             "specified exactly as supported."
         )
         sys.exit(0)
+
 
     if (args.sandbox_infile):
         if (os.path.exists(args.sandbox_infile)):
