@@ -10,10 +10,16 @@ Detailed instructions on how to install, configure, and get the NextGenSandboxHu
   1.2 Ensure conda or Python (>=3.11) is available: \
      - Local machine: check Python version. \
      - HPC system: load conda or a compatible Python module, e.g., Python ≥ 3.11.
+
   1.3 Set up sandbox environment variables
-     
+
      ./bootstrap.sh --env --verbose
-     
+    
+
+  Validate this step [here](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/venv/validation.md#step-13-validation).
+
+  > **Important:** On first-time setup, open a new terminal (or reload your shell) before continuing.
+
   1.4 Build the Sandbox workflow:
      
      ./bootstrap.sh --sandbox
