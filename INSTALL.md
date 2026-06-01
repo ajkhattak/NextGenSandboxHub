@@ -3,18 +3,18 @@
 Detailed instructions on how to install, configure, and get the NextGenSandboxHub running.
 
 ### <ins>  Step 1. Build Sandbox Workflow
-  1. Clone the repository (if not already done):
+  1.1 Clone the repository (if not already done):
      ```
      git clone https://github.com/ajkhattak/NextGenSandboxHub && cd NextGenSandboxHub
      ```
-  2. Ensure conda or Python (>=3.11) is available:
+  1.2 Ensure conda or Python (>=3.11) is available:
      - Local machine: check Python version.
      - HPC system: load conda or a compatible Python module, e.g., Python ≥ 3.11.
-  3. Set up sandbox environment variables
+  1.3 Set up sandbox environment variables
      ```
-     ./bootstrap.sh --env
+     ./bootstrap.sh --env --verbose
      ```
-  3. Build the Sandbox workflow:
+  1.4 Build the Sandbox workflow:
      ```
      ./bootstrap.sh --sandbox
      ```
