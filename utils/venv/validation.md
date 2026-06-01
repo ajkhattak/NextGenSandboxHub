@@ -1,0 +1,77 @@
+## Validation
+
+Validate each step before proceeding to the next one. If a step is not configured correctly, subsequent build steps will likely fail.
+
+### Step 1.3 Validation
+
+Run:
+
+```bash
+./bootstrap.sh --env --verbose
+```
+
+#### First-Time Setup
+
+If this is the first time configuring the sandbox environment, you should see output similar to:
+
+```text
+=========================================
+Configuration:
+  ENV      : ON
+  SANDBOX  : OFF
+  SUBSET   : OFF
+  NGEN     : OFF
+  MODELS   : OFF
+  TROUTE   : OFF
+=========================================
+
+Adding sandbox environment to:
+    $HOME/.zshrc
+
+Shell configuration updated successfully.
+
+IMPORTANT:
+The sandbox environment will be loaded automatically for future terminal sessions.
+
+To use the environment in the current terminal, either:
+
+  source $HOME/.zshrc
+
+or open a new terminal window.
+
+Sandbox environment successfully configured, but not loaded yet
+
+  source $HOME/.zshrc
+```
+
+Afterward, reload your shell or open a new terminal before proceeding:
+
+```bash
+source ~/.zshrc
+```
+
+#### Subsequent Runs
+
+After the environment has already been configured and loaded, you should see output similar to:
+
+```text
+=========================================
+Configuration:
+  ENV      : ON
+  SANDBOX  : OFF
+  SUBSET   : OFF
+  NGEN     : OFF
+  MODELS   : OFF
+  TROUTE   : OFF
+=========================================
+
+Sandbox environment already loaded.
+
+SANDBOX_DIR        : <path_to_sandbox_parent_dir>/NextGenSandboxHub
+SANDBOX_BUILD_DIR  : <path_to_sandbox_parent_dir>/sandbox_build
+NGEN_DIR           : <path_to_sandbox_parent_dir>/sandbox_build/ngen
+SANDBOX_ENV        : <path_to_sandbox_parent_dir>/sandbox_build/venv/sandbox
+FORCING_ENV        : <path_to_sandbox_parent_dir>/sandbox_build/venv/forcing
+```
+
+Verify that all environment variables are defined and point to the expected directories before continuing to the next step.
