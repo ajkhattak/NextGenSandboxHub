@@ -4,20 +4,20 @@ Detailed instructions on how to install, configure, and get the NextGenSandboxHu
 
 ### <ins>  Step 1. Build Sandbox Workflow
   1.1 Clone the repository (if not already done):
-     ```
+     
      git clone https://github.com/ajkhattak/NextGenSandboxHub && cd NextGenSandboxHub
-     ```
-  1.2 Ensure conda or Python (>=3.11) is available:
-     - Local machine: check Python version.
+     
+  1.2 Ensure conda or Python (>=3.11) is available: \
+     - Local machine: check Python version. \
      - HPC system: load conda or a compatible Python module, e.g., Python ≥ 3.11.
   1.3 Set up sandbox environment variables
-     ```
+     
      ./bootstrap.sh --env --verbose
-     ```
+     
   1.4 Build the Sandbox workflow:
-     ```
+     
      ./bootstrap.sh --sandbox
-     ```
+     
   
 ### <ins>  Step 2. Hydrofabric Installation
   #### Option #1: HPC machines (load conda module) or macOS
