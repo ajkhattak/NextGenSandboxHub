@@ -24,7 +24,8 @@ Detailed instructions on how to install, configure, and get the NextGenSandboxHu
      
      ./bootstrap.sh --sandbox
      
-  
+  Validate this step [here](https://github.com/ajkhattak/NextGenSandboxHub/blob/main/utils/venv/validation.md#step-14-validation).
+
 ### <ins>  Step 2. Hydrofabric Installation
   #### Option #1: HPC machines (load conda module) or macOS
   Run the following command in a terminal:
