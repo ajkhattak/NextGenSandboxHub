@@ -75,3 +75,26 @@ FORCING_ENV        : <path_to_sandbox_parent_dir>/sandbox_build/venv/forcing
 ```
 
 Verify that all environment variables are defined and point to the expected directories before continuing to the next step.
+
+
+### Step 1.4 Validation
+
+Activate the Sandbox Python environment:
+
+```bash
+conda activate $SANDBOX_ENV
+```
+
+Verify that the `sandbox` command points to the Sandbox virtual environment
+
+```
+which sandbox
+```
+
+Expected output:
+
+```text
+<path_to_sandbox_parent_dir>/sandbox_build/venv/sandbox/bin/sandbox
+```
+
+If `which sandbox` points to a different location (for example, `/usr/local/bin/sandbox`) or returns no result, the Sandbox environment is not activated correctly. Verify that Step 1.3 completed successfully and that the correct environment is active before proceeding.
