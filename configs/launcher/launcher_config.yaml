@@ -98,8 +98,10 @@ launcher:
     max_failed_attempts: 2
     startup_delay_seconds: 5
     coordinator:
-      time: "00:10:00"
-      memory: "1G"
+      mode: persistent
+      poll_interval_seconds: 300
+      renew_before_seconds: 600
+      time: "1-00:00:00"
     # account: project_account
     # partition: shared
     modules:

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import csv
 import copy
+import fcntl
 import getpass
 import json
 import math
@@ -67,6 +68,8 @@ RESTART_TIME_SAFETY_FACTOR = 1.5
 RESTART_TIME_BUFFER_SECONDS = 10 * 60
 RESTART_MINIMUM_TIME_SECONDS = 15 * 60
 DEFAULT_MAX_FAILED_ATTEMPTS = 2
+DEFAULT_COORDINATOR_POLL_SECONDS = 300
+DEFAULT_COORDINATOR_RENEW_SECONDS = 600
 HARD_FAILURE_STATES = {
     "BOOT_FAIL",
     "DEADLINE",
@@ -202,6 +205,12 @@ class SlurmJobHistory:
 class ExperimentRun:
     config_file: Path | None
     slurm_job_id: str | None = None
+
+
+@dataclass(frozen=True)
+class LauncherCycleResult:
+    incomplete: bool
+    retry_limited_jobs: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -1469,17 +1478,51 @@ def validate_slurm_config(slurm: dict[str, Any]) -> None:
         raise TypeError("slurm.coordinator must be a YAML dictionary/object")
     else:
         coordinator = coordinator_value
-    unknown_coordinator = sorted(set(coordinator) - {"time", "memory"})
+    unknown_coordinator = sorted(
+        set(coordinator)
+        - {
+            "mode",
+            "poll_interval_seconds",
+            "renew_before_seconds",
+            "time",
+            "memory",
+        }
+    )
     if unknown_coordinator:
         raise ValueError(
             "slurm.coordinator contains unsupported field(s): "
             f"{', '.join(unknown_coordinator)}"
         )
-    for field_name, default in (("time", "00:10:00"), ("memory", "2G")):
+    mode = coordinator.get("mode", "persistent")
+    if mode != "persistent":
+        raise ValueError("slurm.coordinator.mode must be: persistent")
+    coordinator_intervals = {}
+    for field_name, default in (
+        ("poll_interval_seconds", DEFAULT_COORDINATOR_POLL_SECONDS),
+        ("renew_before_seconds", DEFAULT_COORDINATOR_RENEW_SECONDS),
+    ):
         value = coordinator.get(field_name, default)
+        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+            raise ValueError(
+                f"slurm.coordinator.{field_name} must be a positive integer"
+            )
+        coordinator_intervals[field_name] = value
+    if (
+        coordinator_intervals["renew_before_seconds"]
+        <= coordinator_intervals["poll_interval_seconds"]
+    ):
+        raise ValueError(
+            "slurm.coordinator.renew_before_seconds must be greater than "
+            "slurm.coordinator.poll_interval_seconds"
+        )
+    value = coordinator.get("time", "1-00:00:00")
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError("slurm.coordinator.time must be a non-empty string")
+    if "memory" in coordinator:
+        value = coordinator["memory"]
         if not isinstance(value, str) or not value.strip():
             raise ValueError(
-                f"slurm.coordinator.{field_name} must be a non-empty string"
+                "slurm.coordinator.memory must be a non-empty string when provided"
             )
 
     for stage in ("calibration", "validation"):
@@ -2184,8 +2227,8 @@ def build_launcher_submit_command(
     dependency_job_ids: tuple[str, ...] = (),
 ) -> list[str]:
     coordinator = ctx.slurm.get("coordinator") or {}
-    coordinator_time = coordinator.get("time", "00:10:00")
-    coordinator_memory = coordinator.get("memory", "2G")
+    coordinator_time = coordinator.get("time", "1-00:00:00")
+    coordinator_memory = coordinator.get("memory")
     command = [
         "sbatch",
         "--parsable",
@@ -2193,12 +2236,13 @@ def build_launcher_submit_command(
         "--ntasks=1",
         "--cpus-per-task=1",
         f"--time={coordinator_time}",
-        f"--mem={coordinator_memory}",
         f"--job-name={ctx.campaign_name}_launcher",
         f"--output={ctx.log_dir}/%x_%j.out",
         f"--error={ctx.log_dir}/%x_%j.err",
         f"--chdir={ctx.output_dir}",
     ]
+    if coordinator_memory:
+        command.append(f"--mem={coordinator_memory}")
     for name in ("account", "partition"):
         value = ctx.slurm.get(name)
         if value is not None and str(value).strip():
@@ -2241,6 +2285,61 @@ def submission_history_path(ctx: LauncherContext) -> Path:
         / "launcher"
         / f"{ctx.campaign_name}_submitted_jobs.jsonl"
     )
+
+
+def coordinator_state_path(ctx: LauncherContext) -> Path:
+    return (
+        ctx.output_dir
+        / "launcher"
+        / f"{ctx.campaign_name}_coordinator_state.yaml"
+    )
+
+
+def coordinator_lock_path(ctx: LauncherContext) -> Path:
+    return (
+        ctx.output_dir
+        / "launcher"
+        / f"{ctx.campaign_name}_coordinator.lock"
+    )
+
+
+def write_coordinator_state(
+    ctx: LauncherContext,
+    *,
+    state: str,
+    cycle: int,
+    started_at: str,
+    next_poll_at: str | None = None,
+    successor_job_id: str | None = None,
+    message: str | None = None,
+) -> None:
+    path = coordinator_state_path(ctx)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "campaign": ctx.campaign_name,
+        "job_id": os.environ.get("SLURM_JOB_ID"),
+        "state": state,
+        "cycle": cycle,
+        "started_at": started_at,
+        "last_heartbeat": datetime.now().astimezone().isoformat(),
+        "next_poll_at": next_poll_at,
+        "successor_job_id": successor_job_id,
+        "message": message,
+    }
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    temporary.write_text(yaml.safe_dump(payload, sort_keys=False))
+    temporary.replace(path)
+
+
+def read_coordinator_state(ctx: LauncherContext) -> dict[str, Any] | None:
+    path = coordinator_state_path(ctx)
+    if not path.is_file():
+        return None
+    try:
+        value = yaml.safe_load(path.read_text())
+    except (OSError, yaml.YAMLError):
+        return None
+    return value if isinstance(value, dict) else None
 
 
 def record_slurm_submission(
@@ -2310,6 +2409,145 @@ def submit_launcher(
     print(f"Launcher coordinator job ID: {job_id}")
     print(f"Launcher logs: {ctx.log_dir}")
     return job_id
+
+
+def slurm_coordinator_remaining_seconds() -> int | None:
+    value = os.environ.get("SLURM_JOB_END_TIME", "").strip()
+    if not value.isdigit():
+        return None
+    return max(0, int(value) - int(time.time()))
+
+
+def run_persistent_coordinator(ctx: LauncherContext) -> None:
+    job_id = os.environ.get("SLURM_JOB_ID", "").strip()
+    if not job_id.isdigit():
+        raise RuntimeError(
+            "The persistent coordinator must run inside a Slurm allocation. "
+            "Start it with 'sandbox-launcher submit --config <file>'."
+        )
+
+    coordinator = ctx.slurm.get("coordinator") or {}
+    poll_seconds = int(
+        coordinator.get(
+            "poll_interval_seconds",
+            DEFAULT_COORDINATOR_POLL_SECONDS,
+        )
+    )
+    renew_seconds = int(
+        coordinator.get(
+            "renew_before_seconds",
+            DEFAULT_COORDINATOR_RENEW_SECONDS,
+        )
+    )
+    started_at = datetime.now().astimezone().isoformat()
+    lock_path = coordinator_lock_path(ctx)
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with lock_path.open("a+") as lock_file:
+        try:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            print(
+                "[INFO] Another persistent coordinator already owns this "
+                f"campaign lock: {lock_path}"
+            )
+            return
+
+        print(
+            "[INFO] Persistent coordinator started: "
+            f"job={job_id}, poll={poll_seconds}s, "
+            f"renew-before={renew_seconds}s"
+        )
+        cycle = 0
+        while True:
+            cycle += 1
+            print(f"\n=== Coordinator cycle {cycle} @ {datetime.now()} ===")
+            write_coordinator_state(
+                ctx,
+                state="RUNNING",
+                cycle=cycle,
+                started_at=started_at,
+                message="Reconciling campaign state and worker capacity",
+            )
+            try:
+                cycle_result = runner(
+                    ctx,
+                    use_slurm=True,
+                    schedule_followup=False,
+                    quiet=True,
+                )
+            except Exception as error:
+                write_coordinator_state(
+                    ctx,
+                    state="FAILED",
+                    cycle=cycle,
+                    started_at=started_at,
+                    message=str(error),
+                )
+                raise
+
+            if cycle_result.retry_limited_jobs and not cycle_result.incomplete:
+                blocked_jobs = ", ".join(cycle_result.retry_limited_jobs)
+                write_coordinator_state(
+                    ctx,
+                    state="BLOCKED",
+                    cycle=cycle,
+                    started_at=started_at,
+                    message=f"Automatic retry limits reached: {blocked_jobs}",
+                )
+                print(
+                    "[WARNING] Coordinator stopped at the automatic retry "
+                    f"limit for: {blocked_jobs}"
+                )
+                return
+
+            if not cycle_result.incomplete:
+                write_coordinator_state(
+                    ctx,
+                    state="COMPLETED",
+                    cycle=cycle,
+                    started_at=started_at,
+                    message="No runnable or active campaign work remains",
+                )
+                print("[INFO] Campaign coordination is complete.")
+                return
+
+            remaining_seconds = slurm_coordinator_remaining_seconds()
+            if (
+                remaining_seconds is not None
+                and remaining_seconds <= renew_seconds
+            ):
+                successor_job_id = submit_launcher(ctx, (job_id,))
+                write_coordinator_state(
+                    ctx,
+                    state="RENEWING",
+                    cycle=cycle,
+                    started_at=started_at,
+                    successor_job_id=successor_job_id,
+                    message=(
+                        "Coordinator is approaching its wallclock limit; "
+                        "a successor was submitted"
+                    ),
+                )
+                print(
+                    "[INFO] Coordinator successor submitted: "
+                    f"{successor_job_id}"
+                )
+                return
+
+            next_poll = datetime.fromtimestamp(
+                time.time() + poll_seconds
+            ).astimezone().isoformat()
+            write_coordinator_state(
+                ctx,
+                state="SLEEPING",
+                cycle=cycle,
+                started_at=started_at,
+                next_poll_at=next_poll,
+                message="Waiting for the next campaign reconciliation",
+            )
+            print(f"[INFO] Next coordinator poll: {next_poll}")
+            time.sleep(poll_seconds)
 
 
 def select_experiment_config(
@@ -3110,6 +3348,21 @@ def check_status(
                     "Coordinator status  : MISSING while campaign work "
                     "remains"
                 )
+        coordinator_state = (
+            read_coordinator_state(ctx)
+            if getattr(ctx, "output_dir", None) is not None
+            else None
+        )
+        if coordinator_state is not None:
+            heartbeat_state = coordinator_state.get("state", "UNKNOWN")
+            heartbeat_time = coordinator_state.get("last_heartbeat", "unknown")
+            print(
+                "Coordinator heartbeat : "
+                f"{heartbeat_state} at {heartbeat_time}"
+            )
+            next_poll = coordinator_state.get("next_poll_at")
+            if next_poll:
+                print(f"Coordinator next poll : {next_poll}")
 
     if not detailed:
         return
@@ -3322,7 +3575,14 @@ def startup_delay_seconds(
     return position * interval_seconds
 
 
-def runner(ctx: LauncherContext, *, use_slurm: bool, dryrun: bool = False) -> None:
+def runner(
+    ctx: LauncherContext,
+    *,
+    use_slurm: bool,
+    dryrun: bool = False,
+    schedule_followup: bool = True,
+    quiet: bool = False,
+) -> LauncherCycleResult:
     incomplete_exists = False
     retry_limited_jobs: list[str] = []
     local_jobs: list[tuple[Any, ...]] = []
@@ -3394,12 +3654,13 @@ def runner(ctx: LauncherContext, *, use_slurm: bool, dryrun: bool = False) -> No
             scenario.name,
         )
 
-        print("----------------------------------------------")
-        print(f"---------  Processing Gage: {gage_id} ---------")
-        print(
-            f"--- Formulation: {formulation_name} | "
-            f"Scenario: {scenario.display_name} ---"
-        )
+        if not quiet:
+            print("----------------------------------------------")
+            print(f"---------  Processing Gage: {gage_id} ---------")
+            print(
+                f"--- Formulation: {formulation_name} | "
+                f"Scenario: {scenario.display_name} ---"
+            )
 
         if is_experiment_complete(
             ctx,
@@ -3407,27 +3668,30 @@ def runner(ctx: LauncherContext, *, use_slurm: bool, dryrun: bool = False) -> No
             model_dir,
             scenario.name,
         ):
-            print(
-                f"[{gage_id}] Experiment '{job_name}' already "
-                "completed. Skipping."
-            )
+            if not quiet:
+                print(
+                    f"[{gage_id}] Experiment '{job_name}' already "
+                    "completed. Skipping."
+                )
             continue
 
         if job_name in active_job_names:
-            print(
-                f"[{gage_id}] Job '{job_name}' is already running "
-                "or pending. Skipping."
-            )
+            if not quiet:
+                print(
+                    f"[{gage_id}] Job '{job_name}' is already running "
+                    "or pending. Skipping."
+                )
             incomplete_exists = True
             continue
 
         failed_attempts = failed_attempts_by_name.get(job_name, 0)
         if use_slurm and failed_attempts >= max_failed_attempts:
-            print(
-                f"[{gage_id}] Automatic retry limit reached for "
-                f"'{job_name}' ({failed_attempts}/{max_failed_attempts} "
-                "failed attempts). Not submitting it again."
-            )
+            if not quiet:
+                print(
+                    f"[{gage_id}] Automatic retry limit reached for "
+                    f"'{job_name}' ({failed_attempts}/{max_failed_attempts} "
+                    "failed attempts). Not submitting it again."
+                )
             retry_limited_jobs.append(job_name)
             continue
 
@@ -3486,10 +3750,11 @@ def runner(ctx: LauncherContext, *, use_slurm: bool, dryrun: bool = False) -> No
                 max_total_allocated_cpus=max_total_allocated_cpus,
             )
             if limit_reason:
-                print(
-                    f"[{gage_id}] Deferring '{job_name}': "
-                    f"{limit_reason}."
-                )
+                if not quiet:
+                    print(
+                        f"[{gage_id}] Deferring '{job_name}': "
+                        f"{limit_reason}."
+                    )
                 continue
             delay_seconds = startup_delay_seconds(
                 scheduled_run_index,
@@ -3590,9 +3855,10 @@ def runner(ctx: LauncherContext, *, use_slurm: bool, dryrun: bool = False) -> No
             for future in as_completed(futures):
                 future.result()
 
-    print("\n=== Launcher Finished ===\n")
+    if not quiet:
+        print("\n=== Launcher Finished ===\n")
 
-    if use_slurm and not dryrun:
+    if use_slurm and not dryrun and schedule_followup:
         if incomplete_exists:
             if not dependency_job_ids:
                 raise RuntimeError(
@@ -3617,6 +3883,20 @@ def runner(ctx: LauncherContext, *, use_slurm: bool, dryrun: bool = False) -> No
             )
         else:
             print("[INFO] All launcher work is complete.")
+    elif use_slurm and not dryrun and not incomplete_exists:
+        if retry_limited_jobs:
+            print(
+                "[WARNING] Persistent coordinator stopped because automatic "
+                "retry limits were reached for: "
+                + ", ".join(sorted(retry_limited_jobs))
+            )
+        else:
+            print("[INFO] All launcher work is complete.")
+
+    return LauncherCycleResult(
+        incomplete=incomplete_exists,
+        retry_limited_jobs=tuple(sorted(retry_limited_jobs)),
+    )
 
 
 def print_check_report(ctx: LauncherContext) -> None:
@@ -3743,6 +4023,11 @@ def parse_args() -> argparse.Namespace:
             "repository example."
         ),
     )
+    parser.add_argument(
+        "--coordinator",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
     status_view = parser.add_mutually_exclusive_group()
     status_view.add_argument(
         "--summary",
@@ -3793,6 +4078,16 @@ def main() -> None:
     validate_launcher_resources(ctx)
     if args.mode == "submit":
         submit_launcher(ctx)
+        return
+
+    if getattr(args, "coordinator", False):
+        if args.mode != "run" or args.backend != "slurm":
+            parser_error = (
+                "--coordinator is an internal option requiring "
+                "'run --backend slurm'"
+            )
+            raise ValueError(parser_error)
+        run_persistent_coordinator(ctx)
         return
 
     runner(

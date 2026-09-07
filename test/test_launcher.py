@@ -949,8 +949,8 @@ class TestLauncherSelection(unittest.TestCase):
         self.assertIn("--chdir=/project/outputs/pso", command)
         self.assertIn("--account=project123", command)
         self.assertIn("--partition=shared", command)
-        self.assertIn("--time=00:10:00", command)
-        self.assertIn("--mem=2G", command)
+        self.assertIn("--time=1-00:00:00", command)
+        self.assertFalse(any(value.startswith("--mem=") for value in command))
         self.assertIn(
             "--export=ALL,LAUNCHER_CONFIG=/project/launcher_pso.yaml",
             command,
@@ -1008,6 +1008,125 @@ class TestLauncherSelection(unittest.TestCase):
         ).read_text()
         self.assertNotIn("scontrol requeue", coordinator)
         self.assertNotIn("LAUNCHER_WALLCLOCK", coordinator)
+        self.assertNotIn("#SBATCH --mem", coordinator)
+        self.assertIn("--coordinator", coordinator)
+
+    def test_coordinator_renewal_must_exceed_poll_interval(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            "renew_before_seconds must be greater",
+        ):
+            launcher.validate_slurm_config(
+                {
+                    "modules": [],
+                    "environment": {},
+                    "max_active_jobs": 10,
+                    "max_total_mpi_tasks": 10,
+                    "max_total_allocated_cpus": 10,
+                    "startup_delay_seconds": 0,
+                    "coordinator": {
+                        "poll_interval_seconds": 300,
+                        "renew_before_seconds": 300,
+                    },
+                    "calibration": {"time": "01:00:00", "memory": "8G"},
+                    "validation": {"time": "01:00:00", "memory": "8G"},
+                }
+            )
+
+    def test_persistent_coordinator_stops_when_campaign_is_complete(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            context = SimpleNamespace(
+                campaign_name="launcher_dds",
+                output_dir=Path(tmp),
+                slurm={"coordinator": {"poll_interval_seconds": 60}},
+            )
+            with (
+                patch.dict(os.environ, {"SLURM_JOB_ID": "123"}, clear=True),
+                patch.object(
+                    launcher,
+                    "runner",
+                    return_value=launcher.LauncherCycleResult(False),
+                ) as runner,
+            ):
+                launcher.run_persistent_coordinator(context)
+
+            runner.assert_called_once_with(
+                context,
+                use_slurm=True,
+                schedule_followup=False,
+                quiet=True,
+            )
+            state = yaml.safe_load(
+                launcher.coordinator_state_path(context).read_text()
+            )
+            self.assertEqual(state["state"], "COMPLETED")
+            self.assertEqual(state["cycle"], 1)
+
+    def test_persistent_coordinator_polls_until_work_completes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            context = SimpleNamespace(
+                campaign_name="launcher_dds",
+                output_dir=Path(tmp),
+                slurm={"coordinator": {"poll_interval_seconds": 60}},
+            )
+            with (
+                patch.dict(os.environ, {"SLURM_JOB_ID": "123"}, clear=True),
+                patch.object(
+                    launcher,
+                    "runner",
+                    side_effect=(
+                        launcher.LauncherCycleResult(True),
+                        launcher.LauncherCycleResult(False),
+                    ),
+                ) as runner,
+                patch.object(launcher.time, "sleep") as sleep,
+            ):
+                launcher.run_persistent_coordinator(context)
+
+            self.assertEqual(runner.call_count, 2)
+            sleep.assert_called_once_with(60)
+
+    def test_persistent_coordinator_renews_before_wallclock(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            context = SimpleNamespace(
+                campaign_name="launcher_dds",
+                output_dir=Path(tmp),
+                slurm={
+                    "coordinator": {
+                        "poll_interval_seconds": 60,
+                        "renew_before_seconds": 600,
+                    }
+                },
+            )
+            end_time = str(int(launcher.time.time()) + 120)
+            with (
+                patch.dict(
+                    os.environ,
+                    {
+                        "SLURM_JOB_ID": "123",
+                        "SLURM_JOB_END_TIME": end_time,
+                    },
+                    clear=True,
+                ),
+                patch.object(
+                    launcher,
+                    "runner",
+                    return_value=launcher.LauncherCycleResult(True),
+                ),
+                patch.object(
+                    launcher,
+                    "submit_launcher",
+                    return_value="456",
+                ) as submit,
+            ):
+                launcher.run_persistent_coordinator(context)
+
+            submit.assert_called_once_with(context, ("123",))
+            state = yaml.safe_load(
+                launcher.coordinator_state_path(context).read_text()
+            )
+            self.assertEqual(state["state"], "RENEWING")
+            self.assertEqual(state["successor_job_id"], "456")
 
     def test_worker_script_contains_configured_modules_and_environment(self):
         script = launcher.render_slurm_worker_script(

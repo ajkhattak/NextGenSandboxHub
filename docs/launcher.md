@@ -138,8 +138,10 @@ launcher:
     max_failed_attempts: 2
     startup_delay_seconds: 5
     coordinator:
-      time: "00:10:00"
-      memory: "2G"
+      mode: persistent
+      poll_interval_seconds: 300
+      renew_before_seconds: 600
+      time: "1-00:00:00"
     modules:
       - openmpi/4.1.6
       - netcdf-fortran/4.6.1
@@ -227,9 +229,27 @@ sandbox-launcher run --backend local --config launcher_dds.yaml
 sandbox-launcher submit --config launcher_dds.yaml
 ```
 
-The Slurm command creates a lightweight coordinator that admits workers within
-the configured limits and schedules a successor after active workers finish.
-Do not submit the generated worker scripts manually.
+The Slurm command creates a persistent, lightweight coordinator. It polls the
+campaign every `poll_interval_seconds`, admits workers within the configured
+limits, and fills capacity as workers finish. The coordinator does not run
+ngen. It holds one CPU while active and relies on the partition's default
+memory allocation unless optional `coordinator.memory` is provided.
+
+Before its wallclock expires, the coordinator submits one successor dependent
+on itself. This moves dependency scheduling from every worker wave to an
+infrequent coordinator renewal. A campaign lock prevents overlapping
+coordinators from submitting duplicate work. Do not submit generated worker
+scripts manually.
+
+Coordinator health is written atomically to:
+
+```text
+<output_dir>/launcher/<campaign_name>_coordinator_state.yaml
+```
+
+`sandbox-launcher status` reports its last heartbeat and next poll time. If a
+campaign is intentionally stopped, cancel the coordinator before cancelling
+workers so it cannot refill the released capacity.
 
 ## Status and Output
 

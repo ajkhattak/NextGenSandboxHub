@@ -13,9 +13,8 @@ set -euo pipefail
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
-#SBATCH --time=00:10:00
+#SBATCH --time=1-00:00:00
 #SBATCH --job-name=sandbox_launcher
-#SBATCH --mem=2G
 
 
 # ============================================================
@@ -83,6 +82,6 @@ echo "Python executable: $SANDBOX_PYTHON"
 # ============================================================
 
 echo "[submit_launcher] Running in SLURM mode"
-"$SANDBOX_LAUNCHER" run --backend slurm --config "$CONFIG_FILE"
+"$SANDBOX_LAUNCHER" run --backend slurm --coordinator --config "$CONFIG_FILE"
 
 echo "[submit_launcher] Coordinator cycle completed"
