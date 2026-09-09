@@ -24,10 +24,11 @@ macOS. It uses a Unix-like shell and requires:
 - CMake, MPI, and NetCDF development libraries for building ngen and its models
 
 HPC users may need to load site-provided compiler, MPI, NetCDF, CMake, Python,
-or conda modules. See
-[setup_hpc.sh](https://github.com/ajkhattak/NextGenSandbox/blob/main/utils/setup_hpc.sh)
-for an example; the
-exact module names vary by system.
+or conda modules. For a reusable setup, copy and customize
+[`configs/sandbox_profile.sh`](https://github.com/ajkhattak/NextGenSandbox/blob/main/configs/sandbox_profile.sh).
+The profile keeps compiler-specific builds separate, configures the current
+shell without editing shell startup files, and can also be used by Sandbox
+Launcher jobs. The exact module names vary by system.
 
 Build environments, compiled software, and package caches are stored under
 `$SANDBOX_BUILD_DIR`. On an HPC system, choose a project or scratch filesystem
@@ -293,8 +294,17 @@ The components may also be built separately:
 ./bootstrap.sh --troute
 ```
 
-For an example HPC module setup, see
-[setup_hpc.sh](https://github.com/ajkhattak/NextGenSandbox/blob/main/utils/setup_hpc.sh).
+For an HPC or alternate-compiler build, copy the environment profile, edit its
+module and compiler section, and source it before building:
+
+```bash
+cp configs/sandbox_profile.sh sandbox_profile.sh
+source ./sandbox_profile.sh
+./bootstrap.sh --ngen --models --troute
+```
+
+Set a distinct `SANDBOX_BUILD_DIR` in each profile, such as `build/gcc` or
+`build/intel`, so compiled libraries from different toolchains never mix.
 
 ### Step 6: Run the final installation check
 

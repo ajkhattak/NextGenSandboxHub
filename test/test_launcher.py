@@ -360,6 +360,8 @@ class TestLauncherSelection(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             config_file = root / "launcher_dds.yaml"
+            environment_script = root / "sandbox_profile.sh"
+            environment_script.write_text("#!/usr/bin/env bash\n")
             config_file.write_text(
                 yaml.safe_dump(
                     {
@@ -391,7 +393,10 @@ class TestLauncherSelection(unittest.TestCase):
                                 "selection": "all",
                             }
                         },
-                        "launcher": {"campaign_name": "launcher_dds"},
+                        "launcher": {
+                            "campaign_name": "launcher_dds",
+                            "environment_script": "sandbox_profile.sh",
+                        },
                     }
                 )
             )
@@ -407,6 +412,10 @@ class TestLauncherSelection(unittest.TestCase):
                 25,
             )
             self.assertEqual(context.campaign_name, "launcher_dds")
+            self.assertEqual(
+                context.environment_script,
+                environment_script.resolve(),
+            )
             self.assertEqual(context.stages, ("calibration", "validation"))
             self.assertTrue(
                 context.sandbox_cfg["simulation"]["outputs"]["metadata"]["enabled"]
@@ -960,6 +969,24 @@ class TestLauncherSelection(unittest.TestCase):
             launcher.LAUNCHER_PACKAGE_DIR / "submit_launcher.sh",
         )
 
+    def test_launcher_submit_command_exports_environment_script(self):
+        context = SimpleNamespace(
+            campaign_name="launcher_pso",
+            launcher_config_file=Path("/project/launcher_pso.yaml"),
+            environment_script=Path("/project/sandbox_profile.sh"),
+            output_dir=Path("/project/outputs/pso"),
+            log_dir=Path("/project/outputs/pso/logs"),
+            slurm={},
+        )
+
+        command = launcher.build_launcher_submit_command(context)
+
+        self.assertIn(
+            "--export=ALL,LAUNCHER_CONFIG=/project/launcher_pso.yaml,"
+            "SANDBOX_PROFILE=/project/sandbox_profile.sh",
+            command,
+        )
+
     def test_launcher_followup_waits_for_worker_jobs(self):
         context = SimpleNamespace(
             campaign_name="launcher_pso",
@@ -1144,6 +1171,51 @@ class TestLauncherSelection(unittest.TestCase):
         self.assertIn("export OMP_NUM_THREADS=1", script)
         self.assertIn("export MODEL_MODE='test value'", script)
         self.assertIn('"$SANDBOX_COMMAND" --run -i "$SANDBOX_FILE"', script)
+
+    def test_worker_script_sources_environment_profile(self):
+        profile = Path("/project/sandbox profile.sh")
+
+        script = launcher.render_slurm_worker_script({}, profile)
+
+        self.assertIn("SANDBOX_PROFILE='/project/sandbox profile.sh'", script)
+        self.assertIn('source "$SANDBOX_PROFILE"', script)
+
+    def test_local_command_sources_environment_profile(self):
+        context = SimpleNamespace(
+            environment_script=Path("/project/sandbox_profile.sh")
+        )
+
+        command = launcher.command_with_launcher_environment(
+            context,
+            ["sandbox", "--run", "-i", "/project/config.yaml"],
+        )
+
+        self.assertEqual(command[:4], [
+            "bash",
+            "-c",
+            'source "$1" || exit $?; shift; exec "$@"',
+            "sandbox-profile",
+        ])
+        self.assertEqual(command[4], "/project/sandbox_profile.sh")
+        self.assertEqual(command[5:], [
+            "sandbox",
+            "--run",
+            "-i",
+            "/project/config.yaml",
+        ])
+
+    def test_environment_profile_and_slurm_modules_are_mutually_exclusive(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            profile = Path(tmp) / "sandbox_profile.sh"
+            profile.write_text("#!/usr/bin/env bash\n")
+            context = SimpleNamespace(
+                environment_script=profile,
+                local={"max_workers": 1, "startup_delay_seconds": 0},
+                slurm={"modules": ["openmpi/4.1.6"]},
+            )
+
+            with self.assertRaisesRegex(ValueError, "mutually exclusive"):
+                launcher.validate_context(context)
 
     def test_slurm_rejects_reserved_environment_variable(self):
         with self.assertRaisesRegex(ValueError, "cannot override"):

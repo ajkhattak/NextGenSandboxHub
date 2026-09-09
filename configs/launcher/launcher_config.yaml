@@ -86,6 +86,9 @@ simulation:
 # Scheduling and campaign expansion are the only launcher-specific settings.
 launcher:
   campaign_name: regime_dds
+  # Optional: source one customized compiler/MPI profile in local commands,
+  # the Slurm coordinator, and every worker. Do not combine it with modules.
+  # environment_script: "./sandbox_profile.sh"
 
   local:
     max_workers: 2
@@ -104,6 +107,7 @@ launcher:
       time: "1-00:00:00"
     # account: project_account
     # partition: shared
+    # Use modules here only when environment_script is not configured.
     modules:
       - openmpi/4.1.6
       - netcdf-fortran/4.6.1

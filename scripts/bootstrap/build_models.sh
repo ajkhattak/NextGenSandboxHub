@@ -4,7 +4,8 @@
 # Author      : Ahmad Jan Khattak [ajkhattak@gmail.com | September 10, 2024]
 # Contributor : Sifan A. Koriche [sakoriche@ua.edu | December 18, 2024]
 
-# NOTE : See utils/setup_hpc.sh to load the required modules and setup the env for building ngen and models
+# NOTE: Customize and source configs/sandbox_profile.sh before an HPC or
+# alternate-compiler build.
 
 ###############################################################
 # Set build options below. Turn ON or OFF as needed.

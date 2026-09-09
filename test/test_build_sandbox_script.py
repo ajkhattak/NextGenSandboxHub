@@ -1,4 +1,7 @@
 from pathlib import Path
+import os
+import subprocess
+import tempfile
 import unittest
 
 
@@ -71,6 +74,37 @@ class TestBuildSandboxScript(unittest.TestCase):
             "BUILD_SANDBOX=${BUILD_SANDBOX:-ON}",
             self.script,
         )
+
+    def test_nonpersistent_environment_load_does_not_edit_shell_startup(self):
+        environment_script = (
+            self.repo_root / "scripts" / "bootstrap" / "sandbox_env.sh"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            env = os.environ.copy()
+            env.update(
+                {
+                    "HOME": str(root / "home"),
+                    "SHELL": "/bin/bash",
+                    "SANDBOX_BUILD_DIR": str(root / "build"),
+                    "SANDBOX_DATA_DIR": str(root / "data"),
+                    "SANDBOX_CONDARC": str(root / "build" / "condarc"),
+                }
+            )
+            env.pop("SANDBOX_ENV_LOADED", None)
+            (root / "home").mkdir()
+
+            subprocess.run(
+                [
+                    "bash",
+                    "-c",
+                    f'set -u; source "{environment_script}" PERSIST=OFF',
+                ],
+                check=True,
+                env=env,
+            )
+
+            self.assertFalse((root / "home" / ".bashrc").exists())
 
 
 if __name__ == "__main__":

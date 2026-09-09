@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Prevent multiple initializations
-if [ -n "$SANDBOX_ENV_LOADED" ]; then
+if [ -n "${SANDBOX_ENV_LOADED:-}" ]; then
     ALREADY_LOADED=ON
 else
     export SANDBOX_ENV_LOADED=1
@@ -10,6 +10,7 @@ fi
 
 
 ENV_VERBOSE=${VERBOSE:-OFF}
+ENV_PERSIST=${PERSIST:-${SANDBOX_ENV_PERSIST:-ON}}
 
 
 for arg in "$@"; do
@@ -18,9 +19,18 @@ for arg in "$@"; do
 
     case "$key" in
         VERBOSE) ENV_VERBOSE="$value" ;;
+        PERSIST) ENV_PERSIST="$value" ;;
         *) echo "Warning: unrecognized argument '$arg'" ;;
     esac
 done
+
+case "$ENV_PERSIST" in
+    ON|OFF) ;;
+    *)
+        echo "ERROR: PERSIST must be ON or OFF."
+        return 1
+        ;;
+esac
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     echo ""
@@ -84,11 +94,11 @@ mkdir -p "$SANDBOX_DATA_DIR"
 touch "$SANDBOX_CONDARC"
 
 ######### Detect target shell config #####
-if [[ "$SHELL" == *zsh ]]; then
+if [ "$ENV_PERSIST" = "ON" ] && [[ "${SHELL:-}" == *zsh ]]; then
 
     TARGET_FILE="$HOME/.zshrc"
 
-elif [[ "$SHELL" == *bash ]]; then
+elif [ "$ENV_PERSIST" = "ON" ] && [[ "${SHELL:-}" == *bash ]]; then
 
     if [ -f "$HOME/.bash_profile" ]; then
         TARGET_FILE="$HOME/.bash_profile"
@@ -96,7 +106,7 @@ elif [[ "$SHELL" == *bash ]]; then
         TARGET_FILE="$HOME/.bashrc"
     fi
 
-else
+elif [ "$ENV_PERSIST" = "ON" ]; then
     echo ""
     echo "ERROR: Unsupported shell: $SHELL"
     echo ""
@@ -105,42 +115,44 @@ fi
 
 
 ############ Persist configuration ##############
-SOURCE_LINE="[ -f \"$SCRIPT_PATH\" ] && source \"$SCRIPT_PATH\""
+if [ "$ENV_PERSIST" = "ON" ]; then
+    SOURCE_LINE="[ -f \"$SCRIPT_PATH\" ] && source \"$SCRIPT_PATH\""
 
 
-if ! grep -Fxq "$SOURCE_LINE" "$TARGET_FILE" 2>/dev/null; then
+    if ! grep -Fxq "$SOURCE_LINE" "$TARGET_FILE" 2>/dev/null; then
 
-    echo ""
-    echo "Adding sandbox environment to:"
-    echo "    $TARGET_FILE"
-    echo ""
+        echo ""
+        echo "Adding sandbox environment to:"
+        echo "    $TARGET_FILE"
+        echo ""
 
-    echo "$SOURCE_LINE" >> "$TARGET_FILE"
+        echo "$SOURCE_LINE" >> "$TARGET_FILE"
 
-    if [ $? -ne 0 ]; then
-        echo "ERROR: Failed to update $TARGET_FILE"
-        return 1
+        if [ $? -ne 0 ]; then
+            echo "ERROR: Failed to update $TARGET_FILE"
+            return 1
+        fi
+
+        echo "Shell configuration updated successfully."
+        echo ""
+
+        echo "IMPORTANT:"
+        echo "The sandbox environment will be loaded automatically for future terminal sessions."
+        echo ""
+        echo "To use the environment in the current terminal, either:"
+        echo ""
+        echo "  source $TARGET_FILE"
+        echo ""
+        echo "or open a new terminal window."
+        echo ""
+
     fi
 
-    echo "Shell configuration updated successfully."
-    echo ""
-
-    echo "IMPORTANT:"
-    echo "The sandbox environment will be loaded automatically for future terminal sessions."
-    echo ""
-    echo "To use the environment in the current terminal, either:"
-    echo ""
-    echo "  source $TARGET_FILE"
-    echo ""
-    echo "or open a new terminal window."
-    echo ""
-
-fi
-
-###### Validate persistence ########
-if ! grep -Fxq "$SOURCE_LINE" "$TARGET_FILE" 2>/dev/null; then
-    echo "ERROR: Failed to validate persistent environment setup."
-    return 1
+    ###### Validate persistence ########
+    if ! grep -Fxq "$SOURCE_LINE" "$TARGET_FILE" 2>/dev/null; then
+        echo "ERROR: Failed to validate persistent environment setup."
+        return 1
+    fi
 fi
 
 
@@ -166,17 +178,20 @@ done
 if [ "$ENV_VERBOSE" = "ON" ]; then
     if [ "$ALREADY_LOADED" = "ON" ]; then
         echo "Sandbox environment already loaded."
-	echo "SANDBOX_DIR        : $SANDBOX_DIR"
-	echo "SANDBOX_BUILD_DIR  : $SANDBOX_BUILD_DIR"
-	echo "SANDBOX_DATA_DIR   : $SANDBOX_DATA_DIR"
-	echo "SANDBOX_CONDARC    : $SANDBOX_CONDARC"
-	echo "NGEN_DIR           : $NGEN_DIR"
-	echo "SANDBOX_ENV        : $SANDBOX_ENV"
-	echo "FORCING_ENV        : $FORCING_ENV"
-	echo ""
+        echo "SANDBOX_DIR        : $SANDBOX_DIR"
+        echo "SANDBOX_BUILD_DIR  : $SANDBOX_BUILD_DIR"
+        echo "SANDBOX_DATA_DIR   : $SANDBOX_DATA_DIR"
+        echo "SANDBOX_CONDARC    : $SANDBOX_CONDARC"
+        echo "NGEN_DIR           : $NGEN_DIR"
+        echo "SANDBOX_ENV        : $SANDBOX_ENV"
+        echo "FORCING_ENV        : $FORCING_ENV"
+        echo ""
+    elif [ "$ENV_PERSIST" = "ON" ]; then
+        echo "Sandbox environment successfully configured, but not loaded yet"
+        echo "  source $TARGET_FILE"
     else
-	echo "Sandbox environment successfully configured, but not loaded yet"
-	echo "  source $TARGET_FILE"
+        echo "Sandbox environment loaded for the current shell."
+        echo "Shell startup files were not modified (PERSIST=OFF)."
     fi
 
 fi

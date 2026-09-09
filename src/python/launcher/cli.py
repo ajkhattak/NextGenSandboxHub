@@ -125,6 +125,7 @@ class LauncherContext:
     launcher_dir: Path
     launcher_config_file: Path
     campaign_name: str
+    environment_script: Path | None
     sandbox_cfg: dict[str, Any]
     map_cfg: dict[str, Any]
     output_dir: Path
@@ -249,6 +250,24 @@ def resolve_path(base_dir: Path, value: str | Path) -> Path:
     if path.is_absolute():
         return path
     return base_dir / path
+
+
+def command_with_launcher_environment(
+    ctx: LauncherContext,
+    command: list[str],
+) -> list[str]:
+    """Run a child command after sourcing the configured runtime profile."""
+    environment_script = getattr(ctx, "environment_script", None)
+    if environment_script is None:
+        return command
+    return [
+        "bash",
+        "-c",
+        'source "$1" || exit $?; shift; exec "$@"',
+        "sandbox-profile",
+        str(environment_script),
+        *command,
+    ]
 
 
 def default_config_file() -> Path:
@@ -992,6 +1011,35 @@ def load_context(config_file: Path) -> LauncherContext:
     launcher_settings = launcher_cfg.get("launcher")
     if not isinstance(launcher_settings, dict):
         raise ValueError("launcher_config.yaml must define a launcher block")
+    unknown_launcher = sorted(
+        set(launcher_settings)
+        - {
+            "campaign_name",
+            "environment_script",
+            "local",
+            "slurm",
+            "regime_calibration",
+        }
+    )
+    if unknown_launcher:
+        raise ValueError(
+            "launcher contains unsupported field(s): "
+            f"{', '.join(unknown_launcher)}"
+        )
+
+    environment_script_value = launcher_settings.get("environment_script")
+    if environment_script_value is None:
+        environment_script = None
+    elif (
+        not isinstance(environment_script_value, str)
+        or not environment_script_value.strip()
+    ):
+        raise TypeError("launcher.environment_script must be a non-empty path")
+    else:
+        environment_script = resolve_path(
+            launcher_dir,
+            environment_script_value,
+        ).resolve()
 
     sandbox_cfg = {
         key: copy.deepcopy(value)
@@ -1076,6 +1124,7 @@ def load_context(config_file: Path) -> LauncherContext:
         launcher_dir=launcher_dir,
         launcher_config_file=config_file,
         campaign_name=campaign_name,
+        environment_script=environment_script,
         sandbox_cfg=sandbox_cfg,
         map_cfg=map_cfg,
         output_dir=output_dir,
@@ -1181,6 +1230,24 @@ def validate_context(ctx: LauncherContext) -> None:
         raise ValueError(
             "local.startup_delay_seconds must be a non-negative integer"
         )
+    environment_script = getattr(ctx, "environment_script", None)
+    if environment_script is not None:
+        if not environment_script.is_file():
+            raise FileNotFoundError(
+                "launcher.environment_script does not exist or is not a file: "
+                f"{environment_script}"
+            )
+        if not os.access(environment_script, os.R_OK):
+            raise PermissionError(
+                "launcher.environment_script is not readable: "
+                f"{environment_script}"
+            )
+        if ctx.slurm.get("modules"):
+            raise ValueError(
+                "launcher.environment_script and launcher.slurm.modules are "
+                "mutually exclusive. Load modules in the environment script "
+                "or list them under slurm.modules, but not both."
+            )
     validate_slurm_config(ctx.slurm)
     validate_sandbox_config(ctx.sandbox_cfg)
     validate_mapping_config(ctx.map_cfg)
@@ -1427,8 +1494,10 @@ def validate_slurm_config(slurm: dict[str, Any]) -> None:
     if not isinstance(environment, dict):
         raise ValueError("slurm.environment must be a mapping of names to values")
     reserved_environment = {
+        "LAUNCHER_CONFIG",
         "SANDBOX_ENV",
         "SANDBOX_FILE",
+        "SANDBOX_PROFILE",
         "SANDBOX_STAGE",
         "START_DELAY",
     }
@@ -1835,12 +1904,15 @@ def generate_config_files_for_gage(
 
     if configure:
         subprocess.run(
-            [
-                "sandbox",
-                "--conf",
-                "-i",
-                str(paths["sandbox_main"]),
-            ],
+            command_with_launcher_environment(
+                ctx,
+                [
+                    "sandbox",
+                    "--conf",
+                    "-i",
+                    str(paths["sandbox_main"]),
+                ],
+            ),
             check=True,
         )
 
@@ -2132,7 +2204,10 @@ def build_slurm_submit_command(
     return command
 
 
-def render_slurm_worker_script(slurm: dict[str, Any]) -> str:
+def render_slurm_worker_script(
+    slurm: dict[str, Any],
+    environment_script: Path | None = None,
+) -> str:
     lines = [
         "#!/usr/bin/env bash",
         "",
@@ -2141,6 +2216,19 @@ def render_slurm_worker_script(slurm: dict[str, Any]) -> str:
         'echo "Allocated MPI tasks: ${SLURM_NTASKS:-1}"',
         'echo "CPUs per task: ${SLURM_CPUS_PER_TASK:-1}"',
     ]
+
+    if environment_script is not None:
+        lines.extend(
+            [
+                "",
+                f"SANDBOX_PROFILE={shlex.quote(str(environment_script))}",
+                'if [ ! -r "$SANDBOX_PROFILE" ]; then',
+                '    echo "ERROR: Launcher environment script is not readable: $SANDBOX_PROFILE"',
+                "    exit 1",
+                "fi",
+                'source "$SANDBOX_PROFILE"',
+            ]
+        )
 
     modules = slurm.get("modules", [])
     if modules:
@@ -2214,7 +2302,10 @@ def render_slurm_worker_script(slurm: dict[str, Any]) -> str:
 
 def write_slurm_worker_script(ctx: LauncherContext) -> Path:
     path = worker_script_path(ctx)
-    content = render_slurm_worker_script(ctx.slurm)
+    content = render_slurm_worker_script(
+        ctx.slurm,
+        getattr(ctx, "environment_script", None),
+    )
     path.parent.mkdir(parents=True, exist_ok=True)
     if not path.exists() or path.read_text() != content:
         path.write_text(content)
@@ -2254,9 +2345,13 @@ def build_launcher_submit_command(
                 f"afterany:{job_id}" for job_id in dependency_job_ids
             )
         )
+    exported = [f"LAUNCHER_CONFIG={ctx.launcher_config_file}"]
+    environment_script = getattr(ctx, "environment_script", None)
+    if environment_script is not None:
+        exported.append(f"SANDBOX_PROFILE={environment_script}")
     command.extend(
         [
-            f"--export=ALL,LAUNCHER_CONFIG={ctx.launcher_config_file}",
+            "--export=ALL," + ",".join(exported),
             str(LAUNCHER_PACKAGE_DIR / "submit_launcher.sh"),
         ]
     )
@@ -2683,19 +2778,23 @@ def run_experiment(
         else:
             print(f"[{gage_id}] Submitting: {' '.join(cmd)}")
     else:
-        cmd = [
+        sandbox_run_command = [
             "sandbox",
             "--run",
             "-i",
             str(sandbox_file),
         ]
+        cmd = command_with_launcher_environment(ctx, sandbox_run_command)
         if dryrun:
             if stage in {"restart", "validation"}:
                 print(
                     f"[DRYRUN] [{gage_id}] Would generate {stage} "
                     f"configs: sandbox --conf -i {sandbox_file}"
                 )
-            print(f"[DRYRUN] [{gage_id}] Would run locally: {' '.join(cmd)}")
+            print(
+                f"[DRYRUN] [{gage_id}] Would run locally: "
+                f"{' '.join(sandbox_run_command)}"
+            )
 
     if dryrun:
         return ExperimentRun(sandbox_file)
@@ -2708,10 +2807,13 @@ def run_experiment(
                 f"sandbox --conf -i {sandbox_file}"
             )
             subprocess.run(
-                ["sandbox", "--conf", "-i", str(sandbox_file)],
+                command_with_launcher_environment(
+                    ctx,
+                    ["sandbox", "--conf", "-i", str(sandbox_file)],
+                ),
                 check=True,
             )
-        print(f"[{gage_id}] Running locally: {' '.join(cmd)}")
+        print(f"[{gage_id}] Running locally: {' '.join(sandbox_run_command)}")
     if use_slurm:
         result = subprocess.run(
             cmd,
@@ -3905,6 +4007,10 @@ def print_check_report(ctx: LauncherContext) -> None:
     print("==============")
     print(f"Launcher config : {ctx.launcher_config_file}")
     print(f"Campaign name   : {ctx.campaign_name}")
+    print(
+        "Environment     : "
+        + (str(ctx.environment_script) if ctx.environment_script else "inherited")
+    )
     print("Sandbox settings: top-level blocks in the launcher configuration")
     print("Formulations    : resolved from the formulations block")
     print(f"Worker script   : {worker_script_path(ctx)} (generated for Slurm runs)")

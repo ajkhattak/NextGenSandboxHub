@@ -50,6 +50,15 @@ fi
 # Configure Python Environment
 # ============================================================
 
+if [ -n "${SANDBOX_PROFILE:-}" ]; then
+    if [ ! -r "$SANDBOX_PROFILE" ]; then
+        echo "ERROR: Launcher environment script is not readable: $SANDBOX_PROFILE"
+        exit 1
+    fi
+    echo "Environment profile: $SANDBOX_PROFILE"
+    source "$SANDBOX_PROFILE"
+fi
+
 unset PYTHONPATH
 
 if [ -z "${SANDBOX_ENV:-}" ]; then

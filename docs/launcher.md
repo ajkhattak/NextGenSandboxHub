@@ -125,6 +125,9 @@ The `launcher` block contains campaign-specific settings only.
 launcher:
   campaign_name: dds_example
 
+  # Optional profile shared by local commands and all Slurm jobs.
+  environment_script: "./sandbox_profile.sh"
+
   local:
     max_workers: 2
     startup_delay_seconds: 5
@@ -142,9 +145,6 @@ launcher:
       poll_interval_seconds: 300
       renew_before_seconds: 600
       time: "1-00:00:00"
-    modules:
-      - openmpi/4.1.6
-      - netcdf-fortran/4.6.1
     environment:
       OMP_NUM_THREADS: "1"
     calibration:
@@ -165,11 +165,30 @@ protect different resources:
 | `max_total_allocated_cpus` | Sum of Slurm CPUs requested by jobs. |
 | `max_failed_attempts` | Hard failures allowed after the last successful worker before automatic retries stop. Defaults to `2`; timeouts and preemptions do not count. |
 
-Set `modules` to the same HPC modules used to build `ngen` and model
-libraries. `environment` sets literal environment values such as
-`OMP_NUM_THREADS`; it does not run shell commands. Slurm can still leave a
-submitted worker pending because of cluster priority, available nodes, memory,
-or account limits.
+For a compiler-specific build, copy and customize the supplied profile:
+
+```bash
+cp "$SANDBOX_DIR/configs/sandbox_profile.sh" ./sandbox_profile.sh
+# Edit module versions, SANDBOX_BUILD_DIR, compiler wrappers, and library paths.
+source ./sandbox_profile.sh
+```
+
+Set `launcher.environment_script` to that file. Relative paths are resolved
+from the launcher YAML. The launcher sources it for local Sandbox child
+commands, the Slurm coordinator, and every Slurm worker, so they all select the
+same compiler/MPI stack and build directory. The profile is also safe to source
+interactively: it configures only the current shell and does not edit shell
+startup files. If its Sandbox environment has not been built yet, source the
+profile, run `./bootstrap.sh --sandbox`, then source it again to activate the
+new environment.
+
+As a simpler alternative, omit `environment_script` and set `slurm.modules` to
+the same modules used to build `ngen` and model libraries. Do not configure
+both; the launcher rejects that ambiguity. `slurm.environment` remains
+available with either approach for literal values such as `OMP_NUM_THREADS`;
+it does not run shell commands. Slurm can still leave a submitted worker
+pending because of cluster priority, available nodes, memory, or account
+limits.
 
 ## Regime Calibration
 

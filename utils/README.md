@@ -65,8 +65,9 @@ script with `--help` to see its inputs and options.
 
 ## Platform Setup Templates
 
-`setup_hpc.sh` and `setup_ec2.sh` are optional platform setup templates that
-users may adapt for their systems.
+`setup_hpc.sh` and `setup_ec2.sh` are optional platform references. For a
+reusable compiler/MPI environment that can also be sourced by Sandbox Launcher
+jobs, start from `configs/sandbox_profile.sh`.
 
 Bootstrap implementation scripts and environment definitions live under
 [`scripts/bootstrap/`](../scripts/bootstrap/). Use the documented
