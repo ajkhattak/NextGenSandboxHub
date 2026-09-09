@@ -18,6 +18,14 @@ from src.python.launcher import cli as launcher
 
 
 class TestLauncherSelection(unittest.TestCase):
+    def test_launcher_sample_does_not_duplicate_profile_modules(self):
+        config_file = (
+            REPO_ROOT / "configs" / "launcher" / "launcher_config.yaml"
+        )
+        config = yaml.safe_load(config_file.read_text())
+
+        self.assertNotIn("modules", config["launcher"]["slurm"])
+
     @staticmethod
     def _write_launcher_metadata(
         metadata_index_dir: Path,
@@ -423,6 +431,21 @@ class TestLauncherSelection(unittest.TestCase):
             self.assertEqual(
                 context.log_dir,
                 (root / "outputs").resolve() / "logs",
+            )
+
+            config = yaml.safe_load(config_file.read_text())
+            del config["launcher"]["environment_script"]
+            config_file.write_text(yaml.safe_dump(config))
+            with patch.dict(
+                os.environ,
+                {"SANDBOX_PROFILE": str(environment_script)},
+                clear=False,
+            ):
+                inherited_context = launcher.load_context(config_file)
+
+            self.assertEqual(
+                inherited_context.environment_script,
+                environment_script.resolve(),
             )
 
     def test_general_path_validation_reports_missing_input_directory(self):

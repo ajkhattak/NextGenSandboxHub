@@ -125,7 +125,7 @@ The `launcher` block contains campaign-specific settings only.
 launcher:
   campaign_name: dds_example
 
-  # Optional profile shared by local commands and all Slurm jobs.
+  # Optional override for the currently loaded SANDBOX_PROFILE.
   environment_script: "./sandbox_profile.sh"
 
   local:
@@ -165,30 +165,25 @@ protect different resources:
 | `max_total_allocated_cpus` | Sum of Slurm CPUs requested by jobs. |
 | `max_failed_attempts` | Hard failures allowed after the last successful worker before automatic retries stop. Defaults to `2`; timeouts and preemptions do not count. |
 
-For a compiler-specific build, copy and customize the supplied profile:
+Source the installation profile before invoking `sandbox-launcher`:
 
 ```bash
-cp "$SANDBOX_DIR/configs/sandbox_profile.sh" ./sandbox_profile.sh
-# Edit module versions, SANDBOX_BUILD_DIR, compiler wrappers, and library paths.
-source ./sandbox_profile.sh
+source /path/to/NextGenSandbox/sandbox_profile.sh
 ```
 
-Set `launcher.environment_script` to that file. Relative paths are resolved
-from the launcher YAML. The launcher sources it for local Sandbox child
-commands, the Slurm coordinator, and every Slurm worker, so they all select the
-same compiler/MPI stack and build directory. The profile is also safe to source
-interactively: it configures only the current shell and does not edit shell
-startup files. If its Sandbox environment has not been built yet, source the
-profile, run `./bootstrap.sh --sandbox`, then source it again to activate the
-new environment.
+The launcher reuses the loaded `SANDBOX_PROFILE` automatically for local
+Sandbox child commands,
+the Slurm coordinator, and every Slurm worker. Set
+`launcher.environment_script` only to override it; relative paths are resolved
+from the launcher YAML.
 
-As a simpler alternative, omit `environment_script` and set `slurm.modules` to
-the same modules used to build `ngen` and model libraries. Do not configure
-both; the launcher rejects that ambiguity. `slurm.environment` remains
-available with either approach for literal values such as `OMP_NUM_THREADS`;
-it does not run shell commands. Slurm can still leave a submitted worker
-pending because of cluster priority, available nodes, memory, or account
-limits.
+This keeps the interactive session and every launcher process on the same
+compiler/MPI stack and build directory. Do not also configure
+`launcher.slurm.modules`; the launcher rejects that ambiguity.
+`slurm.environment` remains available for literal values such as
+`OMP_NUM_THREADS`; it does not run shell commands. Slurm can still leave a
+submitted worker pending because of cluster priority, available nodes, memory,
+or account limits.
 
 ## Regime Calibration
 

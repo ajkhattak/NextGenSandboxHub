@@ -11,6 +11,33 @@ from src.python.time_windows import (
 
 
 class TestConfigurationSamples(unittest.TestCase):
+    def validate_config(self, path):
+        with path.open("r") as file:
+            config = yaml.safe_load(file)
+
+        self.assertIsInstance(config, dict)
+        self.assertEqual(
+            set(config),
+            {
+                "general",
+                "subsetting",
+                "forcings",
+                "observations",
+                "calibration",
+                "formulations",
+                "simulation",
+            },
+        )
+
+        sandbox_dir = Path(__file__).resolve().parents[1]
+        load_calibration_settings(config, path, sandbox_dir)
+        tasks = normalize_simulation_tasks(config["simulation"])
+        normalize_simulation_time_config(
+            config["simulation"],
+            tasks,
+            config_dir=path.parent,
+        )
+
     def test_distributed_sandbox_configs_are_valid(self):
         sandbox_dir = Path(__file__).resolve().parents[1]
 
@@ -20,30 +47,13 @@ class TestConfigurationSamples(unittest.TestCase):
         ):
             with self.subTest(filename=filename):
                 path = sandbox_dir / "configs" / filename
-                with path.open("r") as file:
-                    config = yaml.safe_load(file)
+                self.validate_config(path)
 
-                self.assertIsInstance(config, dict)
-                self.assertEqual(
-                    set(config),
-                    {
-                        "general",
-                        "subsetting",
-                        "forcings",
-                        "observations",
-                        "calibration",
-                        "formulations",
-                        "simulation",
-                    },
-                )
-
-                load_calibration_settings(config, path, sandbox_dir)
-                tasks = normalize_simulation_tasks(config["simulation"])
-                normalize_simulation_time_config(
-                    config["simulation"],
-                    tasks,
-                    config_dir=path.parent,
-                )
+    def test_smoke_test_config_is_valid(self):
+        sandbox_dir = Path(__file__).resolve().parents[1]
+        self.validate_config(
+            sandbox_dir / "test" / "configs" / "sandbox_config.yaml"
+        )
 
 
 if __name__ == "__main__":

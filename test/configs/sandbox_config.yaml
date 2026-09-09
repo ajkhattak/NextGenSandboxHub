@@ -1,58 +1,61 @@
-# Sandbox configuration sample file
+# Configuration used by test/sandbox_test.py for the installation smoke test.
 
 general:
-  input_dir  : "./input/data"  
-  output_dir : "./output" 
+  input_dir: "./input"
+  output_dir: "./output"
   resource_layout: gage
+  domain: conus
   gages:
     option: ids
-    domain: conus
     ids: ["01308000"]
 
-# make sure to install yaml package using install.packages("yaml") if not installed already
-subsetting :
+subsetting:
   hydrofabric:
-    version               : "2.2"
-    gpkg_path             : "<path_to>/conus_nextgen.gpkg" 
-  dem:
-    output_dir           : "dem"
-    #input_file           : "<path_to>/dem.vrt"
-    aggregate_factor : 3
-
+    version: "2.2"
+    gpkg_path: "<path_to>/conus_nextgen.gpkg"
+    compute_divide_attributes: false
   vegetation:
-    enabled                  : FALSE  
-    nlcd_path                : "<path_to>/Annual_NLCD_LndCov_2021_CU_C1V1.tif" 
-    classification_method    : "fraction"
-
+    enabled: false
   gages: all
 
+forcings:
+  format: ".nc"
+  use_corrected: true
+  rechunk: true
+  time:
+    start: "2016-10-01"
+    end: "2017-09-30 23:00:00"
+  gages: all
 
-########################################################################
-#forcing data is stored under <input_dir>/<gage_id>/forcing by default
-forcings : 
-  format  : ".nc"
-  time    : {"start" : "2016-10-01", "end" : "2017-09-30 23:00:00"}
-  domain  : "conus"
-  gages   : all
-  
-########################################################################
-formulation :
-  models            : "PET, CFE, T-route"
-  clean             : ['existing'] 
-  verbosity         : 0            
+observations: {}
 
-  num_procs         : 1
+calibration:
+  optimizer:
+    algorithm: dds
+    iterations: 1
+    random_seed: 444
+  objective:
+    function: kge
 
-simulation :
-  task_type        : "control" 
-  gages            : all
-  label            : "pet_cfe"
-  simulation_time : {"start_time" : "2016-10-01 00:00:00", "end_time" : "2016-10-02 23:00:00"} # only needed when task_type is control
-  calibration_time : {"start_time" : "2016-10-01 00:00:00", "end_time" : "2021-09-30 23:00:00"} # Entire simulation period for calibration; including spinup period
-  calib_eval_time  : {"start_time" : "2017-10-01 00:00:00", "end_time" : "2021-09-30 23:00:00"} # Evalaution period for calibration (excluding spinup period)
-  validation_time  : {"start_time" : "2010-11-22 14:00:00", "end_time" : "2010-12-23 02:00:00"} # Entire simulation period for validation; including spinup period
-  valid_eval_time  : {"start_time" : "2010-11-23 14:00:00", "end_time" : "2010-12-23 02:00:00"} # Evalaution period for validation (excluding spinup period)
-  restart_dir      : "<path_to_restart_dir>/<gage_id>/202410042024_ngen_qaiklwj0_worker/" #------- Restart experiment from the best iteration
+formulations:
+  pet_cfe:
+    models: "PET, CFE, T-ROUTE"
+    verbosity: 0
+
+simulation:
+  tasks: [control]
+  gages: all
+  label: pet_cfe
+  time:
+    control:
+      start: "2016-10-01 00:00:00"
+      spinup: "0 hours"
+      end: "2016-10-02 23:00:00"
+  outputs:
+    divide_variables: {}
+    metadata:
+      enabled: false
+      file: simulation_metadata.yml
   partitioning:
     mode: serial
     max_nexus_per_proc: 25

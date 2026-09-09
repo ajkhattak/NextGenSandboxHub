@@ -4,8 +4,8 @@
 # Author      : Ahmad Jan Khattak [ajkhattak@gmail.com | September 10, 2024]
 # Contributor : Sifan A. Koriche [sakoriche@ua.edu | December 18, 2024]
 
-# NOTE: Customize and source configs/sandbox_profile.sh before an HPC or
-# alternate-compiler build.
+# NOTE: Customize and source the installation's sandbox_profile.sh before
+# building.
 
 ###############################################################
 # Set build options below. Turn ON or OFF as needed.

@@ -23,12 +23,12 @@ macOS. It uses a Unix-like shell and requires:
 - a C, C++, and Fortran build toolchain
 - CMake, MPI, and NetCDF development libraries for building ngen and its models
 
-HPC users may need to load site-provided compiler, MPI, NetCDF, CMake, Python,
-or conda modules. For a reusable setup, copy and customize
+Every installation uses a local environment profile copied from
 [`configs/sandbox_profile.sh`](https://github.com/ajkhattak/NextGenSandbox/blob/main/configs/sandbox_profile.sh).
-The profile keeps compiler-specific builds separate, configures the current
-shell without editing shell startup files, and can also be used by Sandbox
-Launcher jobs. The exact module names vary by system.
+Its defaults support a normal local installation. HPC users customize the same
+profile to load site-provided compiler, MPI, NetCDF, CMake, Python, or conda
+modules. The profile configures only the current shell, never edits shell
+startup files, and can also be used by Sandbox Launcher jobs.
 
 Build environments, compiled software, and package caches are stored under
 `$SANDBOX_BUILD_DIR`. On an HPC system, choose a project or scratch filesystem
@@ -36,32 +36,37 @@ with sufficient quota instead of a small home directory.
 
 ## Quick Path
 
-Run these commands from a terminal. Platform-specific handling is required only
-for the R subsetting dependencies.
+Run these commands from Bash or zsh. HPC users should first identify the
+compiler, MPI, NetCDF, CMake, Python, and conda modules required by their site.
 
-### 1. Clone and configure
+### 1. Clone and load the environment profile
 
 ```bash
 git clone https://github.com/ajkhattak/NextGenSandbox.git
 cd NextGenSandbox
-./bootstrap.sh --env --verbose
+cp configs/sandbox_profile.sh sandbox_profile.sh
 ```
 
-Open a new terminal or reload your shell, return to the repository, and check
-the initial configuration:
+The copied file is ignored by Git. Its defaults are suitable for a local
+installation. On HPC systems, edit its module commands and set
+`SANDBOX_BUILD_DIR` to project or scratch storage before continuing.
+
+Load the profile and inspect the initial configuration:
 
 ```bash
+source ./sandbox_profile.sh
 ./bootstrap.sh --check
 ```
 
-At this stage, configured paths and shell setup should be reported. Warnings
-about environments, ngen, models, or t-route are expected because they have not
-been built yet.
+The profile must be sourced in each new terminal. At this stage, configured
+paths should be reported. Warnings about environments, ngen, models, or t-route
+are expected because they have not been built yet.
 
 ### 2. Build and activate the Python environment
 
 ```bash
 ./bootstrap.sh --sandbox
+source ./sandbox_profile.sh
 ```
 
 On Linux, current conda-forge Python packages may use a newer C++ runtime than
@@ -69,29 +74,18 @@ the compiler modules used for ngen, MPI, and NetCDF. Sandbox keeps the HPC
 module paths intact and selects the Conda C++ runtime only for ngen processes
 that it launches; no global library-path changes are required.
 
-Activate the environment using the method available on your system:
-
-```bash
-conda activate "$SANDBOX_ENV"
-```
-
-or:
-
-```bash
-source "$SANDBOX_ENV/bin/activate"
-```
-
-The shell prompt should indicate the Sandbox environment is active, and
+Sourcing the profile again activates either the Conda environment or Python
+virtual environment created by the build. The shell prompt should indicate the
+Sandbox environment is active, and
 `which sandbox` should point inside `$SANDBOX_ENV`. When the environment is not
 active, `./bootstrap.sh --check` also reports the appropriate activation
 command.
 
 ### 3. Install subsetting dependencies
 
-On Linux or an HPC system with conda:
+On Linux or an HPC system, ensure the profile loads conda, then run:
 
 ```bash
-module load conda  # only when conda is provided as a module
 ./bootstrap.sh --subset
 ```
 
@@ -103,15 +97,11 @@ Rscript "$SANDBOX_DIR/src/R/install_load_libs.R" --install
 
 ### 4. Build ngen, models, and t-route
 
-Keep the Sandbox Python environment active. First load a consistent compiler,
-MPI, and NetCDF toolchain. On HPC systems, these are normally environment
-modules. Then run:
+Keep the Sandbox profile loaded. It uses explicit compiler variables when
+configured and otherwise selects the available MPI compiler wrappers. When
+`nf-config` is available, it also derives `NETCDF_ROOT`. Run:
 
 ```bash
-export CC="$(command -v mpicc)"
-export CXX="$(command -v mpicxx)"
-export FC="$(command -v mpifort)"
-export F90="$FC"
 ./bootstrap.sh --check
 ```
 
@@ -155,18 +145,26 @@ cd NextGenSandbox
 All remaining commands in this guide should be run from the repository root
 unless stated otherwise.
 
-### Step 2: Configure Sandbox paths
+### Step 2: Configure the environment profile
 
-Configure the repository, build, data, and environment paths:
+Copy the profile template into the repository root:
 
 ```bash
-./bootstrap.sh --env --verbose
+cp configs/sandbox_profile.sh sandbox_profile.sh
 ```
 
-On first-time setup, open a new terminal or reload the shell setup before
-continuing. Return to the repository and run:
+The root-level copy is ignored by Git and becomes the installation-specific
+configuration. Local users can keep its defaults. HPC users should edit it to:
+
+- load a consistent compiler, MPI, NetCDF, CMake, and conda module stack;
+- set compiler-specific build storage through `SANDBOX_BUILD_DIR`;
+- set `NETCDF_ROOT` or other site-specific library paths when they cannot be
+  detected.
+
+Load the profile and run the initial check:
 
 ```bash
+source ./sandbox_profile.sh
 ./bootstrap.sh --check
 ```
 
@@ -175,13 +173,14 @@ reports the current installation state, so missing components are normal until
 their corresponding build step has run. Follow the recommendations printed at
 the end of the check.
 
-Additional details about the generated paths are available in the
-[environment validation guide](https://github.com/ajkhattak/NextGenSandbox/blob/main/scripts/bootstrap/venv/validation.md#step-13-validation).
+The profile must be sourced once in each new terminal. It does not edit
+`.bashrc`, `.bash_profile`, or `.zshrc`.
 
 ### Step 3: Build the Python environments
 
 ```bash
 ./bootstrap.sh --sandbox
+source ./sandbox_profile.sh
 ```
 
 This creates:
@@ -190,20 +189,9 @@ This creates:
 - the forcing Python environment at `$FORCING_ENV`
 - the `sandbox` command in `$SANDBOX_ENV/bin`
 
-Activate the Sandbox environment before building ngen or running workflow
-commands.
-
-With conda:
-
-```bash
-conda activate "$SANDBOX_ENV"
-```
-
-With a standard Python virtual environment:
-
-```bash
-source "$SANDBOX_ENV/bin/activate"
-```
+The first command creates the environments. Sourcing the profile again detects
+and activates the newly created Conda environment or Python virtual
+environment.
 
 Verify the active command:
 
@@ -225,10 +213,10 @@ subset hydrofabric resources for a project.
 #### Linux and HPC systems
 
 The managed subset environment requires conda. If conda is provided through an
-environment module, load it in the same shell:
+environment module, configure that module in `sandbox_profile.sh`, source the
+profile, and run:
 
 ```bash
-module load conda
 ./bootstrap.sh --subset
 ```
 
@@ -292,15 +280,6 @@ The components may also be built separately:
 ./bootstrap.sh --ngen
 ./bootstrap.sh --models
 ./bootstrap.sh --troute
-```
-
-For an HPC or alternate-compiler build, copy the environment profile, edit its
-module and compiler section, and source it before building:
-
-```bash
-cp configs/sandbox_profile.sh sandbox_profile.sh
-source ./sandbox_profile.sh
-./bootstrap.sh --ngen --models --troute
 ```
 
 Set a distinct `SANDBOX_BUILD_DIR` in each profile, such as `build/gcc` or

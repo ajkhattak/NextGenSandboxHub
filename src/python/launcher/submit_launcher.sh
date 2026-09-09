@@ -62,7 +62,9 @@ fi
 unset PYTHONPATH
 
 if [ -z "${SANDBOX_ENV:-}" ]; then
-    echo "ERROR: SANDBOX_ENV is not set. Run ./bootstrap.sh --env and reload your shell before launching."
+    echo "ERROR: SANDBOX_ENV is not set. Configure launcher.environment_script"
+    echo "or source the Sandbox profile before launching:"
+    echo "  source ./sandbox_profile.sh"
     exit 1
 fi
 

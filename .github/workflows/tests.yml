@@ -56,3 +56,13 @@ jobs:
         run: python -m unittest discover -s test -p "test_*.py"
         env:
           MPLCONFIGDIR: ${{ runner.temp }}/matplotlib
+
+      - name: Validate shell entry points
+        run: |
+          bash -n bootstrap.sh
+          bash -n configs/sandbox_profile.sh
+          bash -n scripts/bootstrap/sandbox_env.sh
+          bash -n scripts/bootstrap/build_sandbox.sh
+          bash -n scripts/bootstrap/build_venv_subset.sh
+          bash -n scripts/bootstrap/build_models.sh
+          bash -n src/python/launcher/submit_launcher.sh

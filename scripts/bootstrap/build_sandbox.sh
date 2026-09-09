@@ -25,7 +25,9 @@ do
 
     if [ -z "$value" ]; then
         echo "ERROR: Missing environment variable: $var"
-	echo "Run: ./bootstrap.sh --env and follow the steps to set environment variables." >&2
+	echo "Copy and source the Sandbox environment profile first:" >&2
+	echo "  cp configs/sandbox_profile.sh sandbox_profile.sh" >&2
+	echo "  source ./sandbox_profile.sh" >&2
         return 1
     fi
 

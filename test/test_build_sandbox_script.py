@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -18,9 +19,23 @@ class TestBuildSandboxScript(unittest.TestCase):
         self.assertIn("./scripts/bootstrap/build_sandbox.sh", self.bootstrap)
         self.assertIn("./scripts/bootstrap/build_venv_subset.sh", self.bootstrap)
         self.assertIn("./scripts/bootstrap/build_models.sh", self.bootstrap)
-        self.assertIn("./scripts/bootstrap/sandbox_env.sh", self.bootstrap)
+        self.assertNotIn("--env", self.bootstrap)
+        self.assertIn(
+            "cp configs/sandbox_profile.sh sandbox_profile.sh",
+            self.bootstrap,
+        )
         self.assertNotIn("./utils/build_sandbox.sh", self.bootstrap)
         self.assertNotIn("./utils/sandbox_env.sh", self.bootstrap)
+
+    def test_removed_environment_option_is_rejected(self):
+        result = subprocess.run(
+            [str(self.repo_root / "bootstrap.sh"), "--env"],
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("Unknown option: --env", result.stdout)
 
     def test_environment_definitions_use_internal_script_directory(self):
         self.assertIn(
@@ -75,7 +90,7 @@ class TestBuildSandboxScript(unittest.TestCase):
             self.script,
         )
 
-    def test_nonpersistent_environment_load_does_not_edit_shell_startup(self):
+    def test_internal_environment_load_does_not_edit_shell_startup(self):
         environment_script = (
             self.repo_root / "scripts" / "bootstrap" / "sandbox_env.sh"
         )
@@ -91,20 +106,87 @@ class TestBuildSandboxScript(unittest.TestCase):
                     "SANDBOX_CONDARC": str(root / "build" / "condarc"),
                 }
             )
-            env.pop("SANDBOX_ENV_LOADED", None)
             (root / "home").mkdir()
 
             subprocess.run(
                 [
                     "bash",
                     "-c",
-                    f'set -u; source "{environment_script}" PERSIST=OFF',
+                    f'set -u; source "{environment_script}"',
                 ],
                 check=True,
                 env=env,
             )
 
             self.assertFalse((root / "home" / ".bashrc").exists())
+
+    def test_profile_loads_from_repository_root_in_bash_and_zsh(self):
+        profile_template = (
+            self.repo_root / "configs" / "sandbox_profile.sh"
+        )
+        environment_script = (
+            self.repo_root / "scripts" / "bootstrap" / "sandbox_env.sh"
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "NextGenSandbox"
+            (root / "scripts" / "bootstrap").mkdir(parents=True)
+            root = root.resolve()
+            shutil.copy2(profile_template, root / "sandbox_profile.sh")
+            shutil.copy2(
+                environment_script,
+                root / "scripts" / "bootstrap" / "sandbox_env.sh",
+            )
+            wrapper_dir = root / "wrappers"
+            wrapper_dir.mkdir()
+            for name in ("mpicc", "mpicxx", "mpifort"):
+                wrapper = wrapper_dir / name
+                wrapper.write_text("#!/usr/bin/env sh\nexit 0\n")
+                wrapper.chmod(0o755)
+
+            for shell in ("bash", "zsh"):
+                executable = shutil.which(shell)
+                if executable is None:
+                    continue
+                with self.subTest(shell=shell):
+                    env = os.environ.copy()
+                    for name in (
+                        "SANDBOX_REPO",
+                        "SANDBOX_DIR",
+                        "SANDBOX_BUILD_DIR",
+                        "SANDBOX_DATA_DIR",
+                        "SANDBOX_CONDARC",
+                        "SANDBOX_PROFILE",
+                    ):
+                        env.pop(name, None)
+                    env["PATH"] = f"{wrapper_dir}{os.pathsep}{env['PATH']}"
+                    env["CC"] = "/unrelated/cc"
+                    env["CXX"] = "/unrelated/cxx"
+                    env["FC"] = "/unrelated/fc"
+
+                    subprocess.run(
+                        [
+                            executable,
+                            "-c",
+                            (
+                                'source "$1" >/dev/null; '
+                                'test "$SANDBOX_DIR" = "$2"; '
+                                'test "$SANDBOX_PROFILE" = "$1"; '
+                                'test ! -e "$SANDBOX_BUILD_DIR"; '
+                                'test ! -e "$SANDBOX_DATA_DIR"; '
+                                'test "$CC" = "$3/mpicc"; '
+                                'test "$CXX" = "$3/mpicxx"; '
+                                'test "$FC" = "$3/mpifort"; '
+                                'test "$F90" = "$FC"'
+                            ),
+                            "_",
+                            str(root / "sandbox_profile.sh"),
+                            str(root),
+                            str(wrapper_dir),
+                        ],
+                        check=True,
+                        env=env,
+                    )
 
 
 if __name__ == "__main__":

@@ -4,23 +4,21 @@ These tests are intended for contributors and developers. A user installing
 NextGenSandbox only needs the installation check and workflow smoke test in
 [install.md](./install.md).
 
-Activate the Sandbox Python environment before running the test suites:
+Load the same Sandbox profile used to build the installation before running the
+test suites:
 
 ```bash
-conda activate "$SANDBOX_ENV"
-```
-
-or:
-
-```bash
-source "$SANDBOX_ENV/bin/activate"
+source ./sandbox_profile.sh
 ```
 
 Run the NextGenSandbox tests:
 
 ```bash
-python -m pytest test
+python -m pytest
 ```
+
+Pytest is configured to discover the project suite under `test/` without
+collecting executable test utilities shipped by external submodules.
 
 Run the local ngen-cal plugin tests:
 

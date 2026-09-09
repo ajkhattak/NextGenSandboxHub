@@ -1029,7 +1029,12 @@ def load_context(config_file: Path) -> LauncherContext:
 
     environment_script_value = launcher_settings.get("environment_script")
     if environment_script_value is None:
-        environment_script = None
+        loaded_profile = os.environ.get("SANDBOX_PROFILE")
+        environment_script = (
+            Path(loaded_profile).expanduser().resolve()
+            if loaded_profile
+            else None
+        )
     elif (
         not isinstance(environment_script_value, str)
         or not environment_script_value.strip()
@@ -2259,7 +2264,7 @@ def render_slurm_worker_script(
             "",
             "unset PYTHONPATH",
             'if [ -z "${SANDBOX_ENV:-}" ]; then',
-            '    echo "ERROR: SANDBOX_ENV is not set. Run ./bootstrap.sh --env and reload your shell before submitting."',
+            '    echo "ERROR: SANDBOX_ENV is not set. Configure launcher.environment_script or source ./sandbox_profile.sh before submitting."',
             "    exit 1",
             "fi",
             "",

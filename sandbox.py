@@ -51,9 +51,10 @@ def check_required_env_vars():
             print(f"{var}")
 
         print("")
-        print("Please source the sandbox environment before running:")
+        print("Create and source the Sandbox environment profile:")
         print("")
-        print("  source scripts/bootstrap/sandbox_env.sh or ./bootstrap.sh --env")
+        print("  cp configs/sandbox_profile.sh sandbox_profile.sh")
+        print("  source ./sandbox_profile.sh")
         print("")
 
         sys.exit(1)

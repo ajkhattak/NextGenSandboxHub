@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
-#USAGE: ./bootstrap.sh --check --env --sandbox --subset --ngen --models --troute
+#USAGE: ./bootstrap.sh --check --sandbox --subset --ngen --models --troute
 
 set -e
 #set -x
 
 RUN_CHECK=OFF
-SETUP_ENV=OFF
 BUILD_SANDBOX=OFF
 BUILD_SUBSET=OFF
 BUILD_NGEN=OFF
@@ -34,23 +33,23 @@ Usage:
   ./bootstrap.sh [OPTIONS]
 
 Common first-time sequence:
-  ./bootstrap.sh --env --verbose
+  cp configs/sandbox_profile.sh sandbox_profile.sh
+  source ./sandbox_profile.sh
   ./bootstrap.sh --check
   ./bootstrap.sh --sandbox
+  source ./sandbox_profile.sh
   ./bootstrap.sh --subset
   ./bootstrap.sh --ngen --models --troute
   ./bootstrap.sh --check
 
 Options:
   --check     Read-only diagnostic check
-  --env       Configure Sandbox environment variables
   --sandbox   Build Sandbox Python and forcing environments
   --subset    Build/install R subsetting dependencies
   --ngen      Build ngen
   --models    Build model libraries
   --troute    Build/install t-route
   --clean     Clean build artifacts where supported
-  --verbose   Print verbose environment setup output
   -h, --help  Show this help message
 EOF
 }
@@ -60,14 +59,12 @@ for arg in "$@"; do
     case $arg in
       -h|--help) usage; exit 0 ;;
       --check)   RUN_CHECK=ON ;;
-      --env)     SETUP_ENV=ON ;;
       --sandbox) BUILD_SANDBOX=ON ;;
       --subset)  BUILD_SUBSET=ON ;;
       --ngen)    BUILD_NGEN=ON ;;
       --models)  BUILD_MODELS=ON ;;
       --troute)  BUILD_TROUTE=ON ;;
       --clean)   BUILD_CLEAN=true ;;
-      --verbose) VERBOSE=ON;;
       *) echo "Unknown option: $arg"; exit 1 ;;
   esac
 done
@@ -75,7 +72,6 @@ done
 echo "========================================="
 echo "Configuration:"
 echo "  CHECK    : $RUN_CHECK"
-echo "  ENV      : $SETUP_ENV"
 echo "  SANDBOX  : $BUILD_SANDBOX"
 echo "  SUBSET   : $BUILD_SUBSET"
 echo "  NGEN     : $BUILD_NGEN"
@@ -114,7 +110,7 @@ add_recommendation() {
 recommendation_priority() {
     case "$1" in
         *"Install Python >= 3.11"*) echo 5 ;;
-        *"--env"*) echo 10 ;;
+        *"sandbox_profile.sh"*) echo 10 ;;
         *"--sandbox"*) echo 20 ;;
         *"conda activate"*|*"bin/activate"*) echo 25 ;;
         *"--subset"*|*"Install R packages"*) echo 30 ;;
@@ -417,8 +413,6 @@ run_check() {
     local expected_env=""
     local activate_command=""
     local os_name
-    local target_file=""
-    local source_line=""
     local R_PACKAGE_CHECK_FAILED=0
 
     script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -442,7 +436,7 @@ run_check() {
     if [ "$sandbox_dir" != "$script_dir" ]; then
         status_warn "SANDBOX_DIR points to a different repository: $sandbox_dir"
         echo "           Current repository: $script_dir"
-        add_recommendation "Update Sandbox paths: ./bootstrap.sh --env --verbose"
+        add_recommendation "Load the profile for this repository: source ./sandbox_profile.sh"
     fi
     show_path_value "SANDBOX_DIR" "$sandbox_dir"
     show_path_value "SANDBOX_BUILD_DIR" "$sandbox_build_dir"
@@ -454,35 +448,25 @@ run_check() {
 
     echo "Path Availability"
     check_dir "$sandbox_dir" "SANDBOX_DIR"
-    check_expected_dir "$sandbox_build_dir" "SANDBOX_BUILD_DIR" "./bootstrap.sh --env --verbose"
-    check_expected_dir "$sandbox_data_dir" "SANDBOX_DATA_DIR" "./bootstrap.sh --env --verbose"
+    check_expected_dir "$sandbox_build_dir" "SANDBOX_BUILD_DIR" "./bootstrap.sh --sandbox"
+    check_expected_dir "$sandbox_data_dir" "SANDBOX_DATA_DIR" "./bootstrap.sh --sandbox"
     if [ -f "$sandbox_condarc" ]; then
         status_ok "SANDBOX_CONDARC exists: $sandbox_condarc"
     else
         status_warn "SANDBOX_CONDARC does not exist yet: $sandbox_condarc"
-        echo "           Run: ./bootstrap.sh --env --verbose"
+        echo "           It will be created by: ./bootstrap.sh --sandbox"
     fi
     check_expected_dir "$ngen_dir" "NGEN_DIR build root" "./bootstrap.sh --ngen"
     echo ""
 
-    echo "Shell Setup"
-    if [[ "$SHELL" == *zsh ]]; then
-        target_file="$HOME/.zshrc"
-    elif [[ "$SHELL" == *bash ]]; then
-        if [ -f "$HOME/.bash_profile" ]; then
-            target_file="$HOME/.bash_profile"
-        else
-            target_file="$HOME/.bashrc"
-        fi
-    fi
-
-    source_line="[ -f \"$sandbox_dir/scripts/bootstrap/sandbox_env.sh\" ] && source \"$sandbox_dir/scripts/bootstrap/sandbox_env.sh\""
-    if [ -n "$target_file" ] && grep -Fxq "$source_line" "$target_file" 2>/dev/null; then
-        status_ok "Sandbox environment is registered in $target_file"
+    echo "Environment Profile"
+    if [ -n "${SANDBOX_PROFILE:-}" ] && [ -r "$SANDBOX_PROFILE" ]; then
+        status_ok "Loaded profile: $SANDBOX_PROFILE"
     else
-        status_warn "Sandbox environment is not registered in the detected shell startup file"
-        echo "           Run: ./bootstrap.sh --env --verbose"
-        add_recommendation "Run: ./bootstrap.sh --env --verbose"
+        status_warn "No Sandbox environment profile is loaded"
+        echo "           First copy the template: cp configs/sandbox_profile.sh sandbox_profile.sh"
+        echo "           Then load it: source ./sandbox_profile.sh"
+        add_recommendation "Load the Sandbox environment profile: source ./sandbox_profile.sh"
     fi
 
     for var in SANDBOX_DIR SANDBOX_BUILD_DIR SANDBOX_DATA_DIR SANDBOX_ENV FORCING_ENV NGEN_DIR; do
@@ -490,7 +474,7 @@ run_check() {
             status_ok "$var is set: ${!var}"
         else
             status_warn "$var is not set in the current shell"
-            add_recommendation "Run: ./bootstrap.sh --env --verbose"
+            add_recommendation "Load the Sandbox environment profile: source ./sandbox_profile.sh"
         fi
     done
     echo ""
@@ -518,6 +502,27 @@ run_check() {
     echo ""
 
     echo "Build Toolchain"
+    if ! check_command cmake "cmake"; then
+        add_recommendation "Install or load CMake in sandbox_profile.sh"
+    fi
+    if command -v nf-config >/dev/null 2>&1; then
+        status_ok "NetCDF Fortran config: $(command -v nf-config)"
+    else
+        status_fail "NetCDF Fortran config 'nf-config' not found"
+        add_recommendation "Load NetCDF Fortran in sandbox_profile.sh"
+    fi
+    if [ -n "${NETCDF_ROOT:-}" ]; then
+        if [ -d "$NETCDF_ROOT" ]; then
+            status_ok "NETCDF_ROOT: $NETCDF_ROOT"
+        else
+            status_fail "NETCDF_ROOT does not exist: $NETCDF_ROOT"
+            add_recommendation "Set a valid NETCDF_ROOT in sandbox_profile.sh"
+        fi
+    else
+        status_fail "NETCDF_ROOT is not set"
+        add_recommendation "Set NETCDF_ROOT in sandbox_profile.sh"
+    fi
+
     local mpi_c=""
     local mpi_cxx=""
     local mpi_fortran=""
@@ -781,11 +786,6 @@ if [ "$RUN_CHECK" = "ON" ]; then
     run_check
 fi
 
-
-# Run steps
-if [ "$SETUP_ENV" = "ON" ]; then
-    source ./scripts/bootstrap/sandbox_env.sh VERBOSE=$VERBOSE
-fi
 
 # Run steps
 if [ "$BUILD_SANDBOX" = "ON" ]; then

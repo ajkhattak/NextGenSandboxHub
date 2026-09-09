@@ -56,9 +56,10 @@ if [ -z "${SANDBOX_BUILD_DIR:-}" ] || [ -z "${SANDBOX_DIR:-}" ]; then
 ERROR: SANDBOX_DIR and SANDBOX_BUILD_DIR must be set before building subset dependencies.
 
 Run:
-  ./bootstrap.sh --env --verbose
+  cp configs/sandbox_profile.sh sandbox_profile.sh
+  source ./sandbox_profile.sh
 
-Then reload the environment if needed and rerun:
+Then rerun:
   ./bootstrap.sh --subset
 EOF
   exit 2

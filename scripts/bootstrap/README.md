@@ -7,10 +7,12 @@ be run directly.
 - `build_sandbox.sh` builds the Sandbox and forcing Python environments.
 - `build_venv_subset.sh` builds the R subsetting environment.
 - `build_models.sh` builds ngen, model libraries, and t-route.
-- `sandbox_env.sh` configures repository environment paths. Bootstrap uses its
-  persistent mode; `configs/sandbox_profile.sh` uses `PERSIST=OFF` for
-  current-shell and batch-job setup.
+- `sandbox_env.sh` is the internal, non-persistent path initializer sourced
+  by `configs/sandbox_profile.sh`.
 - `venv/` contains the environment definitions and validation reference.
+
+Users should copy and source `configs/sandbox_profile.sh`; the internal
+scripts never modify shell startup files.
 
 Use `./bootstrap.sh --help` from the repository root for supported setup
 commands.

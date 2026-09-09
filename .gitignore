@@ -89,6 +89,7 @@ basin_workflow/ngen_cal_plugins/build
 build/
 data/
 *.sif
+/sandbox_profile.sh
 
 #unit test
 # Ignore everything in test/

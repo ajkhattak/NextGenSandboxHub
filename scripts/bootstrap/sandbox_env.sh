@@ -1,64 +1,33 @@
 #!/usr/bin/env bash
 
-# Prevent multiple initializations
-if [ -n "${SANDBOX_ENV_LOADED:-}" ]; then
-    ALREADY_LOADED=ON
+# Internal path initialization shared by the user-facing environment profile
+# and bootstrap scripts. This file never modifies shell startup files.
+
+if [ -n "${BASH_VERSION:-}" ]; then
+    if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+        echo "ERROR: Source this script instead of executing it:"
+        echo "  source ${BASH_SOURCE[0]}"
+        exit 1
+    fi
+    ENV_SOURCE="${BASH_SOURCE[0]}"
+elif [ -n "${ZSH_VERSION:-}" ]; then
+    if [[ "${ZSH_EVAL_CONTEXT:-}" != *:file ]]; then
+        echo "ERROR: Source this script instead of executing it:"
+        echo "  source $0"
+        exit 1
+    fi
+    ENV_SOURCE="${(%):-%N}"
 else
-    export SANDBOX_ENV_LOADED=1
-    ALREADY_LOADED=OFF
+    echo "ERROR: NextGenSandbox supports Bash and zsh environment profiles."
+    return 1
 fi
 
-
-ENV_VERBOSE=${VERBOSE:-OFF}
-ENV_PERSIST=${PERSIST:-${SANDBOX_ENV_PERSIST:-ON}}
-
-
-for arg in "$@"; do
-    key="${arg%%=*}"
-    value="${arg#*=}"
-
-    case "$key" in
-        VERBOSE) ENV_VERBOSE="$value" ;;
-        PERSIST) ENV_PERSIST="$value" ;;
-        *) echo "Warning: unrecognized argument '$arg'" ;;
-    esac
-done
-
-case "$ENV_PERSIST" in
-    ON|OFF) ;;
-    *)
-        echo "ERROR: PERSIST must be ON or OFF."
-        return 1
-        ;;
-esac
-
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    echo ""
-    echo "ERROR: Please source this script:"
-    echo ""
-    echo "    source $(basename "$0")"
-    echo ""
-    exit 1
-fi
-
-######## PATH DETECTION #########
-
-if [ -n "${BASH_SOURCE[0]:-}" ]; then
-    SOURCE="${BASH_SOURCE[0]}"
-else
-    SOURCE="$0"
-fi
-
-# Path detection
-
-SCRIPT_DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
-SCRIPT_PATH="$SCRIPT_DIR/$(basename "$SOURCE")"
-
+ENV_SCRIPT_DIR="$(cd "$(dirname "$ENV_SOURCE")" && pwd -P)"
 PREVIOUS_SANDBOX_DIR="${SANDBOX_DIR:-}"
-SANDBOX_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SANDBOX_DIR="$(cd "$ENV_SCRIPT_DIR/../.." && pwd -P)"
 
-# Clear default child paths inherited from a different Sandbox clone. Explicit
-# paths outside the previous repository are preserved for HPC/scratch use.
+# Clear clone-relative defaults inherited from another checkout. Explicit
+# build and data paths outside that checkout remain available to profiles.
 if [ -n "$PREVIOUS_SANDBOX_DIR" ] && [ "$PREVIOUS_SANDBOX_DIR" != "$SANDBOX_DIR" ]; then
     for var in SANDBOX_BUILD_DIR SANDBOX_DATA_DIR SANDBOX_CONDARC; do
         eval "value=\${$var:-}"
@@ -71,14 +40,10 @@ fi
 SANDBOX_BUILD_DIR="${SANDBOX_BUILD_DIR:-$SANDBOX_DIR/build}"
 SANDBOX_DATA_DIR="${SANDBOX_DATA_DIR:-$SANDBOX_DIR/data}"
 SANDBOX_CONDARC="${SANDBOX_CONDARC:-$SANDBOX_BUILD_DIR/condarc}"
-
 NGEN_DIR="$SANDBOX_BUILD_DIR/ngen"
-
 SANDBOX_ENV="$SANDBOX_BUILD_DIR/venv/sandbox"
 FORCING_ENV="$SANDBOX_BUILD_DIR/venv/forcing"
 
-
-########## Export environment #########
 export SANDBOX_DIR
 export SANDBOX_BUILD_DIR
 export SANDBOX_DATA_DIR
@@ -86,112 +51,4 @@ export SANDBOX_CONDARC
 export NGEN_DIR
 export SANDBOX_ENV
 export FORCING_ENV
-
 export CONDARC="$SANDBOX_CONDARC"
-
-mkdir -p "$SANDBOX_BUILD_DIR"
-mkdir -p "$SANDBOX_DATA_DIR"
-touch "$SANDBOX_CONDARC"
-
-######### Detect target shell config #####
-if [ "$ENV_PERSIST" = "ON" ] && [[ "${SHELL:-}" == *zsh ]]; then
-
-    TARGET_FILE="$HOME/.zshrc"
-
-elif [ "$ENV_PERSIST" = "ON" ] && [[ "${SHELL:-}" == *bash ]]; then
-
-    if [ -f "$HOME/.bash_profile" ]; then
-        TARGET_FILE="$HOME/.bash_profile"
-    else
-        TARGET_FILE="$HOME/.bashrc"
-    fi
-
-elif [ "$ENV_PERSIST" = "ON" ]; then
-    echo ""
-    echo "ERROR: Unsupported shell: $SHELL"
-    echo ""
-    return 1
-fi
-
-
-############ Persist configuration ##############
-if [ "$ENV_PERSIST" = "ON" ]; then
-    SOURCE_LINE="[ -f \"$SCRIPT_PATH\" ] && source \"$SCRIPT_PATH\""
-
-
-    if ! grep -Fxq "$SOURCE_LINE" "$TARGET_FILE" 2>/dev/null; then
-
-        echo ""
-        echo "Adding sandbox environment to:"
-        echo "    $TARGET_FILE"
-        echo ""
-
-        echo "$SOURCE_LINE" >> "$TARGET_FILE"
-
-        if [ $? -ne 0 ]; then
-            echo "ERROR: Failed to update $TARGET_FILE"
-            return 1
-        fi
-
-        echo "Shell configuration updated successfully."
-        echo ""
-
-        echo "IMPORTANT:"
-        echo "The sandbox environment will be loaded automatically for future terminal sessions."
-        echo ""
-        echo "To use the environment in the current terminal, either:"
-        echo ""
-        echo "  source $TARGET_FILE"
-        echo ""
-        echo "or open a new terminal window."
-        echo ""
-
-    fi
-
-    ###### Validate persistence ########
-    if ! grep -Fxq "$SOURCE_LINE" "$TARGET_FILE" 2>/dev/null; then
-        echo "ERROR: Failed to validate persistent environment setup."
-        return 1
-    fi
-fi
-
-
-# Validate environment
-for var in \
-    SANDBOX_DIR \
-    SANDBOX_BUILD_DIR \
-    SANDBOX_DATA_DIR \
-    SANDBOX_CONDARC \
-    NGEN_DIR \
-    SANDBOX_ENV \
-    FORCING_ENV
-do
-    eval "value=\${$var}"
-
-    if [ -z "$value" ]; then
-        echo "ERROR: Missing environment variable: $var"
-        return 1
-    fi
-    
-done
-
-if [ "$ENV_VERBOSE" = "ON" ]; then
-    if [ "$ALREADY_LOADED" = "ON" ]; then
-        echo "Sandbox environment already loaded."
-        echo "SANDBOX_DIR        : $SANDBOX_DIR"
-        echo "SANDBOX_BUILD_DIR  : $SANDBOX_BUILD_DIR"
-        echo "SANDBOX_DATA_DIR   : $SANDBOX_DATA_DIR"
-        echo "SANDBOX_CONDARC    : $SANDBOX_CONDARC"
-        echo "NGEN_DIR           : $NGEN_DIR"
-        echo "SANDBOX_ENV        : $SANDBOX_ENV"
-        echo "FORCING_ENV        : $FORCING_ENV"
-        echo ""
-    elif [ "$ENV_PERSIST" = "ON" ]; then
-        echo "Sandbox environment successfully configured, but not loaded yet"
-        echo "  source $TARGET_FILE"
-    else
-        echo "Sandbox environment loaded for the current shell."
-        echo "Shell startup files were not modified (PERSIST=OFF)."
-    fi
-
-fi

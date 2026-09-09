@@ -4,6 +4,7 @@ This page collects common setup and workflow issues without crowding the main
 installation guide. Start with:
 
 ```bash
+source ./sandbox_profile.sh
 ./bootstrap.sh --check
 ```
 
@@ -24,6 +25,30 @@ When output is written directly to an interactive terminal, these status labels
 are colored for readability. Redirected output remains plain text. Set
 `NO_COLOR=1` to disable terminal colors. The check ends with a deduplicated
 `Recommended Next Steps` list based on the issues it detected.
+
+## Environment Profile Is Not Loaded
+
+Symptom from `./bootstrap.sh --check`:
+
+```text
+[WARN] No Sandbox environment profile is loaded
+```
+
+Create the installation-specific profile once, then source it in every new
+terminal:
+
+```bash
+cp configs/sandbox_profile.sh sandbox_profile.sh
+source ./sandbox_profile.sh
+```
+
+Do not add the internal `scripts/bootstrap/sandbox_env.sh` file directly to a
+shell startup file. Customize and reuse the profile instead.
+
+Installations created by an older release may already contain a line that
+sources `scripts/bootstrap/sandbox_env.sh` in `.bashrc`, `.bash_profile`, or
+`.zshrc`. Remove that line once the profile workflow is in use; current
+versions do not modify shell startup files.
 
 ## Wrong Python Environment
 
@@ -55,13 +80,7 @@ Expected: both should point under `$SANDBOX_ENV` or the Sandbox repository.
 Fix:
 
 ```bash
-source "$SANDBOX_ENV/bin/activate"
-```
-
-or, if using conda:
-
-```bash
-conda activate "$SANDBOX_ENV"
+source ./sandbox_profile.sh
 ```
 
 ## Missing Subsetting R Packages
@@ -187,7 +206,7 @@ sandbox_env_path="$SANDBOX_ENV"
 conda deactivate
 conda env remove -p "$sandbox_env_path"
 ./bootstrap.sh --sandbox
-conda activate "$SANDBOX_ENV"
+source ./sandbox_profile.sh
 ./bootstrap.sh --check
 ```
 

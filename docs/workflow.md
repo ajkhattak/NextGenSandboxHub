@@ -7,16 +7,11 @@ preparation and Sandbox Launcher.
 
 ## Before Starting
 
-From the NextGenSandbox repository, activate the Sandbox Python environment:
+From the NextGenSandbox repository, load the profile used for this
+installation:
 
 ```bash
-conda activate "$SANDBOX_ENV"
-```
-
-or:
-
-```bash
-source "$SANDBOX_ENV/bin/activate"
+source ./sandbox_profile.sh
 ```
 
 Confirm that the installation is ready:
