@@ -177,7 +177,7 @@ If only one component is missing, run the matching flag, such as
 
 ## Linux C++ Runtime Or Compiler Mismatch
 
-Symptoms when starting ngen may include:
+Symptoms while linking or starting ngen may include:
 
 ```text
 version `GLIBCXX_3.4.30' not found
@@ -189,7 +189,9 @@ selected from the HPC compiler modules. Current conda-forge Python and NumPy
 builds cannot be solved against the older GCC 11 runtime. Sandbox therefore
 keeps the compiler, MPI, NetCDF, and UDUNITS module paths and applies Conda's
 newer, backward-compatible C++ runtime only to ngen and ngen-cal child
-processes.
+processes. On Linux, `sandbox_profile.sh` also prepends `$SANDBOX_ENV/lib` to
+`LIBRARY_PATH` so the same runtime is available when linking ngen and model
+libraries. Existing module library paths remain available after it.
 
 Confirm the runtime and other shared dependencies with:
 
@@ -228,11 +230,38 @@ export F90="$FC"
 ./bootstrap.sh --check
 ```
 
+For routine HPC builds, prefer GCC with an OpenMPI and NetCDF stack built using
+the same GCC version. Keep optional Intel builds in a separate
+`SANDBOX_BUILD_DIR`. Do not set `FC=gfortran` while `CC` and `CXX` use
+Intel-backed MPI wrappers; that mixes compiler runtimes within one build.
+
 If the check says the existing ngen CMake compilers use a different compiler
 family, rebuild the compiled components with
 `./bootstrap.sh --ngen --models --troute --clean`. Preserve any `LIBRARY_PATH`
 set by the loaded compiler and NetCDF modules because t-route uses it while
 linking native extensions. Do not replace it with `LD_LIBRARY_PATH`.
+
+### Intel compilers with OpenMPI
+
+Older t-route setup files assume that any Intel compiler is paired with Intel
+MPI and try to link `libmpifort`. OpenMPI does not provide that Intel MPI
+library. NextGenSandbox detects an Intel Fortran compiler behind an OpenMPI
+wrapper and adjusts the t-route wheel build to use OpenMPI's `libmpi` plus the
+Intel compiler runtime libraries. This is a temporary compatibility adjustment
+that can be removed after t-route detects the MPI implementation upstream.
+
+If the t-route wheel still fails, retain the first linker error printed above
+`Failed building wheel for troute.network`; the final `CalledProcessError` only
+reports that the link command failed. Confirm the active wrappers with:
+
+```bash
+mpicc --showme:command
+mpifort --showme:command
+mpifort --showme:link
+```
+
+All three commands must describe the compiler and OpenMPI installation loaded
+by the active Sandbox profile.
 
 ## Git Submodules Not Initialized
 

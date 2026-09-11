@@ -34,10 +34,16 @@ Build environments, compiled software, and package caches are stored under
 `$SANDBOX_BUILD_DIR`. On an HPC system, choose a project or scratch filesystem
 with sufficient quota instead of a small home directory.
 
+For routine HPC installations, the recommended build stack is GCC with an
+OpenMPI module built using that GCC version. Load NetCDF and other compiled
+libraries from the same compiler family. Intel builds are supported as a
+separate, optional profile and should use MPI and libraries built with the
+Intel compiler.
+
 ## Quick Path
 
-Run these commands from Bash or zsh. HPC users should first identify the
-compiler, MPI, NetCDF, CMake, Python, and conda modules required by their site.
+Run these commands from Bash or zsh. HPC users should first identify a matched
+compiler, MPI, NetCDF, CMake, Python, and conda module stack for their site.
 
 ### 1. Clone and load the environment profile
 
@@ -161,6 +167,32 @@ configuration. Local users can keep its defaults. HPC users should edit it to:
 - set `NETCDF_ROOT` or other site-specific library paths when they cannot be
   detected.
 
+#### Choose one HPC toolchain
+
+GCC with a matching OpenMPI installation is the recommended production setup
+because it is widely available across HPC systems. A typical profile uses:
+
+```bash
+module load gcc/<version>
+module load openmpi/<version-built-with-gcc>
+module load netcdf-fortran/<version-built-with-gcc>
+export SANDBOX_BUILD_DIR="$SANDBOX_REPO/build/gcc"
+```
+
+An Intel build should use a separate profile and build directory:
+
+```bash
+module load intel/<version>
+module load openmpi/<version-built-with-intel>
+module load netcdf-fortran/<version-built-with-intel>
+export SANDBOX_BUILD_DIR="$SANDBOX_REPO/build/intel"
+```
+
+In both profiles, let `sandbox_profile.sh` select `mpicc`, `mpicxx`, and
+`mpifort`. Do not set `FC=gfortran` inside an otherwise Intel-based profile;
+that creates a mixed compiler build and loads both GNU and Intel Fortran
+runtimes.
+
 Load the profile and run the initial check:
 
 ```bash
@@ -283,7 +315,9 @@ The components may also be built separately:
 ```
 
 Set a distinct `SANDBOX_BUILD_DIR` in each profile, such as `build/gcc` or
-`build/intel`, so compiled libraries from different toolchains never mix.
+`build/intel`, so compiled libraries from different toolchains never mix. Do
+not reuse an existing build directory after changing the compiler or MPI
+implementation.
 
 ### Step 6: Run the final installation check
 

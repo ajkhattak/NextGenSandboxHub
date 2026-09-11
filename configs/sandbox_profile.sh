@@ -45,20 +45,28 @@ if [ ! -f "$SANDBOX_REPO/scripts/bootstrap/sandbox_env.sh" ]; then
 fi
 
 # Customize this section for the compiler/MPI stack on the current system.
+# GCC with a GCC-built OpenMPI is the recommended HPC starting point. Load
+# NetCDF and other compiled libraries built with the same compiler family.
 # Keep every compiler-dependent build in its own directory.
 #
 # module --force purge
-# module load intel/19.1.3.304
-# module load openmpi/4.1.6
+# module load gcc/<version>
+# module load openmpi/<version-built-with-gcc>
 # module load sqlite/3.35.5
 # module load udunits/2.2.28
 # module load cmake/3.20.0
-# module load netcdf-fortran/4.5.3
+# module load netcdf-fortran/<version-built-with-gcc>
 # module load conda/2026.03
 #
-# export SANDBOX_BUILD_DIR="$SANDBOX_REPO/build/intel"
+# export SANDBOX_BUILD_DIR="$SANDBOX_REPO/build/gcc"
 # export NETCDF_ROOT="$(nf-config --prefix)"
 # export BOOST_ROOT="/path/to/boost"
+#
+# Intel builds are optional. Use a separate profile and build directory, and
+# load Intel-built MPI, NetCDF, and supporting libraries consistently:
+#   module load intel/<version>
+#   module load openmpi/<version-built-with-intel>
+#   export SANDBOX_BUILD_DIR="$SANDBOX_REPO/build/intel"
 
 # Use the loaded MPI wrappers by default, replacing unrelated compiler values
 # inherited from the parent shell.
@@ -99,6 +107,12 @@ export SANDBOX_CONDARC="$SANDBOX_BUILD_DIR/condarc"
 # modified.
 source "$SANDBOX_REPO/scripts/bootstrap/sandbox_env.sh"
 
+# Show the active Conda environment in the shell prompt by default. Set
+# CONDA_CHANGEPS1=false before sourcing this profile to keep the prompt unchanged.
+export CONDA_CHANGEPS1="${CONDA_CHANGEPS1:-true}"
+# Display only the environment directory name for path-based environments.
+export CONDA_ENV_PROMPT='({name}) '
+
 if [ -x "$SANDBOX_ENV/bin/python" ]; then
     if [ -d "$SANDBOX_ENV/conda-meta" ]; then
         if command -v conda >/dev/null 2>&1; then
@@ -125,6 +139,16 @@ if [ -x "$SANDBOX_ENV/bin/python" ]; then
 else
     echo "Sandbox environment has not been built for this profile."
     echo "  Run: $SANDBOX_REPO/bootstrap.sh --sandbox"
+fi
+
+# Conda packages can require a newer, backward-compatible GNU C++ runtime than
+# the compiler modules provide. Apply this after activation, while retaining
+# the compiler, MPI, and NetCDF library paths supplied by the loaded modules.
+if [ "$(uname -s)" = "Linux" ] && [ -f "$SANDBOX_ENV/lib/libstdc++.so.6" ]; then
+    case ":${LIBRARY_PATH:-}:" in
+        *":$SANDBOX_ENV/lib:"*) ;;
+        *) export LIBRARY_PATH="$SANDBOX_ENV/lib${LIBRARY_PATH:+:$LIBRARY_PATH}" ;;
+    esac
 fi
 
 case ":$PATH:" in

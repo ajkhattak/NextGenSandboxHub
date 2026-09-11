@@ -3,6 +3,11 @@
 NextGenSandbox uses one environment-profile workflow on local computers and
 HPC systems. From the repository root:
 
+On HPC systems, use GCC with a matching GCC-built OpenMPI stack for the routine
+build. Keep optional Intel builds in a distinct profile and
+`SANDBOX_BUILD_DIR`; do not mix raw GNU compilers with Intel-backed MPI
+wrappers.
+
 ```bash
 cp configs/sandbox_profile.sh sandbox_profile.sh
 source ./sandbox_profile.sh

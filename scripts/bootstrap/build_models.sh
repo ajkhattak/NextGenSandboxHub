@@ -153,6 +153,10 @@ build_ngen()
 
 build_troute()
 {
+    local compiler_status=0
+    local fc_version
+    local setup_file
+
     if [ ${HF_VERSION} == 2.2 ]; then
 	pushd $NGEN_DIR/extern
 	clone_or_update "https://github.com/shorvath-noaa/t-route" "t-route-hf2.2"
@@ -183,16 +187,28 @@ build_troute()
         echo "Patching $MAKEFILE_PATH to use $NETCDF_FORTRAN_CONFIG..."
         sed -i "s/nc-config/$NETCDF_FORTRAN_CONFIG/g" "$MAKEFILE_PATH"
 
+        # t-route assumes Intel compilers use Intel MPI's libmpifort. OpenMPI
+        # does not provide that library, and these extensions only need libmpi.
+        fc_version="$("${FC}" --version 2>&1 || true)"
+        if [[ "$fc_version" == *Intel* || "$fc_version" == *ifort* || "$fc_version" == *ifx* ]] \
+            && "${FC}" --showme:link >/dev/null 2>&1; then
+            echo "Configuring t-route for Intel compilers with OpenMPI..."
+            for setup_file in src/troute-network/setup.py src/troute-routing/setup.py; do
+                sed -i "s/'mpifort','mpi'/'mpi'/g" "$setup_file"
+            done
+        fi
+
     fi
 
     if [[ "$(uname)" == "Darwin" ]]; then
-	NETCDF=$(brew --prefix netcdf-fortran)/include LIBRARY_PATH=$(brew --prefix gcc)/lib/gcc/current/:$(brew --prefix)/lib:$LIBRARY_PATH FC=$FC CC=$CC F90=$FC ./compiler.sh no-e
+	NETCDF=$(brew --prefix netcdf-fortran)/include LIBRARY_PATH=$(brew --prefix gcc)/lib/gcc/current/:$(brew --prefix)/lib:$LIBRARY_PATH FC=$FC CC=$CC F90=$FC ./compiler.sh no-e || compiler_status=$?
     else
 	export NETCDF=${NETCDF_ROOT}/include
-	./compiler.sh no-e
+	./compiler.sh no-e || compiler_status=$?
     fi
 
     popd
+    return "$compiler_status"
 }
 
 
