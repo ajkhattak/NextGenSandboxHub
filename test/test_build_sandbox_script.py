@@ -14,6 +14,10 @@ class TestBuildSandboxScript(unittest.TestCase):
         cls.script = (
             cls.repo_root / "scripts" / "bootstrap" / "build_sandbox.sh"
         ).read_text()
+        cls.model_script = (
+            cls.repo_root / "scripts" / "bootstrap" / "build_models.sh"
+        ).read_text()
+        cls.profile = (cls.repo_root / "configs" / "sandbox_profile.sh").read_text()
 
     def test_bootstrap_uses_internal_script_directory(self):
         self.assertIn("./scripts/bootstrap/build_sandbox.sh", self.bootstrap)
@@ -50,6 +54,17 @@ class TestBuildSandboxScript(unittest.TestCase):
     def test_does_not_require_uv(self):
         self.assertNotIn("uv pip install", self.script)
         self.assertNotIn("pip install uv", self.script)
+
+    def test_build_parallelism_uses_profile_setting(self):
+        self.assertIn(
+            'export SANDBOX_BUILD_JOBS="${SANDBOX_BUILD_JOBS:-2}"',
+            self.profile,
+        )
+        self.assertIn('BUILD_JOBS=${SANDBOX_BUILD_JOBS:-2}', self.model_script)
+        self.assertEqual(
+            self.model_script.count('--parallel "$BUILD_JOBS"'),
+            2,
+        )
 
     def test_installs_with_target_environment_python(self):
         self.assertIn(

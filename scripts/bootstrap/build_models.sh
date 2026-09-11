@@ -19,6 +19,12 @@ BUILD_NGEN=${NGEN:-OFF}
 BUILD_MODELS=${MODELS:-OFF}
 BUILD_TROUTE=${TROUTE:-OFF}
 BUILD_CLEAN=${CLEAN:-false}
+BUILD_JOBS=${SANDBOX_BUILD_JOBS:-2}
+
+if ! [[ "$BUILD_JOBS" =~ ^[1-9][0-9]*$ ]]; then
+    echo "Error: SANDBOX_BUILD_JOBS must be a positive integer; received '$BUILD_JOBS'."
+    exit 1
+fi
 
 # NextGenSandbox releases build against a tested ngen revision. Update this
 # commit deliberately after the Sandbox smoke tests pass with the new version.
@@ -144,9 +150,7 @@ build_ngen()
 	  -B ${builddir} \
 	  -S .
 
-    #make -j8 -C ${builddir}
-    # run the following if ran into tests timeout issues
-    cmake --build ${builddir} --target ngen -j8
+    cmake --build "${builddir}" --target ngen --parallel "$BUILD_JOBS"
     popd >/dev/null || return 1
 }
 
@@ -232,7 +236,7 @@ build_models() {
         fi
 
 	cmake -B "$build" -S "$src" "$@"
-        cmake --build "$build" -j
+        cmake --build "$build" --parallel "$BUILD_JOBS"
 	
     }
 

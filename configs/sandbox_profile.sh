@@ -59,6 +59,7 @@ fi
 # module load conda/2026.03
 #
 # export SANDBOX_BUILD_DIR="$SANDBOX_REPO/build/gcc"
+# export SANDBOX_BUILD_JOBS=2
 # export NETCDF_ROOT="$(nf-config --prefix)"
 # export BOOST_ROOT="/path/to/boost"
 #
@@ -101,6 +102,7 @@ fi
 export SANDBOX_REPO
 export SANDBOX_PROFILE
 export SANDBOX_BUILD_DIR="${SANDBOX_BUILD_DIR:-$SANDBOX_REPO/build}"
+export SANDBOX_BUILD_JOBS="${SANDBOX_BUILD_JOBS:-2}"
 export SANDBOX_CONDARC="$SANDBOX_BUILD_DIR/condarc"
 
 # Load repository paths for this shell/job only. Shell startup files are never
@@ -160,4 +162,5 @@ export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
 echo "NextGenSandbox profile loaded."
 echo "  Repository : $SANDBOX_DIR"
 echo "  Build      : $SANDBOX_BUILD_DIR"
+echo "  Build jobs : $SANDBOX_BUILD_JOBS"
 echo "  Environment: $SANDBOX_ENV"

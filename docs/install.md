@@ -32,7 +32,9 @@ startup files, and can also be used by Sandbox Launcher jobs.
 
 Build environments, compiled software, and package caches are stored under
 `$SANDBOX_BUILD_DIR`. On an HPC system, choose a project or scratch filesystem
-with sufficient quota instead of a small home directory.
+with sufficient quota instead of a small home directory. Compiled components
+use `SANDBOX_BUILD_JOBS=2` by default; increase it only when the build node has
+enough memory for additional concurrent compiler processes.
 
 For routine HPC installations, the recommended build stack is GCC with an
 OpenMPI module built using that GCC version. Load NetCDF and other compiled
@@ -164,6 +166,7 @@ configuration. Local users can keep its defaults. HPC users should edit it to:
 
 - load a consistent compiler, MPI, NetCDF, CMake, and conda module stack;
 - set compiler-specific build storage through `SANDBOX_BUILD_DIR`;
+- set `SANDBOX_BUILD_JOBS` to the desired build parallelism, normally `2`;
 - set `NETCDF_ROOT` or other site-specific library paths when they cannot be
   detected.
 

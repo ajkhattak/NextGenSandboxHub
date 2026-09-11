@@ -263,6 +263,20 @@ mpifort --showme:link
 All three commands must describe the compiler and OpenMPI installation loaded
 by the active Sandbox profile.
 
+### Compiler terminated by a kill signal
+
+A compiler process terminated by `kill signal` commonly indicates that the
+build exceeded available memory. The profile defaults to two concurrent CMake
+build processes. Reduce it to one on a memory-constrained node:
+
+```bash
+export SANDBOX_BUILD_JOBS=1
+./bootstrap.sh --ngen --models
+```
+
+Increase `SANDBOX_BUILD_JOBS` only when the build node has enough memory. This
+setting controls ngen and model compilation; the t-route build remains serial.
+
 ## Git Submodules Not Initialized
 
 Symptom:
