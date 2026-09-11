@@ -98,7 +98,14 @@ class TRouteConfigurationGenerator(ConfigurationGenerator):
                 layer="flowpath-attributes",
             ),
         )
-        terminal_flowpaths = {
+        output_mask = {
+            "nex": [
+                self._numeric_feature_id(
+                    terminal_nexus_id,
+                    feature_type="nexus",
+                    gpkg_file=self.static_data.gpkg_file,
+                )
+            ],
             "wb": self._terminal_flowpath_ids(
                 network,
                 terminal_nexus_id,
@@ -109,7 +116,7 @@ class TRouteConfigurationGenerator(ConfigurationGenerator):
         }
         with open(mask_output_file, 'w') as file:
             yaml.dump(
-                terminal_flowpaths,
+                output_mask,
                 file,
                 default_flow_style=False,
                 sort_keys=False,
@@ -163,15 +170,26 @@ class TRouteConfigurationGenerator(ConfigurationGenerator):
 
         flowpath_ids = []
         for value in matches:
-            identifier = value.rsplit("-", 1)[-1]
-            try:
-                flowpath_ids.append(int(identifier))
-            except ValueError as error:
-                raise ValueError(
-                    f"Invalid flowpath ID '{value}' for terminal nexus "
-                    f"'{terminal_nexus_id}' in {gpkg_file}."
-                ) from error
+            flowpath_ids.append(
+                TRouteConfigurationGenerator._numeric_feature_id(
+                    value,
+                    feature_type=(
+                        f"flowpath for terminal nexus '{terminal_nexus_id}'"
+                    ),
+                    gpkg_file=gpkg_file,
+                )
+            )
         return flowpath_ids
+
+    @staticmethod
+    def _numeric_feature_id(value, *, feature_type, gpkg_file):
+        identifier = str(value).rsplit("-", 1)[-1]
+        try:
+            return int(identifier)
+        except ValueError as error:
+            raise ValueError(
+                f"Invalid {feature_type} ID '{value}' in {gpkg_file}."
+            ) from error
 
     @staticmethod
     def _terminal_nexus_id(

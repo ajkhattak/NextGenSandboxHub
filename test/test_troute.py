@@ -11,7 +11,7 @@ from src.python.models.troute import TRouteConfigurationGenerator
 
 
 class TestTRouteConfigurationGenerator(unittest.TestCase):
-    def test_all_tasks_mask_stream_output_to_terminal_flowpaths(self):
+    def test_all_tasks_mask_stream_output_to_terminal_nexus_and_flowpaths(self):
         network = pd.DataFrame(
             {
                 "id": ["wb-423185", "wb-423184"],
@@ -87,7 +87,10 @@ class TestTRouteConfigurationGenerator(unittest.TestCase):
 
                 self.assertEqual(
                     yaml.safe_load(mask_file.read_text()),
-                    {"wb": [423185, 423184]},
+                    {
+                        "nex": [423186],
+                        "wb": [423185, 423184],
+                    },
                 )
                 self.assertEqual(stream_output["mask_output"], str(mask_file))
                 expected_directory = (
