@@ -33,6 +33,13 @@ message("Platform: ", os_type)
 
 options(repos = c(CRAN = "https://cloud.r-project.org"))
 
+build_jobs <- suppressWarnings(as.integer(
+  Sys.getenv("SANDBOX_BUILD_JOBS", unset = "2")
+))
+if (is.na(build_jobs) || build_jobs < 1) {
+  stop("SANDBOX_BUILD_JOBS must be a positive integer.")
+}
+
 if (Sys.info()['sysname'] == "Windows") {
   options(download.file.method = "curl", download.file.extra="-k -L")
 }
@@ -144,7 +151,7 @@ for (repo in github_packages) {
         upgrade = "never",
         dependencies = c("Depends", "Imports", "LinkingTo"),
         build_vignettes = FALSE,
-        Ncpus = 4
+        Ncpus = build_jobs
       )
     } else {
       stop(

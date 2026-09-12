@@ -34,6 +34,7 @@ Common causes on HPC systems:
   - conda is provided by a module that is not loaded in this shell
   - the home-directory conda cache is full or over quota
   - a previous failed conda/mamba solve left partial packages in ~/.conda/pkgs
+  - an R package dependency could not be installed or compiled
 
 This script sets conda package and environment caches under:
   $SANDBOX_BUILD_DIR/rvenv/conda_pkgs
@@ -110,6 +111,7 @@ SUBSET_RSCRIPT="${SUBSET_ENV}/bin/Rscript"
 CONDA_SUBDIR="$(conda info | awk -F: '/platform/{gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2; exit}')"
 LOCKFILE="${SANDBOX_DIR}/scripts/bootstrap/venv/venv_subset.${CONDA_SUBDIR}.lock"
 LEGACY_LOCKFILE="${SANDBOX_DIR}/scripts/bootstrap/venv/venv_subset.lock"
+GENERATE_LOCKFILE=false
 
 lockfile_matches_platform() {
   local lockfile="$1"
@@ -138,6 +140,10 @@ fi
 if [ ! -x "$SUBSET_RSCRIPT" ]; then
   # Use lockfile if available (fast), otherwise solve from YAML (slow, first time)
   if [ -f "$LOCKFILE" ]; then
+    if ! lockfile_matches_platform "$LOCKFILE"; then
+      echo "ERROR: Subset lockfile does not match platform ${CONDA_SUBDIR}: $LOCKFILE" >&2
+      exit 4
+    fi
     echo "Using lockfile for ${CONDA_SUBDIR} — skipping solver"
     conda create -y -p "$SUBSET_ENV" --file "$LOCKFILE"
   elif [ -f "$LEGACY_LOCKFILE" ] && lockfile_matches_platform "$LEGACY_LOCKFILE"; then
@@ -147,9 +153,24 @@ if [ ! -x "$SUBSET_RSCRIPT" ]; then
     echo "No lockfile found — solving from YAML (this will be slow once)"
     mamba env create -y -p "$SUBSET_ENV" \
       -f "${SANDBOX_DIR}/scripts/bootstrap/venv/venv_subset.yaml"
-    # Save lockfile for next time
-    conda list -p "$SUBSET_ENV" --explicit > "$LOCKFILE"
+    GENERATE_LOCKFILE=true
   fi
+fi
+
+# hfsubsetR depends on nhdplusTools -> hydroloom -> RANN. Install the Conda
+# binary instead of compiling CRAN RANN with the environment's newer C++
+# compiler. This also updates environments created from an older lockfile.
+if ! "$SUBSET_RSCRIPT" -e \
+  'quit(status = if (requireNamespace("RANN", quietly = TRUE)) 0 else 1)' \
+  >/dev/null 2>&1; then
+  echo "Installing binary RANN dependency for hfsubsetR..."
+  "${SANDBOX_BUILD_DIR}/rvenv/mamba/bin/mamba" install -y \
+    -p "$SUBSET_ENV" -c conda-forge r-rann
+fi
+
+if [ "$GENERATE_LOCKFILE" = true ]; then
+  # Capture the final Conda environment after required binary repairs.
+  conda list -p "$SUBSET_ENV" --explicit > "$LOCKFILE"
 fi
 
 set +u; mamba activate "$SUBSET_ENV"; set -u

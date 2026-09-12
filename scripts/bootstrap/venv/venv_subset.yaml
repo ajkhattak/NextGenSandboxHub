@@ -36,6 +36,7 @@ dependencies:
   - r-xml2
 
   # optional / helpers for GitHub packages
+  - r-rann
   - r-arrow
   - r-dbplyr
   - r-collapse

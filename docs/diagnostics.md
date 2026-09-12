@@ -115,6 +115,20 @@ Then rerun:
 ./bootstrap.sh --check
 ```
 
+### RANN compilation fails while installing hfsubsetR
+
+A failure containing `DBL_MAX was not declared` while compiling CRAN `RANN`
+prevents the dependent `hydroloom`, `nhdplusTools`, and `hfsubsetR` packages
+from installing. Current Sandbox environments install the Conda `r-rann`
+binary and avoid that source compilation. Update the repository and rerun:
+
+```bash
+./bootstrap.sh --subset
+```
+
+An existing subset environment is updated in place when `RANN` is missing; it
+does not need to be deleted and rebuilt.
+
 ## Subset Build Cannot Find Conda Or Hits Home Quota
 
 Symptoms from `./bootstrap.sh --subset`:

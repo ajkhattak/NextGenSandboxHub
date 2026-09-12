@@ -17,6 +17,19 @@ class TestBuildSandboxScript(unittest.TestCase):
         cls.model_script = (
             cls.repo_root / "scripts" / "bootstrap" / "build_models.sh"
         ).read_text()
+        cls.subset_script = (
+            cls.repo_root / "scripts" / "bootstrap" / "build_venv_subset.sh"
+        ).read_text()
+        cls.subset_environment = (
+            cls.repo_root / "scripts" / "bootstrap" / "venv" / "venv_subset.yaml"
+        ).read_text()
+        cls.subset_linux_lock = (
+            cls.repo_root
+            / "scripts"
+            / "bootstrap"
+            / "venv"
+            / "venv_subset.linux-64.lock"
+        ).read_text()
         cls.profile = (cls.repo_root / "configs" / "sandbox_profile.sh").read_text()
 
     def test_bootstrap_uses_internal_script_directory(self):
@@ -65,6 +78,20 @@ class TestBuildSandboxScript(unittest.TestCase):
             self.model_script.count('--parallel "$BUILD_JOBS"'),
             2,
         )
+
+    def test_subset_uses_binary_rann_dependency(self):
+        self.assertIn("  - r-rann", self.subset_environment)
+        self.assertIn("requireNamespace(\"RANN\"", self.subset_script)
+        self.assertIn("-c conda-forge r-rann", self.subset_script)
+        self.assertIn("# platform: linux-64", self.subset_linux_lock)
+        self.assertIn("/r-rann-", self.subset_linux_lock)
+
+    def test_subset_validates_platform_specific_lockfile(self):
+        self.assertIn(
+            'if ! lockfile_matches_platform "$LOCKFILE"',
+            self.subset_script,
+        )
+        self.assertIn("GENERATE_LOCKFILE=true", self.subset_script)
 
     def test_installs_with_target_environment_python(self):
         self.assertIn(
